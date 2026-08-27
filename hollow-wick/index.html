@@ -2,7 +2,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Vollkorn:wght@500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
 <style>
   :root{
@@ -23,20 +22,21 @@
 
   *{ box-sizing:border-box; }
 
+  html{ height:100%; }
+
   body{
     margin:0;
-    min-height:100vh;
+    height:100%;
     background:
       radial-gradient(ellipse 70% 50% at 50% 0%, #1c2d47 0%, transparent 60%),
       radial-gradient(ellipse 90% 70% at 50% 100%, #0e1626 0%, transparent 55%),
       var(--night-deep);
     color:var(--parchment);
-    font-family:'Montserrat', sans-serif;
+    font-family:'Vollkorn', Georgia, serif;
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:26px 12px;
-    overflow-x:auto;
+    overflow:hidden;
   }
 
   .stage{
@@ -45,6 +45,8 @@
     align-items:center;
     gap:12px;
     width:100%;
+    transform-origin:center center;
+    will-change:transform;
   }
 
   .frame{
@@ -68,18 +70,18 @@
 
   .title-plate h1{
     margin:0;
-    font-family:'Montserrat', sans-serif;
+    font-family:'Cinzel', 'Vollkorn', serif;
     font-weight:700;
     font-size:clamp(1.15rem, 4vw, 1.7rem);
     letter-spacing:2px;
-    color:var(--night-deep);
+    color:var(--amber);
     text-shadow:0 0 12px rgba(255,182,72,0.45);
   }
 
   .title-plate p{
     margin:2px 0 0;
     font-size:0.78rem;
-    color:var(--night-deep);
+    color:var(--parchment-dim);
     letter-spacing:1px;
     font-style:italic;
   }
@@ -120,7 +122,7 @@
 
   .overlay h2{
     margin:0;
-    font-family:'Montserrat', sans-serif;
+    font-family:'Cinzel', serif;
     font-weight:700;
     font-size:clamp(1rem, 4.4vw, 1.5rem);
     color:var(--amber);
@@ -144,7 +146,7 @@
   }
 
   .btn{
-    font-family:'Montserrat', sans-serif;
+    font-family:'Vollkorn', serif;
     font-weight:700;
     font-size:0.95rem;
     color:var(--night-deep);
@@ -167,26 +169,28 @@
   .deck{
     display:flex;
     align-items:center;
-    justify-content:space-between;
-    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:clamp(8px, 3vw, 16px);
   }
 
   .dpad{
     display:grid;
-    grid-template-columns:repeat(3, 40px);
-    grid-template-rows:repeat(3, 40px);
-    gap:4px;
+    grid-template-columns:repeat(3, clamp(30px, 9vw, 40px));
+    grid-template-rows:repeat(3, clamp(30px, 9vw, 40px));
+    gap:clamp(3px, 1vw, 4px);
+    flex:0 0 auto;
   }
 
   .ctrl-btn{
-    font-family:'Montserrat', sans-serif;
+    font-family:'Vollkorn', serif;
     font-weight:700;
     border:none;
     cursor:pointer;
     color:var(--parchment);
     background:linear-gradient(180deg, #3a4c6c, var(--night-panel));
     border-radius:8px;
-    font-size:1rem;
+    font-size:clamp(0.75rem, 2.6vw, 1rem);
     box-shadow:0 3px 0 #0f1a2c, 0 5px 8px rgba(0,0,0,0.3);
     user-select:none;
     -webkit-user-select:none;
@@ -199,19 +203,20 @@
 
   .action-btns{
     display:flex;
-    gap:8px;
+    gap:clamp(6px, 2vw, 8px);
     align-items:center;
+    flex:0 0 auto;
   }
 
   .action-btn{
-    font-family:'Montserrat', sans-serif;
+    font-family:'Vollkorn', serif;
     font-weight:700;
     border:none;
     cursor:pointer;
     border-radius:999px;
-    width:58px;
-    height:58px;
-    font-size:0.75rem;
+    width:clamp(42px, 13vw, 58px);
+    height:clamp(42px, 13vw, 58px);
+    font-size:clamp(0.6rem, 2vw, 0.75rem);
     letter-spacing:0.5px;
     user-select:none;
     -webkit-user-select:none;
@@ -238,7 +243,7 @@
     position:absolute;
     top:8px;
     right:8px;
-    font-family:'Montserrat', sans-serif;
+    font-family:'Vollkorn', serif;
     font-weight:700;
     font-size:0.7rem;
     letter-spacing:1px;
@@ -304,6 +309,31 @@
     </p>
   </div>
 </div>
+
+<script>
+(function(){
+  "use strict";
+  var stage = document.querySelector('.stage');
+  function fitStage(){
+    if(!stage) return;
+    stage.style.transform = 'none';
+    var rect = stage.getBoundingClientRect();
+    var doc = document.documentElement;
+    var naturalW = Math.max(rect.width, doc.scrollWidth);
+    var naturalH = Math.max(rect.height, doc.scrollHeight);
+    var availW = window.innerWidth - 20;
+    var availH = window.innerHeight - 20;
+    var scale = Math.min(1, availW / naturalW, availH / naturalH);
+    stage.style.transform = scale < 0.999 ? 'scale(' + scale.toFixed(4) + ')' : 'none';
+  }
+  window.addEventListener('resize', fitStage);
+  window.addEventListener('orientationchange', function(){ setTimeout(fitStage, 60); });
+  window.addEventListener('load', fitStage);
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(fitStage); }
+  fitStage();
+  setTimeout(fitStage, 300);
+})();
+</script>
 
 <script>
 (function(){
@@ -1378,7 +1408,7 @@
       ctx.beginPath(); ctx.arc(b.x,b.y-16,7,0,Math.PI*2); ctx.fill();
     }
     ctx.fillStyle = 'rgba(233,226,201,0.65)';
-    ctx.font = '11px Montserrat, sans-serif;';
+    ctx.font = '11px Vollkorn, serif';
     ctx.textAlign = 'center';
     ctx.fillText(b.name, b.x, b.y+22);
     ctx.restore();
@@ -1558,7 +1588,7 @@
     if(!exit.label) return;
     var r = exit.rect;
     ctx.save();
-    ctx.font = '600 12px Montserrat, sans-serif;';
+    ctx.font = '600 12px Vollkorn, serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = exit.gated ? 'rgba(192,70,60,0.85)' : 'rgba(233,226,201,0.85)';
     ctx.fillText(exit.label, r.x+r.w/2, r.y+r.h/2+4);
@@ -1610,7 +1640,7 @@
       ctx.save();
       ctx.globalAlpha = clamp(pt.life/0.9,0,1);
       ctx.fillStyle = pt.color;
-      ctx.font = '700 13px Montserrat, sans-serif;';
+      ctx.font = '700 13px Vollkorn, serif';
       ctx.textAlign = 'center';
       ctx.fillText(pt.text, pt.x, pt.y);
       ctx.restore();
@@ -1637,7 +1667,7 @@
     roundRect(ctx,x,y,w,h,4); ctx.stroke();
     if(label){
       ctx.fillStyle = '#0b1220';
-      ctx.font = '700 10px Montserrat, sans-serif;';
+      ctx.font = '700 10px Vollkorn, serif';
       ctx.textAlign='left';
       ctx.fillText(label, x+6, y+h-3);
     }
@@ -1657,7 +1687,7 @@
     ctx.fillStyle = 'rgba(11,18,32,0.55)';
     roundRect(ctx, W-190,42,180,54,8); ctx.fill();
     ctx.fillStyle = '#ffb648';
-    ctx.font = '700 13px Montserrat, sans-serif;';
+    ctx.font = '700 13px Vollkorn, serif';
     ctx.textAlign='right';
     ctx.fillText('Lv ' + p.level, W-16, 60);
     drawBar(W-176,66,150,8, p.xp/p.xpToNext, '#ffb648', 'rgba(0,0,0,0.4)', null);
@@ -1676,7 +1706,7 @@
       ctx.globalAlpha = clamp(areaBanner.timer/0.5,0,1) * clamp((2.2-areaBanner.timer)/0.4+1,0,1);
       ctx.globalAlpha = Math.min(1, ctx.globalAlpha);
       ctx.textAlign='center';
-      ctx.font = '700 20px Montserrat, sans-serif;';
+      ctx.font = '700 20px Cinzel, serif';
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillText(areaBanner.text, W/2+1, 47);
       ctx.fillStyle = '#ffb648';
@@ -1688,7 +1718,7 @@
     toasts.forEach(function(t){
       ctx.save();
       ctx.globalAlpha = clamp(t.life/0.4,0,1);
-      ctx.font = '600 13px Montserrat, sans-serif;';
+      ctx.font = '600 13px Vollkorn, serif';
       ctx.textAlign='center';
       var tw = ctx.measureText(t.text).width+24;
       ctx.fillStyle = 'rgba(11,18,32,0.75)';
@@ -1707,17 +1737,17 @@
       ctx.strokeStyle = 'rgba(255,182,72,0.4)'; ctx.lineWidth=1.5;
       roundRect(ctx, 20, H-boxH-16, W-40, boxH, 10); ctx.stroke();
       ctx.fillStyle = '#ffb648';
-      ctx.font = '700 13px Montserrat, sans-serif;';
+      ctx.font = '700 13px Cinzel, serif';
       ctx.textAlign='left';
       ctx.fillText(dialogue.name, 36, H-boxH+6);
       ctx.fillStyle = '#e9e2c9';
-      ctx.font = '15px Montserrat, sans-serif;';
+      ctx.font = '15px Vollkorn, serif';
       var lines = wrapText(ctx, dialogue.lines[dialogue.idx], W-90);
       lines.slice(0,3).forEach(function(l,i){
         ctx.fillText(l, 36, H-boxH+30+i*20);
       });
       ctx.fillStyle = 'rgba(233,226,201,0.6)';
-      ctx.font = '11px Montserrat, sans-serif;';
+      ctx.font = '11px Vollkorn, serif';
       ctx.textAlign='right';
       ctx.fillText(dialogue.idx < dialogue.lines.length-1 ? 'E ▸ continue' : 'E ▸ close', W-36, H-24);
       ctx.restore();

@@ -1,0 +1,1692 @@
+<title>Nestling</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&family=Press+Start+2P&display=swap">
+<style>
+  :root{
+    --ink:#1f2a24;
+    --ink-soft:#4d5c53;
+    --bg:#eef2ea;
+    --surface:#ffffff;
+    --surface-2:#f4f6f0;
+    --border:#d7ddce;
+    --accent:#ff7a59;
+    --accent-ink:#5c2510;
+    --accent-2:#3e7c6b;
+    --accent-2-soft:#dcece6;
+    --accent-3:#ffc857;
+    --accent-3-soft:#fff3d6;
+    --good:#3e9c5b;
+    --warn:#e0a323;
+    --bad:#e05a4e;
+    --shadow: 0 20px 45px -20px rgba(31,42,36,0.35);
+    --sky-day-1:#bfe3e8;
+    --sky-day-2:#eaf6ea;
+    --sky-night-1:#1a2340;
+    --sky-night-2:#3a2b53;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#eef2ea;
+      --ink-soft:#b7c2b5;
+      --bg:#141a16;
+      --surface:#1d251f;
+      --surface-2:#232c25;
+      --border:#333f34;
+      --accent:#ff8a68;
+      --accent-ink:#2a0f05;
+      --accent-2:#5fae9a;
+      --accent-2-soft:#1f332c;
+      --accent-3:#ffd166;
+      --accent-3-soft:#3a3018;
+      --good:#5cc57e;
+      --warn:#f0b840;
+      --bad:#f0796c;
+      --shadow: 0 20px 45px -20px rgba(0,0,0,0.6);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#eef2ea;
+    --ink-soft:#b7c2b5;
+    --bg:#141a16;
+    --surface:#1d251f;
+    --surface-2:#232c25;
+    --border:#333f34;
+    --accent:#ff8a68;
+    --accent-ink:#2a0f05;
+    --accent-2:#5fae9a;
+    --accent-2-soft:#1f332c;
+    --accent-3:#ffd166;
+    --accent-3-soft:#3a3018;
+    --good:#5cc57e;
+    --warn:#f0b840;
+    --bad:#f0796c;
+    --shadow: 0 20px 45px -20px rgba(0,0,0,0.6);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Nunito",system-ui,sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1,h2,h3,.display{
+    font-family:"Fredoka",system-ui,sans-serif;
+    text-wrap:balance;
+    margin:0;
+  }
+  .pixel-font{ font-family:"Press Start 2P", monospace; }
+  button{ font-family:inherit; }
+  button:focus-visible, [tabindex]:focus-visible, input:focus-visible{
+    outline:3px solid var(--accent-2);
+    outline-offset:2px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
+  }
+
+  #app{
+    width:100%;
+    max-width:560px;
+    min-height:100vh;
+    padding: max(12px, env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom));
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .brand-mark{
+    width:34px;height:34px;border-radius:10px;
+    background:linear-gradient(145deg, var(--accent-3), var(--accent));
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+    box-shadow: var(--shadow);
+  }
+  .brand h1{ font-size:20px; letter-spacing:0.2px; }
+  .icon-btn{
+    width:40px;height:40px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--ink);
+    font-size:17px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow: 0 2px 0 var(--border);
+    transition: transform .12s ease;
+  }
+  .icon-btn:active{ transform: translateY(2px); box-shadow:none; }
+
+  /* ---------- Cards / screens ---------- */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:20px;
+    box-shadow: var(--shadow);
+    padding:18px;
+  }
+  .screen{ display:flex; flex-direction:column; gap:16px; flex:1; }
+  .hidden{ display:none !important; }
+
+  .muted{ color:var(--ink-soft); }
+  .center{ text-align:center; }
+
+  .btn{
+    border:none;
+    border-radius:14px;
+    padding:12px 16px;
+    font-family:"Fredoka",system-ui,sans-serif;
+    font-weight:600;
+    font-size:15px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    min-height:46px;
+    transition: transform .12s ease, filter .12s ease, opacity .12s ease;
+  }
+  .btn:active{ transform: translateY(2px); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
+  .btn-primary{ background:var(--accent); color:var(--accent-ink); box-shadow:0 3px 0 #c9522f; }
+  .btn-primary:active:not(:disabled){ box-shadow:0 1px 0 #c9522f; }
+  :root[data-theme="dark"] .btn-primary, @media (prefers-color-scheme: dark){ }
+  .btn-teal{ background:var(--accent-2); color:#fff; box-shadow:0 3px 0 #2b5e51; }
+  .btn-teal:active:not(:disabled){ box-shadow:0 1px 0 #2b5e51; }
+  .btn-ghost{ background:var(--surface-2); color:var(--ink); border:1px solid var(--border); }
+  .btn-gold{ background:var(--accent-3); color:#5a3d05; box-shadow:0 3px 0 #d19f2c; }
+  .btn-gold:active:not(:disabled){ box-shadow:0 1px 0 #d19f2c; }
+  .btn-block{ width:100%; }
+  .btn-sm{ min-height:38px; padding:8px 12px; font-size:13px; border-radius:11px; }
+
+  /* ---------- Title / Menu screen ---------- */
+  .hero-egg{ display:flex; justify-content:center; padding:8px 0 2px; }
+  .title-actions{ display:flex; flex-direction:column; gap:10px; }
+
+  .slot-list{ display:flex; flex-direction:column; gap:10px; }
+  .slot{
+    display:flex; align-items:center; gap:12px;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:10px 12px;
+  }
+  .slot canvas{ image-rendering:pixelated; flex-shrink:0; }
+  .slot-info{ flex:1; min-width:0; }
+  .slot-info .name{ font-family:"Fredoka",sans-serif; font-weight:600; font-size:15px; }
+  .slot-info .meta{ font-size:12.5px; color:var(--ink-soft); }
+  .slot-empty{ color:var(--ink-soft); font-style:normal; font-size:14px; }
+  .slot-actions{ display:flex; gap:6px; }
+
+  /* ---------- Species picker ---------- */
+  .species-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+  }
+  .species-card{
+    background:var(--surface-2);
+    border:2px solid var(--border);
+    border-radius:16px;
+    padding:12px 8px 10px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    cursor:pointer;
+  }
+  .species-card canvas{ image-rendering:pixelated; }
+  .species-card.selected{ border-color:var(--accent-2); background:var(--accent-2-soft); }
+  .species-card .sname{ font-family:"Fredoka",sans-serif; font-weight:600; font-size:14px; }
+  .species-card .sdesc{ font-size:11.5px; color:var(--ink-soft); text-align:center; }
+
+  .field label{ display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:var(--ink-soft); }
+  .field input[type="text"]{
+    width:100%; padding:11px 13px; border-radius:12px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--ink); font-size:15px; font-family:inherit;
+  }
+
+  /* ---------- Game screen ---------- */
+  .status-row{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+  }
+  .status-row .pet-id{ display:flex; flex-direction:column; }
+  .status-row .pet-id .pname{ font-size:19px; }
+  .status-row .pet-id .pmeta{ font-size:12.5px; color:var(--ink-soft); }
+  .day-chip{
+    font-size:10.5px;
+    padding:6px 9px;
+    border-radius:9px;
+    background:var(--ink);
+    color:var(--bg);
+    letter-spacing:0.5px;
+  }
+
+  .habitat{
+    position:relative;
+    border-radius:18px;
+    overflow:hidden;
+    border:1px solid var(--border);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+    aspect-ratio: 4 / 3;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+  }
+  .habitat-sky{
+    position:absolute; inset:0;
+    transition: background 1.2s ease;
+  }
+  .habitat-ground{
+    position:absolute; left:0; right:0; bottom:0; height:26%;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.10) 100%);
+    border-top:2px solid rgba(0,0,0,0.08);
+  }
+  .habitat-stars{ position:absolute; inset:0; opacity:0; transition:opacity 1.2s ease; }
+  .pet-stage{
+    position:relative;
+    z-index:2;
+    padding-bottom:6%;
+  }
+  .pet-canvas{ image-rendering:pixelated; display:block; filter:drop-shadow(0 8px 8px rgba(0,0,0,0.18)); }
+  .pet-canvas.bounce{ animation: bounce 1.8s ease-in-out infinite; }
+  @keyframes bounce{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6%);} }
+  .zzz{
+    position:absolute; z-index:3; font-family:"Fredoka",sans-serif; font-weight:600;
+    color:var(--surface); text-shadow:0 1px 2px rgba(0,0,0,.25);
+    opacity:0; pointer-events:none;
+  }
+  .poop{
+    position:absolute; z-index:2; bottom:8%;
+    width:9%; filter:drop-shadow(0 3px 2px rgba(0,0,0,.2));
+  }
+  .toast{
+    position:absolute; left:50%; top:10px; transform:translateX(-50%);
+    background:rgba(20,26,22,0.88); color:#fff; font-size:12.5px; font-weight:700;
+    padding:7px 12px; border-radius:20px; z-index:5;
+    opacity:0; transition:opacity .25s ease, transform .25s ease;
+    white-space:nowrap; max-width:90%; overflow:hidden; text-overflow:ellipsis;
+    pointer-events:none;
+  }
+  .toast.show{ opacity:1; }
+
+  .care-btn{
+    position:absolute; z-index:4; bottom:6%;
+    width:15%; aspect-ratio:1; border-radius:50%;
+    border:none; display:flex; align-items:center; justify-content:center; font-size:18px;
+    cursor:pointer;
+  }
+
+  /* ---------- Stats ---------- */
+  .stats{ display:flex; flex-direction:column; gap:9px; }
+  .stat{ display:flex; align-items:center; gap:9px; }
+  .stat .ico{ width:22px; text-align:center; font-size:15px; flex-shrink:0; }
+  .stat .bar-track{
+    flex:1; height:11px; border-radius:6px; background:var(--surface-2);
+    border:1px solid var(--border); overflow:hidden;
+  }
+  .stat .bar-fill{ height:100%; border-radius:6px; transition:width .4s ease, background-color .4s ease; }
+  .stat .val{ width:34px; text-align:right; font-size:11.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+  .tag-row{ display:flex; gap:6px; flex-wrap:wrap; min-height:24px; }
+  .tag{
+    font-size:11px; font-weight:800; padding:4px 9px; border-radius:20px;
+    display:flex; align-items:center; gap:4px;
+  }
+  .tag-sick{ background:#fbdcd8; color:#8f2c22; }
+  :root[data-theme="dark"] .tag-sick{ background:#4a231f; color:#f0a99f; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .tag-sick{ background:#4a231f; color:#f0a99f; } }
+  .tag-sleep{ background:var(--accent-2-soft); color:var(--accent-2); }
+  .tag-dirty{ background:var(--accent-3-soft); color:#8a6408; }
+  :root[data-theme="dark"] .tag-dirty{ color:var(--accent-3); }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .tag-dirty{ color:var(--accent-3); } }
+
+  /* ---------- Action dock ---------- */
+  .dock{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:9px;
+  }
+  .dock-btn{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:10px 4px 8px;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    cursor:pointer;
+    font-family:"Fredoka",sans-serif; font-weight:600; font-size:11.5px;
+    color:var(--ink);
+    transition: transform .12s ease, background .12s ease;
+  }
+  .dock-btn .dico{ font-size:20px; }
+  .dock-btn:active:not(:disabled){ transform:scale(0.94); }
+  .dock-btn:disabled{ opacity:.4; }
+  .dock-btn.primary{ background:var(--accent-2-soft); border-color:var(--accent-2); }
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(15,20,17,0.55);
+    display:flex; align-items:flex-end; justify-content:center; z-index:50;
+    padding:0;
+  }
+  @media (min-width:560px){ .modal-backdrop{ align-items:center; padding:20px; } }
+  .modal{
+    background:var(--surface);
+    width:100%; max-width:520px;
+    border-radius:22px 22px 0 0;
+    padding:20px;
+    max-height:88vh; overflow-y:auto;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  @media (min-width:560px){ .modal{ border-radius:22px; } }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; }
+  .choice-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .choice{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:14px;
+    padding:12px; text-align:left; cursor:pointer; display:flex; flex-direction:column; gap:4px;
+  }
+  .choice .cname{ font-family:"Fredoka",sans-serif; font-weight:600; font-size:14.5px; }
+  .choice .cdesc{ font-size:12px; color:var(--ink-soft); }
+  .choice:active{ transform:scale(0.98); }
+
+  /* ---------- Minigame ---------- */
+  .mg-arena{
+    position:relative; width:100%; aspect-ratio:4/3;
+    border-radius:16px; overflow:hidden; border:1px solid var(--border);
+    background: var(--surface-2);
+    touch-action:none;
+  }
+  .mg-hud{ display:flex; justify-content:space-between; font-size:13px; font-weight:800; }
+  .mg-item{
+    position:absolute; width:11%; aspect-ratio:1; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+    cursor:pointer; user-select:none; transform:translate(-50%,-50%);
+  }
+  .mg-target{
+    position:absolute; width:20%; aspect-ratio:1; border-radius:50%;
+    background:var(--accent); display:flex; align-items:center; justify-content:center;
+    font-size:22px; transform:translate(-50%,-50%) scale(0.5); opacity:0;
+    transition: transform .12s ease, opacity .12s ease; cursor:pointer;
+  }
+  .mg-target.pop{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+  .mg-overlay-msg{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(20,26,22,0.55); color:#fff; text-align:center; font-family:"Fredoka",sans-serif;
+    font-size:16px; padding:20px; opacity:0; pointer-events:none; transition:opacity .3s ease;
+  }
+  .mg-overlay-msg.show{ opacity:1; }
+
+  .footer-note{ text-align:center; font-size:11.5px; color:var(--ink-soft); padding:2px 6px 0; }
+</style>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">🥚</div>
+      <h1>Nestling</h1>
+    </div>
+    <button class="icon-btn" id="btnMenuTop" title="Save &amp; Menu" aria-label="Open menu">☰</button>
+  </div>
+
+  <!-- ===================== TITLE / SAVE SLOTS ===================== -->
+  <section id="screenTitle" class="screen">
+    <div class="card center">
+      <div class="hero-egg"><canvas id="titleEggCanvas" width="96" height="96" style="width:96px;height:96px;image-rendering:pixelated;"></canvas></div>
+      <h2 style="font-size:22px; margin-top:6px;">Raise a Nestling</h2>
+      <p class="muted" style="margin-top:6px; font-size:14px;">Hatch a dragon, dinosaur, slime, or kitty and keep it fed, happy, clean, and rested.</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px; margin-bottom:10px;">Your pets</h3>
+      <div class="slot-list" id="slotList"></div>
+    </div>
+    <div class="title-actions">
+      <button class="btn btn-primary btn-block" id="btnNewGame">✨ New Nestling</button>
+    </div>
+    <p class="footer-note">Progress saves automatically to this browser. Use the menu to manage save slots.</p>
+  </section>
+
+  <!-- ===================== SPECIES PICKER ===================== -->
+  <section id="screenPicker" class="screen hidden">
+    <div class="card">
+      <h2 style="font-size:19px;">Choose your Nestling</h2>
+      <p class="muted" style="font-size:13.5px; margin-top:4px;">Each species grows up differently. Pick who hatches from the egg.</p>
+      <div class="species-grid" id="speciesGrid" style="margin-top:14px;"></div>
+    </div>
+    <div class="card field">
+      <label for="petNameInput">Name your Nestling</label>
+      <input type="text" id="petNameInput" maxlength="14" placeholder="e.g. Ember" autocomplete="off">
+    </div>
+    <div class="title-actions">
+      <button class="btn btn-primary btn-block" id="btnConfirmHatch">🐣 Hatch &amp; Begin</button>
+      <button class="btn btn-ghost btn-block" id="btnBackFromPicker">Back</button>
+    </div>
+  </section>
+
+  <!-- ===================== GAME ===================== -->
+  <section id="screenGame" class="screen hidden">
+    <div class="status-row">
+      <div class="pet-id">
+        <span class="pname display" id="petNameLbl">—</span>
+        <span class="pmeta" id="petMetaLbl">—</span>
+      </div>
+      <span class="day-chip pixel-font" id="dayChip">DAY 1</span>
+    </div>
+
+    <div class="tag-row" id="tagRow"></div>
+
+    <div class="habitat card" id="habitat" style="padding:0;">
+      <div class="habitat-sky" id="habitatSky"></div>
+      <svg class="habitat-stars" id="habitatStars" viewBox="0 0 100 75" preserveAspectRatio="none"></svg>
+      <div class="habitat-ground"></div>
+      <div class="toast" id="habitatToast"></div>
+      <div id="poopLayer"></div>
+      <div class="pet-stage" id="petStageWrap">
+        <canvas class="pet-canvas" id="petCanvas" width="128" height="128"></canvas>
+        <div class="zzz pixel-font" id="zzzLbl">Zzz</div>
+      </div>
+      <button class="care-btn" id="btnPat" title="Pat" aria-label="Pat your pet" style="background:transparent;">👉</button>
+    </div>
+
+    <div class="card">
+      <div class="stats" id="statsWrap"></div>
+    </div>
+
+    <div class="dock" id="dock">
+      <button class="dock-btn" id="actFeed"><span class="dico">🍎</span>Feed</button>
+      <button class="dock-btn" id="actPlay"><span class="dico">🎮</span>Play</button>
+      <button class="dock-btn" id="actClean"><span class="dico">🧼</span>Clean</button>
+      <button class="dock-btn" id="actSleep"><span class="dico">💤</span>Sleep</button>
+      <button class="dock-btn" id="actMedicine"><span class="dico">💊</span>Medicine</button>
+      <button class="dock-btn" id="actStats"><span class="dico">📋</span>Details</button>
+    </div>
+  </section>
+
+  <!-- ===================== GAME OVER ===================== -->
+  <section id="screenGameOver" class="screen hidden">
+    <div class="card center">
+      <div style="font-size:44px;">🌙</div>
+      <h2 style="margin-top:8px;">Goodbye, <span id="goName">Nestling</span></h2>
+      <p class="muted" id="goReason" style="margin-top:6px; font-size:14px;"></p>
+      <p class="muted" id="goSummary" style="margin-top:10px; font-size:13px;"></p>
+    </div>
+    <button class="btn btn-primary btn-block" id="btnGoRestart">Return to Title</button>
+  </section>
+</div>
+
+<!-- ===================== MENU MODAL ===================== -->
+<div class="modal-backdrop hidden" id="menuModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Menu</h3>
+      <button class="icon-btn" id="btnCloseMenu" aria-label="Close">✕</button>
+    </div>
+    <button class="btn btn-teal btn-block" id="btnSaveNow">💾 Save now</button>
+    <button class="btn btn-ghost btn-block" id="btnToTitle">🏠 Save &amp; return to title</button>
+    <div>
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px; font-weight:700; cursor:pointer;">
+        <input type="checkbox" id="themeToggle" style="width:18px;height:18px;">
+        Force dark mode
+      </label>
+    </div>
+    <p class="footer-note" style="text-align:left;">Autosaves every 20s and after every action. Save slots live in this browser only.</p>
+  </div>
+</div>
+
+<!-- ===================== FEED MODAL ===================== -->
+<div class="modal-backdrop hidden" id="feedModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Feed</h3><button class="icon-btn" data-close-modal="feedModal" aria-label="Close">✕</button></div>
+    <div class="choice-grid">
+      <button class="choice" id="feedSnack">
+        <span class="cname">🍪 Snack</span>
+        <span class="cdesc">+18 hunger, quick bite</span>
+      </button>
+      <button class="choice" id="feedMeal">
+        <span class="cname">🍲 Full meal</span>
+        <span class="cdesc">+45 hunger, takes a bit longer</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PLAY MODAL ===================== -->
+<div class="modal-backdrop hidden" id="playModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Play</h3><button class="icon-btn" data-close-modal="playModal" aria-label="Close">✕</button></div>
+    <div class="choice-grid">
+      <button class="choice" id="playCatch">
+        <span class="cname">🍬 Catch the Treats</span>
+        <span class="cdesc">Tap falling treats. Big happiness, costs energy.</span>
+      </button>
+      <button class="choice" id="playReaction">
+        <span class="cname">✨ Quick Tap</span>
+        <span class="cdesc">Tap your pet when it pops up. Light on energy.</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MINIGAME MODAL ===================== -->
+<div class="modal-backdrop hidden" id="mgModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="mgTitle">Mini-game</h3>
+      <button class="icon-btn" id="mgClose" aria-label="Close">✕</button>
+    </div>
+    <div class="mg-hud">
+      <span id="mgScoreLbl">Score: 0</span>
+      <span id="mgTimeLbl">Time: 15</span>
+    </div>
+    <div class="mg-arena" id="mgArena">
+      <div class="mg-overlay-msg" id="mgOverlay"></div>
+    </div>
+    <button class="btn btn-primary btn-block" id="mgStart">Start</button>
+  </div>
+</div>
+
+<!-- ===================== DETAILS MODAL ===================== -->
+<div class="modal-backdrop hidden" id="detailsModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Details</h3><button class="icon-btn" data-close-modal="detailsModal" aria-label="Close">✕</button></div>
+    <div id="detailsBody" style="font-size:14px; display:flex; flex-direction:column; gap:8px;"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+var STORAGE_PREFIX = "nestling.";
+var SLOT_KEYS = [STORAGE_PREFIX+"slot1", STORAGE_PREFIX+"slot2", STORAGE_PREFIX+"slot3"];
+var TICK_MS = 3000;                 // real ms between simulation ticks
+var MIN_PER_TICK = 2.5;             // simulated "game minutes" per tick
+var AUTOSAVE_MS = 20000;
+
+var STAGE_AGE_MIN = {               // age (in simulated minutes) required to reach a stage
+  egg: 0,
+  baby: 3,        // hatches ~7.5s after start (first couple ticks)
+  child: 45,
+  adult: 140
+};
+var STAGE_ORDER = ["egg","baby","child","adult"];
+
+var MAX_POOP = 4;
+var OFFLINE_CAP_MIN = 16 * 60;      // cap offline catch-up at 16 simulated hours worth of decay
+
+/* ============================================================
+   SPECIES DEFINITIONS
+   ============================================================ */
+var SPECIES = {
+  dragon: {
+    id:"dragon", name:"Dragon",
+    desc:"Fiery and bold. Grows wings & horns.",
+    palette:{ fill:"#5fae54", shade:"#3f7d3c", highlight:"#9fdc7e", outline:"#274d26", belly:"#f2dfa6", accent:"#e2632f" },
+    paletteWeary:{ fill:"#7f8f78", shade:"#5c6b57", highlight:"#a7b39f", outline:"#37423a", belly:"#cdc9ad", accent:"#8c6a58" },
+    accessories:["horns","tail","wings"],
+    emoji:"🐉"
+  },
+  dino: {
+    id:"dino", name:"Dinosaur",
+    desc:"Sturdy and calm. Grows back spikes.",
+    palette:{ fill:"#2f8f82", shade:"#20655c", highlight:"#78cabf", outline:"#173f39", belly:"#e8e0b0", accent:"#d98a3d" },
+    paletteWeary:{ fill:"#7e8c85", shade:"#5a6660", highlight:"#a9b6b0", outline:"#33403b", belly:"#c9c6ab", accent:"#8c7458" },
+    accessories:["spikes","tail"],
+    emoji:"🦕"
+  },
+  slime: {
+    id:"slime", name:"Slime",
+    desc:"Squishy and sweet. Grows a glossy shine.",
+    palette:{ fill:"#8c7cf2", shade:"#6357c2", highlight:"#c3b9ff", outline:"#3d3480", belly:"#c3b9ff", accent:"#5f52c9" },
+    paletteWeary:{ fill:"#918f9c", shade:"#67656f", highlight:"#bdbac6", outline:"#3a3840", belly:"#bdbac6", accent:"#726f80" },
+    accessories:["drip"],
+    emoji:"🟣"
+  },
+  cat: {
+    id:"cat", name:"Cat",
+    desc:"Playful and warm. Grows ears & tail.",
+    palette:{ fill:"#f0a8c0", shade:"#cf7a97", highlight:"#ffd7e4", outline:"#7a3347", belly:"#fff1e0", accent:"#e9628a" },
+    paletteWeary:{ fill:"#9a8c90", shade:"#6f6367", highlight:"#c3b8bb", outline:"#3a3336", belly:"#d8cfc9", accent:"#8c7076" },
+    accessories:["ears","tail"],
+    emoji:"🐱"
+  },
+  dog: {
+    id:"dog", name:"Dog",
+    desc:"Loyal and eager. Grows floppy ears & a spot.",
+    palette:{ fill:"#e0b27a", shade:"#b8875a", highlight:"#f3d6a8", outline:"#6b4423", belly:"#fbe9c8", accent:"#7a4a2b" },
+    paletteWeary:{ fill:"#9c948a", shade:"#726b62", highlight:"#c2bbae", outline:"#3d372f", belly:"#d8d0c1", accent:"#5c554c" },
+    accessories:["earsFloppy","tail","spot"],
+    emoji:"🐶"
+  },
+  rabbit: {
+    id:"rabbit", name:"Rabbit",
+    desc:"Gentle and quick. Grows tall ears.",
+    palette:{ fill:"#f2ecdf", shade:"#d0c6ae", highlight:"#ffffff", outline:"#5c5343", belly:"#ffffff", accent:"#e79aa6" },
+    paletteWeary:{ fill:"#a8a89c", shade:"#7d7d72", highlight:"#c9c9be", outline:"#3c3c34", belly:"#c9c9be", accent:"#8c7c80" },
+    accessories:["earsLong","tail"],
+    emoji:"🐰"
+  },
+  bird: {
+    id:"bird", name:"Bird",
+    desc:"Cheerful and light. Grows wings & a beak.",
+    palette:{ fill:"#5cb0e0", shade:"#3b83af", highlight:"#a6def0", outline:"#1f4a63", belly:"#f5e6a8", accent:"#f0a23e" },
+    paletteWeary:{ fill:"#8c99a0", shade:"#626d73", highlight:"#b6c1c6", outline:"#2e3639", belly:"#c9c2ad", accent:"#8c7458" },
+    accessories:["wingsSmall","beak"],
+    emoji:"🐦"
+  }
+};
+var SPECIES_ORDER = ["dragon","dino","slime","cat","dog","rabbit","bird"];
+
+/* ============================================================
+   PIXEL ART RENDERER
+   Body is generated procedurally on a small grid, then scaled
+   up with nearest-neighbor for a crisp pixel-art look.
+   ============================================================ */
+var GRID = 24;
+
+function makeGrid(){
+  var g = [];
+  for (var y=0;y<GRID;y++){ g.push(new Array(GRID).fill(null)); }
+  return g;
+}
+
+function ellipseBody(grid, cx, cy, rx, ry, pal, opts){
+  opts = opts || {};
+  var squashBottom = opts.squashBottom || 0; // flattens bottom (sitting look)
+  for (var y=0;y<GRID;y++){
+    for (var x=0;x<GRID;x++){
+      var dx=(x-cx)/rx, dy=(y-cy)/ry;
+      if (squashBottom && y>cy){ dy = dy*(1+squashBottom); }
+      var d = dx*dx+dy*dy;
+      if (d>1) continue;
+      var col;
+      if (d>0.82) col = pal.outline;
+      else if (x<cx-0.15*rx && y<cy-0.1*ry && d<0.42) col = pal.highlight;
+      else if (x>cx+0.05*rx && y>cy+0.05*ry && d>0.5) col = pal.shade;
+      else col = pal.fill;
+      grid[y][x]=col;
+    }
+  }
+}
+
+function paintPixels(grid, pts, color){
+  for (var i=0;i<pts.length;i++){
+    var x=Math.round(pts[i][0]), y=Math.round(pts[i][1]);
+    if (x>=0&&x<GRID&&y>=0&&y<GRID) grid[y][x]=color;
+  }
+}
+
+function triangle(grid, x0,y0, x1,y1, x2,y2, color){
+  var minX=Math.max(0,Math.floor(Math.min(x0,x1,x2)));
+  var maxX=Math.min(GRID-1,Math.ceil(Math.max(x0,x1,x2)));
+  var minY=Math.max(0,Math.floor(Math.min(y0,y1,y2)));
+  var maxY=Math.min(GRID-1,Math.ceil(Math.max(y0,y1,y2)));
+  function sign(ax,ay,bx,by,cx,cy){ return (ax-cx)*(by-cy)-(bx-cx)*(ay-cy); }
+  for (var y=minY;y<=maxY;y++){
+    for (var x=minX;x<=maxX;x++){
+      var d1=sign(x,y,x0,y0,x1,y1), d2=sign(x,y,x1,y1,x2,y2), d3=sign(x,y,x2,y2,x0,y0);
+      var hasNeg=(d1<0)||(d2<0)||(d3<0), hasPos=(d1>0)||(d2>0)||(d3>0);
+      if (!(hasNeg&&hasPos)) grid[y][x]=color;
+    }
+  }
+}
+
+// Stage geometry: body ellipse params relative to GRID, per stage
+var STAGE_GEOM = {
+  egg:   { cx:12, cy:13, rx:6.2, ry:8.2 },
+  baby:  { cx:12, cy:14, rx:8.5, ry:7.6, squash:0.12 },
+  child: { cx:12, cy:13.5, rx:9.6, ry:8.6, squash:0.08 },
+  adult: { cx:12, cy:13, rx:10.3, ry:9.4, squash:0.05 }
+};
+
+function addAccessories(grid, species, stage, pal, cx, cy, rx, ry){
+  var accs = SPECIES[species].accessories;
+  var big = (stage==="child"||stage==="adult");
+  var huge = (stage==="adult");
+  for (var i=0;i<accs.length;i++){
+    var a = accs[i];
+    if (a==="horns" && stage!=="egg"){
+      var hs = stage==="baby"?1:(stage==="child"?1.4:1.9);
+      triangle(grid, cx-4.2, cy-ry+2, cx-2.4, cy-ry-2*hs, cx-1.6, cy-ry+2, pal.accent);
+      triangle(grid, cx+1.6, cy-ry+2, cx+2.4, cy-ry-2*hs, cx+4.2, cy-ry+2, pal.accent);
+    }
+    if (a==="wings" && huge){
+      triangle(grid, cx-rx+1, cy-1, cx-rx-4, cy-6, cx-rx+2, cy+3, pal.shade);
+      triangle(grid, cx+rx-1, cy-1, cx+rx+4, cy-6, cx+rx-2, cy+3, pal.shade);
+    }
+    if (a==="tail" && big){
+      var tl = stage==="child"?3:5;
+      triangle(grid, cx+rx-2, cy+ry-2, cx+rx+tl, cy+ry-4, cx+rx+tl-1, cy+ry+1, pal.fill);
+    }
+    if (a==="spikes" && stage!=="egg"){
+      var n = stage==="baby"?2:(stage==="child"?3:4);
+      var startX = cx-rx*0.35, endX = cx+rx*0.55;
+      for (var s=0;s<n;s++){
+        var sx = startX + (endX-startX)*(s/(n-1||1));
+        var sh = stage==="adult"?3:2;
+        triangle(grid, sx-1.4, cy-ry+2.5, sx, cy-ry-sh, sx+1.4, cy-ry+2.5, pal.accent);
+      }
+    }
+    if (a==="drip"){
+      var dw = huge?1.6:1.1;
+      triangle(grid, cx-dw, cy+ry-2, cx, cy+ry+3, cx+dw, cy+ry-2, pal.shade);
+      paintPixels(grid, [[cx-rx*0.3, cy-ry*0.35]], pal.highlight);
+    }
+    if (a==="ears" && stage!=="egg"){
+      var es = stage==="baby"?1.6:(stage==="child"?2.1:2.6);
+      triangle(grid, cx-5.4, cy-ry+3, cx-3.6, cy-ry-1.5*es, cx-1.8, cy-ry+2.4, pal.fill);
+      triangle(grid, cx+1.8, cy-ry+2.4, cx+3.6, cy-ry-1.5*es, cx+5.4, cy-ry+3, pal.fill);
+      triangle(grid, cx-4.4, cy-ry+3, cx-3.6, cy-ry, cx-2.8, cy-ry+2.6, pal.shade);
+      triangle(grid, cx+2.8, cy-ry+2.6, cx+3.6, cy-ry, cx+4.4, cy-ry+3, pal.shade);
+    }
+    if (a==="earsFloppy" && stage!=="egg"){
+      var fl = stage==="baby"?2.4:(stage==="child"?3.4:4.4);
+      triangle(grid, cx-rx+2, cy-ry+3, cx-rx-1, cy-ry+2+fl, cx-rx+3.4, cy-ry+3.4+fl*0.4, pal.shade);
+      triangle(grid, cx+rx-2, cy-ry+3, cx+rx+1, cy-ry+2+fl, cx+rx-3.4, cy-ry+3.4+fl*0.4, pal.shade);
+    }
+    if (a==="earsLong" && stage!=="egg"){
+      var lg = stage==="baby"?4:(stage==="child"?6.5:8.5);
+      triangle(grid, cx-3.2, cy-ry+2.5, cx-3.8, cy-ry-lg, cx-1.6, cy-ry+1.5, pal.fill);
+      triangle(grid, cx+1.6, cy-ry+1.5, cx+3.8, cy-ry-lg, cx+3.2, cy-ry+2.5, pal.fill);
+      triangle(grid, cx-3.0, cy-ry+2, cx-3.2, cy-ry-lg+2, cx-2.2, cy-ry+1.5, pal.belly);
+      triangle(grid, cx+2.2, cy-ry+1.5, cx+3.2, cy-ry-lg+2, cx+3.0, cy-ry+2, pal.belly);
+    }
+    if (a==="spot"){
+      var spotY = Math.round(cy-ry*0.15), spotX = Math.round(cx+rx*0.35);
+      paintPixels(grid, [[spotX,spotY],[spotX+1,spotY],[spotX,spotY+1],[spotX+1,spotY+1],[spotX-1,spotY+1]], pal.accent);
+    }
+    if (a==="wingsSmall" && stage!=="egg"){
+      var ws = stage==="baby"?1.6:(stage==="child"?2.4:3.2);
+      triangle(grid, cx-rx+1.5, cy-1, cx-rx-ws, cy+1.5, cx-rx+2, cy+3, pal.shade);
+      triangle(grid, cx+rx-1.5, cy-1, cx+rx+ws, cy+1.5, cx+rx-2, cy+3, pal.shade);
+    }
+    if (a==="beak" && stage!=="egg"){
+      var bkY = Math.round(cy+ry*0.05);
+      triangle(grid, cx-1.8, bkY, cx+1.8, bkY, cx, bkY+2.6, pal.accent);
+    }
+  }
+}
+
+function addFace(grid, stage, cx, cy, ry, mood, outline){
+  if (stage==="egg"){
+    // crack pattern instead of a face
+    var crackColor = outline;
+    var pts = [[cx-1,cy-3],[cx,cy-1],[cx-1,cy+1],[cx+1,cy+3],[cx,cy+5]];
+    paintPixels(grid, pts, crackColor);
+    return;
+  }
+  var eyeY = cy - ry*0.12;
+  var eyeDX = Math.max(2.6, ry*0.42);
+  var closed = (mood==="sleep");
+  var eyeColor = "#20241f";
+  if (closed){
+    paintPixels(grid, [[cx-eyeDX,eyeY],[cx-eyeDX+1,eyeY],[cx+eyeDX-1,eyeY],[cx+eyeDX,eyeY]], eyeColor);
+  } else {
+    // eyes as small 2x2 blocks
+    [ -eyeDX, eyeDX ].forEach(function(ex){
+      var bx = Math.round(cx+ex), by = Math.round(eyeY);
+      paintPixels(grid, [[bx-1,by-1],[bx,by-1],[bx-1,by],[bx,by]], "#ffffff");
+      var px = (mood==="sad"||mood==="sick") ? bx-1 : bx;
+      paintPixels(grid, [[px, by]], eyeColor);
+    });
+  }
+  var mouthY = Math.round(cy + ry*0.42);
+  if (mood==="happy"){
+    paintPixels(grid, [[cx-2,mouthY-1],[cx-1,mouthY],[cx,mouthY],[cx+1,mouthY],[cx+2,mouthY-1]], eyeColor);
+    paintPixels(grid, [[cx-4,mouthY-2],[cx+4,mouthY-2]], "#f2a2ac");
+  } else if (mood==="sad"){
+    paintPixels(grid, [[cx-2,mouthY+1],[cx-1,mouthY],[cx,mouthY],[cx+1,mouthY],[cx+2,mouthY+1]], eyeColor);
+  } else if (mood==="sick"){
+    paintPixels(grid, [[cx-2,mouthY],[cx-1,mouthY+1],[cx,mouthY],[cx+1,mouthY+1],[cx+2,mouthY]], "#7a9c4f");
+  } else if (mood==="sleep"){
+    // no mouth line, peaceful
+  } else {
+    paintPixels(grid, [[cx-1,mouthY],[cx,mouthY],[cx+1,mouthY]], eyeColor);
+  }
+}
+
+function buildPetGrid(species, stage, mood, evolution){
+  var grid = makeGrid();
+  var sp = SPECIES[species];
+  var pal = (evolution==="weary") ? sp.paletteWeary : sp.palette;
+  var geom = STAGE_GEOM[stage];
+  ellipseBody(grid, geom.cx, geom.cy, geom.rx, geom.ry, pal, {squashBottom:geom.squash});
+  if (stage!=="egg"){
+    addAccessories(grid, species, stage, pal, geom.cx, geom.cy, geom.rx, geom.ry);
+  } else {
+    // egg speckles
+    var speck = [[geom.cx-3,geom.cy-2],[geom.cx+2,geom.cy+1],[geom.cx-1,geom.cy+4],[geom.cx+3,geom.cy-4]];
+    paintPixels(grid, speck, pal.accent);
+  }
+  addFace(grid, stage, geom.cx, geom.cy, geom.ry, mood, pal.outline);
+  if (evolution==="radiant" && stage==="adult"){
+    paintPixels(grid, [[geom.cx-geom.rx*0.5,geom.cy-geom.ry*0.55],[geom.cx+geom.rx*0.45,geom.cy-geom.ry*0.35],[geom.cx+geom.rx*0.1,geom.cy-geom.ry*0.75]].map(function(p){return [Math.round(p[0]),Math.round(p[1])];}), "#fff6c9");
+  }
+  return grid;
+}
+
+function drawPetToCanvas(canvas, species, stage, mood, evolution){
+  var grid = buildPetGrid(species, stage, mood, evolution);
+  var ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  var w = canvas.width, h = canvas.height;
+  var cell = w / GRID;
+  ctx.clearRect(0,0,w,h);
+  for (var y=0;y<GRID;y++){
+    for (var x=0;x<GRID;x++){
+      var c = grid[y][x];
+      if (!c) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.floor(x*cell), Math.floor(y*cell), Math.ceil(cell), Math.ceil(cell));
+    }
+  }
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+var state = null;     // active pet state
+var activeSlot = null; // index of slot currently bound to `state`
+
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+function uid(){ return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+function newPetState(species, name){
+  var now = Date.now();
+  return {
+    v:1,
+    id: uid(),
+    species: species,
+    name: name || SPECIES[species].name,
+    stage: "egg",
+    ageMin: 0,
+    hunger: 80, happiness: 80, energy: 80, hygiene: 90, health: 100,
+    isSleeping: false,
+    isSick: false,
+    poopCount: 0,
+    careSum: 0, careTicks: 0,
+    evolution: null,       // set when reaching adult: "radiant" | "steady" | "weary"
+    isDead: false,
+    deathReason: "",
+    createdAt: now,
+    lastTickAt: now,
+    lastSavedAt: now,
+    lastPatAt: 0,
+    log: []
+  };
+}
+
+function pushLog(msg){
+  if (!state) return;
+  state.log.unshift({t: Date.now(), msg: msg});
+  if (state.log.length>12) state.log.length = 12;
+}
+
+/* ---------- Save / Load ---------- */
+function findEmptySlot(){
+  for (var i=0;i<SLOT_KEYS.length;i++){
+    if (!localStorage.getItem(SLOT_KEYS[i])) return i;
+  }
+  return -1;
+}
+
+function readSlot(i){
+  try{
+    var raw = localStorage.getItem(SLOT_KEYS[i]);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e){ return null; }
+}
+
+function writeSlot(i, st){
+  try{
+    st.lastSavedAt = Date.now();
+    localStorage.setItem(SLOT_KEYS[i], JSON.stringify(st));
+    return true;
+  } catch(e){ return false; }
+}
+
+function deleteSlot(i){
+  try{ localStorage.removeItem(SLOT_KEYS[i]); } catch(e){}
+}
+
+function saveActive(){
+  if (state==null || activeSlot==null) return;
+  writeSlot(activeSlot, state);
+}
+
+/* ---------- Offline catch-up ----------
+   Applies an approximate bulk decay for elapsed real time since the
+   last tick, instead of looping tick-by-tick, so re-opening the game
+   after hours or days resolves instantly. */
+function applyOfflineCatchup(st){
+  var elapsedRealMs = Date.now() - st.lastTickAt;
+  if (elapsedRealMs < TICK_MS) return null;
+  var elapsedMin = (elapsedRealMs/60000) * (MIN_PER_TICK*60000/TICK_MS); // convert to simulated minutes
+  var cappedMin = Math.min(elapsedMin, OFFLINE_CAP_MIN);
+  var wasCapped = elapsedMin > OFFLINE_CAP_MIN;
+
+  var before = { hunger:st.hunger, happiness:st.happiness, energy:st.energy, hygiene:st.hygiene, health:st.health, stage:st.stage };
+
+  simulateSpan(st, cappedMin);
+  st.lastTickAt = Date.now();
+
+  var summary = {
+    realMs: elapsedRealMs,
+    simMin: cappedMin,
+    capped: wasCapped,
+    died: st.isDead && !before.stage==="__never__" ? st.isDead : st.isDead,
+    hungerDrop: Math.round(before.hunger - st.hunger),
+    happinessDrop: Math.round(before.happiness - st.happiness),
+    hygieneDrop: Math.round(before.hygiene - st.hygiene),
+    grew: before.stage!==st.stage
+  };
+  return summary;
+}
+
+/* Approximate a long span of decay analytically/coarsely (used for
+   offline catch-up) by stepping in larger chunks for performance. */
+function simulateSpan(st, totalMin){
+  if (totalMin<=0) return;
+  var chunk = 15; // simulated minutes per coarse step
+  var remaining = totalMin;
+  while (remaining>0 && !st.isDead){
+    var step = Math.min(chunk, remaining);
+    tickState(st, step, true);
+    remaining -= step;
+  }
+}
+
+/* ============================================================
+   SIMULATION
+   ============================================================ */
+function currentStageThresholdIndex(ageMin){
+  var idx = 0;
+  for (var i=0;i<STAGE_ORDER.length;i++){
+    if (ageMin >= STAGE_AGE_MIN[STAGE_ORDER[i]]) idx = i;
+  }
+  return idx;
+}
+
+function lockEvolution(st){
+  var avg = st.careTicks>0 ? (st.careSum/st.careTicks) : 60;
+  if (avg>=72) st.evolution = "radiant";
+  else if (avg>=42) st.evolution = "steady";
+  else st.evolution = "weary";
+}
+
+function tickState(st, simMinutes, coarse){
+  if (st.isDead) return;
+  var sleepFactor = st.isSleeping ? 1 : 0;
+
+  // energy
+  var energyDelta = st.isSleeping ? (simMinutes*1.8) : -(simMinutes*0.55);
+  st.energy = clamp(st.energy + energyDelta, 0, 100);
+
+  // hunger / hygiene decay slower while asleep
+  var decayMul = st.isSleeping ? 0.45 : 1;
+  st.hunger = clamp(st.hunger - simMinutes*0.55*decayMul, 0, 100);
+  st.hygiene = clamp(st.hygiene - simMinutes*0.35*decayMul - st.poopCount*simMinutes*0.12, 0, 100);
+
+  // poop spawns (roughly every ~35 sim minutes), only while not egg
+  if (st.stage!=="egg" && !st.isSleeping){
+    var poopChance = simMinutes/35;
+    if (st.poopCount<MAX_POOP && Math.random() < poopChance){
+      st.poopCount = clamp(st.poopCount+1, 0, MAX_POOP);
+    }
+  }
+
+  // happiness: baseline drift + penalties for neglected stats
+  var happyDelta = -simMinutes*0.28*(st.isSleeping?0.3:1);
+  if (st.hunger<30) happyDelta -= simMinutes*0.25;
+  if (st.hygiene<30) happyDelta -= simMinutes*0.25;
+  if (st.energy<20 && !st.isSleeping) happyDelta -= simMinutes*0.2;
+  if (st.isSick) happyDelta -= simMinutes*0.2;
+  st.happiness = clamp(st.happiness + happyDelta, 0, 100);
+
+  // sickness onset
+  if (!st.isSick && st.stage!=="egg"){
+    var sickRisk = 0;
+    if (st.hygiene<25) sickRisk += 0.02;
+    if (st.hunger<20) sickRisk += 0.02;
+    if (st.poopCount>=MAX_POOP) sickRisk += 0.015;
+    if (sickRisk>0 && Math.random() < sickRisk*simMinutes/5){
+      st.isSick = true;
+      pushLog(st.name+" caught a cold.");
+    }
+  }
+
+  // health: drains under sustained neglect, sickness; recovers gently when stats are fine
+  var critical = (st.hunger<15) + (st.hygiene<15) + (st.energy<10 && !st.isSleeping) + (st.isSick?1:0);
+  if (critical>0){
+    st.health = clamp(st.health - simMinutes*(0.9*critical), 0, 100);
+  } else if (st.hunger>50 && st.hygiene>50 && !st.isSick){
+    st.health = clamp(st.health + simMinutes*0.15, 0, 100);
+  }
+
+  // care score sample (skip huge coarse jumps to avoid skew, sample once per call)
+  var careVal = (st.hunger+st.happiness+Math.min(100,st.energy+20)+st.hygiene)/4;
+  st.careSum += careVal; st.careTicks += 1;
+
+  // aging + growth
+  if (st.stage!=="adult"){
+    st.ageMin += simMinutes;
+    var idx = currentStageThresholdIndex(st.ageMin);
+    var newStage = STAGE_ORDER[idx];
+    if (newStage!==st.stage){
+      st.stage = newStage;
+      if (newStage==="adult") lockEvolution(st);
+      if (!coarse) pushLog(st.name+" grew into a "+(newStage==="adult"?(st.evolution==="radiant"?"radiant ":st.evolution==="weary"?"weary ":"")+"adult":newStage)+"!");
+    }
+  } else {
+    st.ageMin += simMinutes;
+  }
+
+  // death check
+  if (st.health<=0 && !st.isDead){
+    st.isDead = true;
+    st.deathReason = st.isSick ? "An illness went untreated for too long." : "Neglect took its toll.";
+  }
+}
+
+/* ============================================================
+   DOM REFS
+   ============================================================ */
+var $ = function(id){ return document.getElementById(id); };
+var screens = { title:$("screenTitle"), picker:$("screenPicker"), game:$("screenGame"), gameover:$("screenGameOver") };
+var els = {
+  slotList: $("slotList"),
+  speciesGrid: $("speciesGrid"),
+  petNameInput: $("petNameInput"),
+  petNameLbl: $("petNameLbl"),
+  petMetaLbl: $("petMetaLbl"),
+  dayChip: $("dayChip"),
+  tagRow: $("tagRow"),
+  habitat: $("habitat"),
+  habitatSky: $("habitatSky"),
+  habitatStars: $("habitatStars"),
+  habitatToast: $("habitatToast"),
+  poopLayer: $("poopLayer"),
+  petStageWrap: $("petStageWrap"),
+  petCanvas: $("petCanvas"),
+  zzzLbl: $("zzzLbl"),
+  statsWrap: $("statsWrap"),
+  goName: $("goName"),
+  goReason: $("goReason"),
+  goSummary: $("goSummary"),
+  detailsBody: $("detailsBody"),
+  mgTitle: $("mgTitle"), mgArena: $("mgArena"), mgOverlay: $("mgOverlay"),
+  mgScoreLbl: $("mgScoreLbl"), mgTimeLbl: $("mgTimeLbl"), mgStart: $("mgStart")
+};
+var selectedSpecies = null;
+var pendingSlotForNewGame = null;
+var toastTimer = null;
+
+function showScreen(name){
+  Object.keys(screens).forEach(function(k){ screens[k].classList.toggle("hidden", k!==name); });
+}
+function openModal(id){ $(id).classList.remove("hidden"); }
+function closeModal(id){ $(id).classList.add("hidden"); }
+
+document.querySelectorAll("[data-close-modal]").forEach(function(btn){
+  btn.addEventListener("click", function(){ closeModal(btn.getAttribute("data-close-modal")); });
+});
+
+/* ============================================================
+   TITLE SCREEN
+   ============================================================ */
+function renderTitleEgg(){
+  var c = $("titleEggCanvas");
+  drawPetToCanvas(c, "dragon", "egg", "neutral", null);
+}
+
+function fmtAgo(ts){
+  var d = Date.now()-ts;
+  var m = Math.floor(d/60000);
+  if (m<1) return "just now";
+  if (m<60) return m+"m ago";
+  var h = Math.floor(m/60);
+  if (h<24) return h+"h ago";
+  return Math.floor(h/24)+"d ago";
+}
+
+function renderTitleScreen(){
+  renderTitleEgg();
+  els.slotList.innerHTML = "";
+  for (var i=0;i<SLOT_KEYS.length;i++){
+    (function(i){
+      var st = readSlot(i);
+      var row = document.createElement("div");
+      row.className = "slot";
+      if (!st){
+        row.innerHTML = '<div class="slot-info"><span class="slot-empty">Empty slot '+(i+1)+'</span></div>';
+        els.slotList.appendChild(row);
+        return;
+      }
+      var canvas = document.createElement("canvas");
+      canvas.width=48; canvas.height=48;
+      canvas.style.width="42px"; canvas.style.height="42px";
+      var info = document.createElement("div");
+      info.className = "slot-info";
+      var stageLbl = st.isDead ? "Passed away" : (st.stage.charAt(0).toUpperCase()+st.stage.slice(1));
+      info.innerHTML = '<div class="name">'+escapeHtml(st.name)+' <span class="muted" style="font-weight:600;">· '+SPECIES[st.species].name+'</span></div>'+
+                        '<div class="meta">'+stageLbl+' · saved '+fmtAgo(st.lastSavedAt)+'</div>';
+      var actions = document.createElement("div");
+      actions.className = "slot-actions";
+      var loadBtn = document.createElement("button");
+      loadBtn.className = "btn btn-teal btn-sm";
+      loadBtn.textContent = "Play";
+      loadBtn.addEventListener("click", function(){ loadFromSlot(i); });
+      var delBtn = document.createElement("button");
+      delBtn.className = "btn btn-ghost btn-sm";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", function(){
+        if (confirm('Delete save "'+st.name+'"? This cannot be undone.')){
+          deleteSlot(i);
+          renderTitleScreen();
+        }
+      });
+      actions.appendChild(loadBtn); actions.appendChild(delBtn);
+      row.appendChild(canvas); row.appendChild(info); row.appendChild(actions);
+      els.slotList.appendChild(row);
+      drawPetToCanvas(canvas, st.species, st.isDead?st.stage:st.stage, st.isDead?"sad":getMood(st), st.evolution);
+    })(i);
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];
+  });
+}
+
+function loadFromSlot(i){
+  var st = readSlot(i);
+  if (!st) return;
+  activeSlot = i;
+  state = st;
+  var summary = null;
+  if (!state.isDead) summary = applyOfflineCatchup(state);
+  saveActive();
+  enterGame(summary);
+}
+
+/* ============================================================
+   SPECIES PICKER
+   ============================================================ */
+function renderSpeciesPicker(){
+  els.speciesGrid.innerHTML = "";
+  selectedSpecies = SPECIES_ORDER[0];
+  SPECIES_ORDER.forEach(function(sp){
+    var card = document.createElement("div");
+    card.className = "species-card"+(sp===selectedSpecies?" selected":"");
+    card.setAttribute("role","button");
+    card.tabIndex = 0;
+    var canvas = document.createElement("canvas");
+    canvas.width=56; canvas.height=56;
+    canvas.style.width="52px"; canvas.style.height="52px";
+    var nameEl = document.createElement("div"); nameEl.className="sname"; nameEl.textContent = SPECIES[sp].emoji+" "+SPECIES[sp].name;
+    var descEl = document.createElement("div"); descEl.className="sdesc"; descEl.textContent = SPECIES[sp].desc;
+    card.appendChild(canvas); card.appendChild(nameEl); card.appendChild(descEl);
+    card.addEventListener("click", function(){
+      selectedSpecies = sp;
+      Array.prototype.forEach.call(els.speciesGrid.children, function(c){ c.classList.remove("selected"); });
+      card.classList.add("selected");
+    });
+    els.speciesGrid.appendChild(card);
+    drawPetToCanvas(canvas, sp, "baby", "happy", null);
+  });
+  els.petNameInput.value = "";
+}
+
+$("btnNewGame").addEventListener("click", function(){
+  pendingSlotForNewGame = findEmptySlot();
+  if (pendingSlotForNewGame===-1){
+    alert("All 3 save slots are full. Delete one from the title screen first.");
+    return;
+  }
+  renderSpeciesPicker();
+  showScreen("picker");
+});
+$("btnBackFromPicker").addEventListener("click", function(){ showScreen("title"); });
+
+$("btnConfirmHatch").addEventListener("click", function(){
+  var name = els.petNameInput.value.trim();
+  if (!name) name = SPECIES[selectedSpecies].name;
+  state = newPetState(selectedSpecies, name);
+  activeSlot = pendingSlotForNewGame;
+  saveActive();
+  pushLog(name+" hatched!");
+  enterGame(null);
+});
+
+/* ============================================================
+   GAME SCREEN — rendering
+   ============================================================ */
+function getMood(st){
+  if (st.isSleeping) return "sleep";
+  if (st.isSick) return "sick";
+  if (st.hunger<25 || st.happiness<25 || st.hygiene<18) return "sad";
+  if (st.happiness>=68 && st.hunger>=45) return "happy";
+  return "neutral";
+}
+
+function isDaytime(){
+  var h = new Date().getHours();
+  return h>=6 && h<19;
+}
+
+function renderSky(){
+  var day = isDaytime();
+  els.habitatSky.style.background = day
+    ? "linear-gradient(180deg, var(--sky-day-1) 0%, var(--sky-day-2) 100%)"
+    : "linear-gradient(180deg, var(--sky-night-1) 0%, var(--sky-night-2) 100%)";
+  els.habitatStars.style.opacity = day ? "0" : "0.9";
+  if (!els.habitatStars.dataset.built){
+    var svgStars = "";
+    for (var i=0;i<26;i++){
+      var sx=(Math.random()*100).toFixed(1), sy=(Math.random()*55).toFixed(1), r=(Math.random()*0.6+0.3).toFixed(2);
+      svgStars += '<circle cx="'+sx+'" cy="'+sy+'" r="'+r+'" fill="white" opacity="'+(Math.random()*0.6+0.3).toFixed(2)+'"/>';
+    }
+    els.habitatStars.innerHTML = svgStars;
+    els.habitatStars.dataset.built = "1";
+  }
+}
+
+function statColor(v){
+  if (v<30) return "var(--bad)";
+  if (v<60) return "var(--warn)";
+  return "var(--good)";
+}
+
+var STAT_DEFS = [
+  {key:"hunger", ico:"🍎", label:"Hunger"},
+  {key:"happiness", ico:"😊", label:"Happiness"},
+  {key:"energy", ico:"⚡", label:"Energy"},
+  {key:"hygiene", ico:"🧼", label:"Hygiene"},
+  {key:"health", ico:"❤️", label:"Health"}
+];
+
+function renderStats(){
+  els.statsWrap.innerHTML = "";
+  STAT_DEFS.forEach(function(d){
+    var v = Math.round(state[d.key]);
+    var row = document.createElement("div");
+    row.className = "stat";
+    row.innerHTML = '<span class="ico">'+d.ico+'</span>'+
+      '<span class="bar-track"><span class="bar-fill" style="width:'+v+'%; background:'+statColor(v)+';"></span></span>'+
+      '<span class="val">'+v+'</span>';
+    els.statsWrap.appendChild(row);
+  });
+}
+
+function renderTags(){
+  els.tagRow.innerHTML = "";
+  function tag(cls, txt){
+    var s = document.createElement("span");
+    s.className = "tag "+cls;
+    s.textContent = txt;
+    els.tagRow.appendChild(s);
+  }
+  if (state.isSick) tag("tag-sick","🤒 Sick");
+  if (state.poopCount>0) tag("tag-dirty","💩 Needs cleaning ×"+state.poopCount);
+  if (state.isSleeping) tag("tag-sleep","💤 Sleeping");
+}
+
+function renderPoop(){
+  els.poopLayer.innerHTML = "";
+  for (var i=0;i<state.poopCount;i++){
+    var d = document.createElement("div");
+    d.className = "poop";
+    d.textContent = "💩";
+    d.style.fontSize = "16px";
+    d.style.left = (18 + i*16)+"%";
+    els.poopLayer.appendChild(d);
+  }
+}
+
+function renderPet(){
+  var mood = state.isDead ? "sad" : getMood(state);
+  drawPetToCanvas(els.petCanvas, state.species, state.stage, mood, state.evolution);
+  els.petCanvas.classList.toggle("bounce", !state.isSleeping && !state.isDead);
+  els.zzzLbl.style.opacity = state.isSleeping ? "1" : "0";
+}
+
+function stageLabel(st){
+  if (st.stage!=="adult") return st.stage.charAt(0).toUpperCase()+st.stage.slice(1);
+  var ev = st.evolution;
+  if (ev==="radiant") return "Radiant Adult";
+  if (ev==="weary") return "Weary Adult";
+  return "Adult";
+}
+
+function renderGame(){
+  els.petNameLbl.textContent = state.name;
+  els.petMetaLbl.textContent = SPECIES[state.species].name+" · "+stageLabel(state);
+  var days = Math.max(1, Math.floor(state.ageMin/(24*60))+1);
+  els.dayChip.textContent = "DAY "+days;
+  renderSky();
+  renderStats();
+  renderTags();
+  renderPoop();
+  renderPet();
+  updateActionAvailability();
+}
+
+function updateActionAvailability(){
+  var hatched = state.stage!=="egg";
+  $("actFeed").disabled = !hatched || state.isSleeping;
+  $("actPlay").disabled = !hatched || state.isSleeping || state.energy<12;
+  $("actClean").disabled = state.poopCount<=0 && state.hygiene>=95;
+  $("actMedicine").disabled = !state.isSick;
+  $("btnPat").style.display = hatched ? "flex" : "none";
+}
+
+function showToast(msg){
+  els.habitatToast.textContent = msg;
+  els.habitatToast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ els.habitatToast.classList.remove("show"); }, 2200);
+}
+
+/* ============================================================
+   ENTER GAME / GAME OVER
+   ============================================================ */
+function enterGame(offlineSummary){
+  showScreen("game");
+  renderGame();
+  if (offlineSummary && offlineSummary.simMin>1){
+    var hrs = Math.floor(offlineSummary.simMin/60);
+    var mins = Math.round(offlineSummary.simMin%60);
+    var timeStr = hrs>0 ? (hrs+"h "+mins+"m") : (mins+"m");
+    var msg = "While you were away ("+timeStr+"): ";
+    var bits = [];
+    if (offlineSummary.grew) bits.push(state.name+" grew up");
+    if (offlineSummary.hungerDrop>3) bits.push("got hungry");
+    if (offlineSummary.hygieneDrop>3) bits.push("got a bit messy");
+    if (offlineSummary.happinessDrop>3) bits.push("missed you");
+    if (state.isDead) bits = ["sadly passed away"];
+    showToast(msg + (bits.length?bits.join(", "):"not much happened"));
+    if (state.isDead) setTimeout(triggerGameOver, 400);
+  }
+  if (state.isDead) triggerGameOver();
+}
+
+function triggerGameOver(){
+  els.goName.textContent = state.name;
+  els.goReason.textContent = state.deathReason || "Their journey has come to a peaceful end.";
+  var days = Math.max(1, Math.floor(state.ageMin/(24*60))+1);
+  els.goSummary.textContent = "Lived "+days+" day"+(days===1?"":"s")+" as a "+SPECIES[state.species].name.toLowerCase()+", reaching the "+state.stage+" stage.";
+  saveActive();
+  showScreen("gameover");
+}
+
+$("btnGoRestart").addEventListener("click", function(){
+  state = null; activeSlot = null;
+  renderTitleScreen();
+  showScreen("title");
+});
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function doAction(effectFn, msg){
+  if (!state || state.isDead) return;
+  effectFn();
+  if (msg) showToast(msg);
+  renderGame();
+  saveActive();
+}
+
+$("btnPat").addEventListener("click", function(){
+  if (!state || state.isDead || state.stage==="egg") return;
+  var now = Date.now();
+  if (now - state.lastPatAt < 15000){ showToast("Give "+state.name+" a moment…"); return; }
+  state.lastPatAt = now;
+  doAction(function(){
+    state.happiness = clamp(state.happiness+4, 0, 100);
+  }, "❤️ "+state.name+" liked that!");
+});
+
+$("actFeed").addEventListener("click", function(){ openModal("feedModal"); });
+$("feedSnack").addEventListener("click", function(){
+  closeModal("feedModal");
+  doAction(function(){
+    state.hunger = clamp(state.hunger+18,0,100);
+    if (state.hunger>=95) state.happiness = clamp(state.happiness-3,0,100);
+  }, "🍪 Yum!");
+});
+$("feedMeal").addEventListener("click", function(){
+  closeModal("feedModal");
+  doAction(function(){
+    state.hunger = clamp(state.hunger+45,0,100);
+    state.happiness = clamp(state.happiness+2,0,100);
+  }, "🍲 Full and happy!");
+});
+
+$("actClean").addEventListener("click", function(){
+  doAction(function(){
+    state.poopCount = 0;
+    state.hygiene = clamp(state.hygiene+30,0,100);
+  }, "🧼 All clean!");
+});
+
+$("actSleep").addEventListener("click", function(){
+  doAction(function(){
+    state.isSleeping = !state.isSleeping;
+  }, state.isSleeping ? "💤 Sleep tight…" : "☀️ Rise and shine!");
+});
+
+$("actMedicine").addEventListener("click", function(){
+  if (!state.isSick) return;
+  doAction(function(){
+    state.isSick = false;
+    state.happiness = clamp(state.happiness-6,0,100);
+    state.health = clamp(state.health+10,0,100);
+  }, "💊 Feeling better already.");
+});
+
+$("actStats").addEventListener("click", function(){
+  var st = state;
+  var born = new Date(st.createdAt);
+  var days = Math.max(1, Math.floor(st.ageMin/(24*60))+1);
+  var avgCare = st.careTicks>0 ? Math.round(st.careSum/st.careTicks) : 0;
+  els.detailsBody.innerHTML =
+    row("Species", SPECIES[st.species].emoji+" "+SPECIES[st.species].name)+
+    row("Stage", stageLabel(st))+
+    row("Age", "Day "+days)+
+    row("Care average", avgCare+" / 100")+
+    row("Hatched", born.toLocaleDateString())+
+    row("Status", st.isSick?"Sick — needs medicine":(state.isSleeping?"Sleeping":"Doing fine"));
+  openModal("detailsModal");
+  function row(k,v){ return '<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border);"><span class="muted">'+k+'</span><strong>'+v+'</strong></div>'; }
+});
+
+/* ============================================================
+   PLAY MENU + MINI-GAMES
+   ============================================================ */
+var mgState = { kind:null, running:false, score:0, timeLeft:15, raf:null, timer:null, spawner:null };
+
+$("actPlay").addEventListener("click", function(){ openModal("playModal"); });
+$("playCatch").addEventListener("click", function(){ closeModal("playModal"); openMiniGame("catch"); });
+$("playReaction").addEventListener("click", function(){ closeModal("playModal"); openMiniGame("reaction"); });
+
+function openMiniGame(kind){
+  mgState.kind = kind;
+  mgState.running = false;
+  mgState.score = 0;
+  mgState.timeLeft = 15;
+  els.mgTitle.textContent = kind==="catch" ? "🍬 Catch the Treats" : "✨ Quick Tap";
+  els.mgScoreLbl.textContent = "Score: 0";
+  els.mgTimeLbl.textContent = "Time: 15";
+  els.mgArena.querySelectorAll(".mg-item,.mg-target").forEach(function(n){ n.remove(); });
+  els.mgOverlay.className = "mg-overlay-msg";
+  els.mgOverlay.textContent = "";
+  els.mgStart.textContent = "Start";
+  els.mgStart.disabled = false;
+  openModal("mgModal");
+}
+$("mgClose").addEventListener("click", function(){ endMiniGame(true); closeModal("mgModal"); });
+
+$("mgStart").addEventListener("click", function(){
+  if (mgState.running) return;
+  mgState.running = true;
+  mgState.score = 0;
+  mgState.timeLeft = 15;
+  els.mgStart.disabled = true;
+  els.mgOverlay.className = "mg-overlay-msg";
+  updateMgHud();
+  if (mgState.kind==="catch") runCatchGame(); else runReactionGame();
+  mgState.timer = setInterval(function(){
+    mgState.timeLeft -= 1;
+    updateMgHud();
+    if (mgState.timeLeft<=0) finishMiniGame();
+  }, 1000);
+});
+
+function updateMgHud(){
+  els.mgScoreLbl.textContent = "Score: "+mgState.score;
+  els.mgTimeLbl.textContent = "Time: "+Math.max(0,mgState.timeLeft);
+}
+
+function runCatchGame(){
+  var arenaRect = function(){ return els.mgArena.getBoundingClientRect(); };
+  mgState.spawner = setInterval(function(){
+    if (!mgState.running) return;
+    var item = document.createElement("div");
+    item.className = "mg-item";
+    var emojis = ["🍬","🍪","🍓","🍩"];
+    item.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    var startX = 10+Math.random()*80;
+    item.style.left = startX+"%";
+    item.style.top = "-8%";
+    els.mgArena.appendChild(item);
+    var caught = false;
+    item.addEventListener("pointerdown", function(){
+      if (caught) return; caught = true;
+      mgState.score += 1; updateMgHud();
+      item.style.transition = "transform .15s ease, opacity .15s ease";
+      item.style.transform = "translate(-50%,-50%) scale(1.5)";
+      item.style.opacity = "0";
+      setTimeout(function(){ item.remove(); }, 150);
+    });
+    var pos = 0;
+    var fall = setInterval(function(){
+      if (!mgState.running){ clearInterval(fall); item.remove(); return; }
+      pos += 3.2;
+      item.style.top = pos+"%";
+      if (pos>106){
+        clearInterval(fall);
+        item.remove();
+      }
+    }, 60);
+  }, 650);
+}
+
+function runReactionGame(){
+  function spawnTarget(){
+    if (!mgState.running) return;
+    var t = document.createElement("div");
+    t.className = "mg-target";
+    t.textContent = "🐾";
+    var x = 15+Math.random()*70, y = 15+Math.random()*70;
+    t.style.left = x+"%"; t.style.top = y+"%";
+    els.mgArena.appendChild(t);
+    requestAnimationFrame(function(){ t.classList.add("pop"); });
+    var hit = false;
+    var life = setTimeout(function(){
+      if (!hit){ t.remove(); if (mgState.running) spawnTarget(); }
+    }, 1100);
+    t.addEventListener("pointerdown", function(){
+      if (hit) return; hit = true;
+      clearTimeout(life);
+      mgState.score += 1; updateMgHud();
+      t.remove();
+      if (mgState.running) spawnTarget();
+    });
+  }
+  spawnTarget();
+}
+
+function finishMiniGame(){
+  mgState.running = false;
+  clearInterval(mgState.timer);
+  clearInterval(mgState.spawner);
+  els.mgArena.querySelectorAll(".mg-item,.mg-target").forEach(function(n){ n.remove(); });
+  els.mgStart.disabled = false;
+  els.mgStart.textContent = "Play again";
+  els.mgOverlay.textContent = "Score: "+mgState.score+"! Nice playing.";
+  els.mgOverlay.className = "mg-overlay-msg show";
+
+  var happinessGain, energyCost, hungerCost;
+  if (mgState.kind==="catch"){
+    happinessGain = clamp(6+mgState.score*2.2, 6, 40);
+    energyCost = 12; hungerCost = 6;
+  } else {
+    happinessGain = clamp(5+mgState.score*1.6, 5, 32);
+    energyCost = 7; hungerCost = 3;
+  }
+  doAction(function(){
+    state.happiness = clamp(state.happiness+happinessGain,0,100);
+    state.energy = clamp(state.energy-energyCost,0,100);
+    state.hunger = clamp(state.hunger-hungerCost,0,100);
+  }, "🎉 +"+Math.round(happinessGain)+" happiness");
+}
+
+function endMiniGame(silent){
+  mgState.running = false;
+  clearInterval(mgState.timer);
+  clearInterval(mgState.spawner);
+}
+
+/* ============================================================
+   MENU MODAL
+   ============================================================ */
+$("btnMenuTop").addEventListener("click", function(){ openModal("menuModal"); });
+$("btnCloseMenu").addEventListener("click", function(){ closeModal("menuModal"); });
+$("btnSaveNow").addEventListener("click", function(){
+  if (state) saveActive();
+  showToast("💾 Saved");
+  closeModal("menuModal");
+});
+$("btnToTitle").addEventListener("click", function(){
+  if (state) saveActive();
+  closeModal("menuModal");
+  state = null; activeSlot = null;
+  renderTitleScreen();
+  showScreen("title");
+});
+
+var THEME_KEY = STORAGE_PREFIX+"theme";
+$("themeToggle").addEventListener("change", function(e){
+  if (e.target.checked){
+    document.documentElement.setAttribute("data-theme","dark");
+    localStorage.setItem(THEME_KEY,"dark");
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.removeItem(THEME_KEY);
+  }
+});
+(function initTheme(){
+  try{
+    var t = localStorage.getItem(THEME_KEY);
+    if (t==="dark"){ document.documentElement.setAttribute("data-theme","dark"); $("themeToggle").checked = true; }
+  } catch(e){}
+})();
+
+/* ============================================================
+   MAIN LOOP
+   ============================================================ */
+setInterval(function(){
+  if (!state || state.isDead) return;
+  tickState(state, MIN_PER_TICK, false);
+  state.lastTickAt = Date.now();
+  if (screens.game.classList.contains("hidden")===false){
+    renderGame();
+  }
+  if (state.isDead){
+    triggerGameOver();
+  }
+}, TICK_MS);
+
+setInterval(function(){
+  if (state && !state.isDead && activeSlot!=null) saveActive();
+}, AUTOSAVE_MS);
+
+window.addEventListener("beforeunload", function(){
+  if (state && activeSlot!=null){ state.lastTickAt = Date.now(); saveActive(); }
+});
+document.addEventListener("visibilitychange", function(){
+  if (document.visibilityState==="hidden" && state && activeSlot!=null){
+    state.lastTickAt = Date.now();
+    saveActive();
+  }
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+renderTitleScreen();
+showScreen("title");
+
+})();
+</script>
+

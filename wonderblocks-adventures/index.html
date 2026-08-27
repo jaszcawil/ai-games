@@ -11,6 +11,7 @@
     --wall:#0f1622; --floor:#e9e2cf; --floor-2:#ddd4ba; --pit:#0a0e17; --accent:#6fd3ff;
   }
   *{box-sizing:border-box;}
+  button{touch-action:manipulation;}
   html,body{height:100%;}
   body{
     margin:0; background:radial-gradient(1200px 800px at 50% -10%, #2a3757, var(--bg) 60%);
@@ -71,7 +72,7 @@
   #stats b{color:var(--ink);}
   #intro-banner{max-width:640px; margin:2px auto 0; font-size:13px; color:var(--ink-dim); min-height:1.2em;}
 
-  #stage-wrap{flex:1; width:100%; display:flex; align-items:center; justify-content:center; min-height:0; position:relative;}
+  #stage-wrap{flex:1; width:100%; display:flex; align-items:center; justify-content:center; min-height:0; position:relative; overflow:auto; -webkit-overflow-scrolling:touch;}
   #stage{position:relative;}
   .tile{position:absolute; box-sizing:border-box;}
   .tile.t-wall{background:linear-gradient(160deg,#4a5c86,#2c3a5c); border-radius:4px; box-shadow:inset 0 -3px 0 rgba(0,0,0,.45), inset 0 2px 0 rgba(255,255,255,.08);}
@@ -783,10 +784,13 @@ window.WB_AGAIN_DATA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMMAAAEECA
     $("lvl-num").textContent = "Level " + (idx + 1) + " / " + LEVELS.length;
     $("intro-banner").textContent = cur.def.intro || "";
     buildPortraits();
+    // The stage must be measured only after the screen is actually visible -
+    // #screen-game is display:none until showScreen runs, and measuring a
+    // hidden element's size gives 0 (so this order must not change).
+    showScreen("screen-game");
     computeTileSize();
     renderStage();
     updateAll();
-    showScreen("screen-game");
   }
 
   function buildPortraits() {
@@ -816,7 +820,11 @@ window.WB_AGAIN_DATA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMMAAAEECA
     var availH = wrap.clientHeight - 12;
     var w = cur.level.width, h = cur.level.height;
     var size = Math.floor(Math.min(availW / w, availH / h));
-    size = Math.max(16, Math.min(52, size));
+    // No hard floor: a wide/tall level must always fit on screen (stage-wrap
+    // can scroll as a fallback, but we want to avoid ever relying on that).
+    // Cap the ceiling so small levels don't blow up into oversized tiles on
+    // big desktop screens.
+    size = Math.max(6, Math.min(84, size));
     cur.tile = size;
   }
 

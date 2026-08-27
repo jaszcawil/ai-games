@@ -22,9 +22,11 @@
 
   *{ box-sizing:border-box; }
 
+  html{ height:100%; }
+
   body{
     margin:0;
-    min-height:100vh;
+    height:100%;
     background:
       radial-gradient(ellipse 60% 45% at 50% 8%, #241a3d 0%, transparent 60%),
       radial-gradient(ellipse 80% 60% at 50% 100%, #14101f 0%, transparent 55%),
@@ -34,8 +36,7 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:28px 14px;
-    overflow-x:auto;
+    overflow:hidden;
   }
 
   .stage{
@@ -44,6 +45,8 @@
     align-items:center;
     gap:14px;
     width:100%;
+    transform-origin:center center;
+    will-change:transform;
   }
 
   .cabinet{
@@ -311,6 +314,31 @@
 
   <p class="hint">Keyboard: <kbd>&#8592;</kbd> <kbd>&#8594;</kbd> to aim &middot; <kbd>Space</kbd> or <kbd>&#8595;</kbd> to drop</p>
 </div>
+
+<script>
+(function(){
+  "use strict";
+  var stage = document.querySelector('.stage');
+  function fitStage(){
+    if(!stage) return;
+    stage.style.transform = 'none';
+    var rect = stage.getBoundingClientRect();
+    var doc = document.documentElement;
+    var naturalW = Math.max(rect.width, doc.scrollWidth);
+    var naturalH = Math.max(rect.height, doc.scrollHeight);
+    var availW = window.innerWidth - 20;
+    var availH = window.innerHeight - 20;
+    var scale = Math.min(1, availW / naturalW, availH / naturalH);
+    stage.style.transform = scale < 0.999 ? 'scale(' + scale.toFixed(4) + ')' : 'none';
+  }
+  window.addEventListener('resize', fitStage);
+  window.addEventListener('orientationchange', function(){ setTimeout(fitStage, 60); });
+  window.addEventListener('load', fitStage);
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(fitStage); }
+  fitStage();
+  setTimeout(fitStage, 300);
+})();
+</script>
 
 <script>
 (function(){
