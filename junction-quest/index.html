@@ -19,6 +19,10 @@
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
+  html{
+    touch-action:none;
+    -webkit-text-size-adjust:100%;
+  }
   body{
     margin:0;
     background:var(--asphalt-900);
@@ -27,19 +31,26 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    min-height:100vh;
+    height:100vh;
+    height:100dvh;
     overflow:hidden;
     -webkit-font-smoothing:antialiased;
+    touch-action:none;
+    overscroll-behavior:none;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
+    padding:max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   }
   #app{
     position:relative;
-    width:100%;
-    max-width:1120px;
-    aspect-ratio:16/9;
+    width:min(100%, 900px);
+    height:min(100%, 620px);
     background:var(--asphalt-800);
     border-radius:18px;
     overflow:hidden;
     box-shadow:0 30px 80px var(--shadow), 0 0 0 1px var(--asphalt-600);
+    touch-action:none;
   }
   canvas{
     position:absolute;
@@ -47,6 +58,11 @@
     width:100%;
     height:100%;
     display:block;
+    touch-action:none;
+  }
+  @media (max-width:480px), (max-height:480px){
+    #app{ border-radius:0; }
+    body{ padding:max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left)); }
   }
   .hidden{display:none !important;}
   button{
@@ -130,7 +146,7 @@
   .btn-sm{font-size:12px;padding:7px 12px;border-radius:8px;}
 
   /* ---------- Slot picker ---------- */
-  #slot-picker, #howto-modal{
+  #slot-picker{
     position:absolute;inset:0;z-index:30;
     display:flex;align-items:center;justify-content:center;
     background:rgba(10,11,15,.72);
@@ -183,7 +199,10 @@
     padding:5px 9px 5px 5px;
     min-width:110px;
     transition:border-color .15s ease, transform .15s ease;
+    pointer-events:auto;
+    cursor:pointer;
   }
+  .party-card:active{transform:scale(.96);}
   .party-card.active{border-color:var(--line);transform:translateY(-2px);box-shadow:0 4px 14px rgba(255,204,51,.25);}
   .party-card img{width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));}
   .party-card .pc-info{display:flex;flex-direction:column;gap:3px;flex:1;}
@@ -208,6 +227,19 @@
     font-variant-numeric:tabular-nums;
   }
   .status-pill b{font-family:'Fredoka',sans-serif;color:var(--line);font-size:12px;}
+  #btn-pause-icon{
+    pointer-events:auto;
+    align-self:flex-end;
+    width:32px;height:32px;
+    border-radius:8px;
+    background:rgba(18,20,26,.72);
+    border:1.5px solid var(--asphalt-600);
+    color:var(--ink);
+    font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+    padding:0;
+  }
+  #btn-pause-icon:active{transform:scale(.92);}
   #xp-bar-wrap{width:120px;height:6px;background:var(--asphalt-900);border-radius:4px;overflow:hidden;}
   #xp-bar-wrap > i{display:block;height:100%;background:linear-gradient(90deg,#7dc7ff,#a9e2ff);}
   #keys-row{display:flex;gap:4px;}
@@ -241,7 +273,12 @@
     display:flex;align-items:center;justify-content:center;
     font-family:'Fredoka',sans-serif;font-weight:600;font-size:11px;
     overflow:hidden;
+    pointer-events:auto;
+    cursor:pointer;
+    touch-action:none;
+    -webkit-tap-highlight-color:transparent;
   }
+  .ability-slot:active{transform:scale(.94);}
   .ability-slot .cd-veil{
     position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.62);
     transition:height .08s linear;
@@ -250,6 +287,44 @@
     position:absolute;top:2px;left:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-dim);
   }
   .ability-slot .ab-label{position:relative;z-index:1;text-align:center;line-height:1.15;padding-top:6px;}
+
+  /* ---------- Touch joystick ---------- */
+  #joy-base{
+    display:none;
+    position:absolute;
+    left:5%;bottom:6%;
+    width:min(26vw,110px);height:min(26vw,110px);
+    border-radius:50%;
+    background:rgba(18,20,26,.55);
+    border:1.5px solid var(--asphalt-600);
+    pointer-events:auto;
+    touch-action:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #joy-knob{
+    position:absolute;left:50%;top:50%;
+    width:44%;height:44%;
+    border-radius:50%;
+    background:rgba(255,204,51,.5);
+    border:1.5px solid var(--line);
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+  }
+  @media (pointer:coarse), (hover:none){
+    #joy-base{ display:block; }
+    #controls-hint{ display:none; }
+    #action-hud{ left:auto; right:4%; transform:none; bottom:6%; }
+  }
+  @media (max-width:560px), (max-height:420px){
+    .party-card{ min-width:0; padding:4px 7px 4px 4px; gap:5px; }
+    .party-card img{ width:24px; height:24px; }
+    .party-card .pc-name{ font-size:9px; }
+    #party-hud{ gap:5px; }
+    .ability-slot{ width:44px; height:44px; font-size:9.5px; }
+    #action-hud{ gap:7px; }
+    #quest-panel{ max-width:56%; font-size:10.5px; padding:5px 10px; }
+    .status-pill{ padding:5px 8px; font-size:10px; }
+  }
 
   #toast-wrap{
     position:absolute;bottom:14%;left:50%;transform:translateX(-50%);
@@ -334,15 +409,18 @@
   <div id="hud" class="hidden">
     <div id="party-hud"></div>
     <div id="status-hud">
+      <button id="btn-pause-icon" aria-label="Pause">⏸</button>
       <div class="status-pill"><b id="lvl-val">Lv 1</b><div id="xp-bar-wrap"><i id="xp-bar" style="width:0%"></i></div></div>
       <div class="status-pill">🔑<div id="keys-row"></div><span id="coin-val">0c</span></div>
     </div>
     <div id="quest-panel">Loading…</div>
     <div id="action-hud">
-      <div class="ability-slot" id="slot-attack"><span class="key-badge">SPACE</span><span class="ab-label">Attack</span><div class="cd-veil" style="height:0%"></div></div>
-      <div class="ability-slot" id="slot-special"><span class="key-badge">E</span><span class="ab-label" id="special-label">Special</span><div class="cd-veil" id="special-veil" style="height:0%"></div></div>
+      <div class="ability-slot" id="slot-interact"><span class="key-badge">F</span><span class="ab-label">Talk</span><div class="cd-veil" style="height:0%"></div></div>
       <div class="ability-slot" id="slot-potion"><span class="key-badge">H</span><span class="ab-label" id="potion-label">Potion x0</span><div class="cd-veil" style="height:0%"></div></div>
+      <div class="ability-slot" id="slot-special"><span class="key-badge">E</span><span class="ab-label" id="special-label">Special</span><div class="cd-veil" id="special-veil" style="height:0%"></div></div>
+      <div class="ability-slot" id="slot-attack"><span class="key-badge">SPACE</span><span class="ab-label">Attack</span><div class="cd-veil" style="height:0%"></div></div>
     </div>
+    <div id="joy-base"><div id="joy-knob"></div></div>
     <div id="toast-wrap"></div>
     <div id="controls-hint">MOVE wasd/arrows · ATTACK space · SPECIAL e<br>SWITCH 1 2 3 · TALK f · HEAL h · PAUSE esc</div>
   </div>
@@ -447,7 +525,7 @@ const ORDER = ["go","stop","again"];
 /* =====================================================================
    GAME STATE
 ===================================================================== */
-const VIEW_W = 960, VIEW_H = 540;
+let VIEW_W = 960, VIEW_H = 540;
 const PLAYER_R = 16;
 
 function freshState(){
@@ -715,7 +793,9 @@ const el = {
   howto: $("#howto-modal"), screenEnd: $("#screen-end"), endTitle: $("#end-title"), endText: $("#end-text"),
   toastWrap: $("#toast-wrap"), banner: $("#banner"),
   slotAttack: $("#slot-attack"), slotSpecial: $("#slot-special"), specialLabel: $("#special-label"),
-  specialVeil: $("#special-veil"), potionLabel: $("#potion-label")
+  specialVeil: $("#special-veil"), potionLabel: $("#potion-label"), slotPotion: $("#slot-potion"),
+  slotInteract: $("#slot-interact"), pauseIcon: $("#btn-pause-icon"),
+  joyBase: $("#joy-base"), joyKnob: $("#joy-knob")
 };
 
 function buildPartyHud(){
@@ -726,6 +806,12 @@ function buildPartyHud(){
     card.id = "pc-" + id;
     card.innerHTML = `<img src="${CH[id].img.src}" alt="${CH[id].name}">
       <div class="pc-info"><div class="pc-name">${CH[id].name}</div><div class="hpbar"><i></i></div></div>`;
+    card.addEventListener("pointerdown", e=>{
+      e.preventDefault();
+      if (S.screen!=="playing") return;
+      if (S.party[id].curHP > 0){ S.activeChar = id; showToast(CH[id].name+" is active"); }
+      else showToast(CH[id].name+" is down!");
+    });
     el.partyHud.appendChild(card);
   });
 }
@@ -826,6 +912,76 @@ function handleKeyPress(k){
     if (k==="escape") closePause();
   }
 }
+
+/* =====================================================================
+   TOUCH / POINTER CONTROLS (joystick + on-screen buttons)
+===================================================================== */
+const touchVec = {x:0, y:0};
+const touchHeld = {attack:false, special:false};
+let joyPointerId = null;
+
+function joyUpdateFromEvent(e){
+  const rect = el.joyBase.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  const maxR = rect.width/2;
+  let dx = e.clientX - cx, dy = e.clientY - cy;
+  const d = Math.hypot(dx,dy);
+  if (d > maxR){ dx = dx/d*maxR; dy = dy/d*maxR; }
+  touchVec.x = dx/maxR; touchVec.y = dy/maxR;
+  el.joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}
+function joyReset(){
+  touchVec.x = 0; touchVec.y = 0; joyPointerId = null;
+  el.joyKnob.style.transform = "translate(-50%,-50%)";
+}
+el.joyBase.addEventListener("pointerdown", e=>{
+  e.preventDefault();
+  joyPointerId = e.pointerId;
+  el.joyBase.setPointerCapture(e.pointerId);
+  joyUpdateFromEvent(e);
+});
+el.joyBase.addEventListener("pointermove", e=>{
+  if (e.pointerId !== joyPointerId) return;
+  joyUpdateFromEvent(e);
+});
+["pointerup","pointercancel","pointerleave"].forEach(evt=>{
+  el.joyBase.addEventListener(evt, e=>{
+    if (e.pointerId !== joyPointerId) return;
+    joyReset();
+  });
+});
+
+function wireHoldButton(elm, onDown, onUp){
+  elm.addEventListener("pointerdown", e=>{ e.preventDefault(); onDown(); });
+  if (onUp){
+    ["pointerup","pointercancel","pointerleave"].forEach(evt=> elm.addEventListener(evt, e=>{ e.preventDefault(); onUp(); }));
+  }
+}
+wireHoldButton(el.slotAttack, ()=> touchHeld.attack=true, ()=> touchHeld.attack=false);
+wireHoldButton(el.slotSpecial, ()=> touchHeld.special=true, ()=> touchHeld.special=false);
+wireHoldButton(el.slotPotion, ()=> doPotion());
+wireHoldButton(el.slotInteract, ()=> doInteract());
+el.pauseIcon.addEventListener("pointerdown", e=>{
+  e.preventDefault();
+  if (S.screen==="playing") openPause();
+  else if (S.screen==="paused") closePause();
+});
+
+/* =====================================================================
+   RESPONSIVE CANVAS
+===================================================================== */
+function resizeCanvas(){
+  const rect = $("#app").getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const w = Math.max(280, Math.round(rect.width));
+  const h = Math.max(200, Math.round(rect.height));
+  VIEW_W = w; VIEW_H = h;
+  canvas.width = Math.round(w*dpr);
+  canvas.height = Math.round(h*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", ()=> setTimeout(resizeCanvas,60));
 
 /* =====================================================================
    ENEMY FACTORY
@@ -1101,16 +1257,24 @@ function update(dt){
   if (RT.lastSpecial) RT.lastSpecialAge += dt;
   if (RT.echoPulse>0) RT.echoPulse -= dt;
 
-  // movement input
-  let ix=0, iy=0;
-  if (keys["w"]||keys["arrowup"]) iy-=1;
-  if (keys["s"]||keys["arrowdown"]) iy+=1;
-  if (keys["a"]||keys["arrowleft"]) ix-=1;
-  if (keys["d"]||keys["arrowright"]) ix+=1;
+  // movement input (keyboard, digital; or touch joystick, analog)
+  let ix=0, iy=0, analog=false;
+  const joyMag = Math.hypot(touchVec.x, touchVec.y);
+  if (joyMag > 0.1){
+    ix = touchVec.x; iy = touchVec.y; analog = true;
+    if (joyMag > 1){ ix/=joyMag; iy/=joyMag; }
+  } else {
+    if (keys["w"]||keys["arrowup"]) iy-=1;
+    if (keys["s"]||keys["arrowdown"]) iy+=1;
+    if (keys["a"]||keys["arrowleft"]) ix-=1;
+    if (keys["d"]||keys["arrowright"]) ix+=1;
+  }
   if (ix||iy){
-    const l = Math.hypot(ix,iy); ix/=l; iy/=l;
+    if (!analog){ const l = Math.hypot(ix,iy); ix/=l; iy/=l; }
     S.facing = Math.abs(ix)>Math.abs(iy) ? (ix>0?"right":"left") : (iy>0?"down":"up");
   }
+  if (touchHeld.attack) doAttack();
+  if (touchHeld.special) doSpecial();
 
   let speed = chDef.speed;
   let moveX = ix*speed*dt, moveY = iy*speed*dt;
@@ -1583,6 +1747,7 @@ $("#btn-end-title").addEventListener("click", returnToTitle);
 ===================================================================== */
 buildPartyHud();
 RT = freshRuntime();
+resizeCanvas();
 requestAnimationFrame(tick);
 
 })();
