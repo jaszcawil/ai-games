@@ -1,0 +1,2343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#080A10">
+<meta name="description" content="Emberfall - an open-world action RPG on one shared, persistent map.">
+</head>
+<body>
+<title>Emberfall</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@400;600;800&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<script id="world-state" type="application/json">{"seed":20260826,"shrines":{},"boss":{"hp":6000,"maxHp":6000,"slain":false,"slayers":[]},"chronicle":[],"heroes":[],"epoch":1}</script>
+<style>
+:root{
+  --ink:#080A10; --ink2:#111522; --ink3:#1B2133; --edge:#2C3348;
+  --parch:#EEE2C6; --parch-dim:#B9AE94;
+  --ember:#E4642B; --ember-lo:#8E3413;
+  --gold:#D7A64A; --arcane:#57C3B0; --blood:#A02B36;
+  --mute:#7E7C8E;
+  --d-display:"Grenze Gotisch", "Palatino Linotype", serif;
+  --d-body:"Spectral", Georgia, serif;
+  --d-mono:"IBM Plex Mono", ui-monospace, monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--parch);font-family:var(--d-body);
+  overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;touch-action:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+#stage{position:fixed;inset:0;background:var(--ink);display:block}
+canvas#world{position:absolute;inset:0;width:100%;height:100%;image-rendering:auto}
+
+/* ---------- shared chrome ---------- */
+.panel{background:linear-gradient(180deg,#161B2B,#0E1220);border:1px solid var(--edge);
+  border-radius:3px;box-shadow:0 18px 48px rgba(0,0,0,.6), inset 0 1px 0 rgba(238,226,198,.06)}
+.rule{height:1px;background:linear-gradient(90deg,transparent,var(--edge),transparent)}
+.label{font-family:var(--d-mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+.num{font-family:var(--d-mono);font-variant-numeric:tabular-nums}
+
+.btn{font-family:var(--d-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+  padding:10px 16px;border:1px solid var(--edge);background:#141929;color:var(--parch);border-radius:2px;
+  transition:background .15s,border-color .15s,color .15s}
+.btn:hover,.btn:active{background:#1E2438;border-color:var(--gold);color:#fff}
+.btn.primary{border-color:var(--ember);color:#FFD9C4;background:linear-gradient(180deg,#3A1A0D,#20100A)}
+.btn.primary:hover{background:linear-gradient(180deg,#552413,#2C1409);border-color:var(--gold)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;pointer-events:none;display:none}
+#hud.on{display:block}
+.hud-tl{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:6px;width:216px}
+.bar{height:12px;border:1px solid var(--edge);background:#0B0E17;border-radius:2px;overflow:hidden;position:relative}
+.bar>i{display:block;height:100%;width:100%;transform-origin:left;transition:transform .18s ease-out}
+.bar.hp>i{background:linear-gradient(180deg,#D0424E,#7C1C25)}
+.bar.mp>i{background:linear-gradient(180deg,#5FD3BE,#1F6E62)}
+.bar.xp{height:5px}
+.bar.xp>i{background:linear-gradient(180deg,#E9BB63,#8A6420)}
+.bar span{position:absolute;inset:0;text-align:center;font-family:var(--d-mono);font-size:9px;
+  line-height:12px;color:#F3E7D0;text-shadow:0 1px 2px #000;letter-spacing:.06em}
+.hud-name{display:flex;align-items:baseline;gap:8px}
+.hud-name b{font-family:var(--d-display);font-weight:600;font-size:19px;letter-spacing:.02em}
+.hud-name em{font-style:normal;font-family:var(--d-mono);font-size:10px;color:var(--gold);letter-spacing:.1em}
+.hud-tr{position:absolute;top:12px;right:12px;text-align:right;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.chip{font-family:var(--d-mono);font-size:11px;background:rgba(10,13,20,.72);border:1px solid var(--edge);
+  padding:4px 9px;border-radius:2px;display:flex;gap:7px;align-items:center}
+.chip .k{color:var(--mute);font-size:9px;letter-spacing:.14em;text-transform:uppercase}
+#menuBtn{pointer-events:auto}
+#compass{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  font-family:var(--d-mono);font-size:10px;letter-spacing:.2em;color:var(--parch-dim);
+  background:rgba(10,13,20,.72);border:1px solid var(--edge);padding:5px 14px;border-radius:2px;text-transform:uppercase}
+#zoneToast{position:absolute;top:14%;left:50%;transform:translateX(-50%);text-align:center;opacity:0;
+  transition:opacity .5s}
+#zoneToast.show{opacity:1}
+#zoneToast b{display:block;font-family:var(--d-display);font-size:clamp(28px,5vw,40px);font-weight:600;
+  letter-spacing:.04em;text-shadow:0 3px 18px #000,0 0 40px rgba(228,100,43,.35)}
+#zoneToast i{font-style:normal;font-family:var(--d-mono);font-size:10px;letter-spacing:.28em;color:var(--gold);text-transform:uppercase}
+
+#log{position:absolute;left:12px;bottom:118px;width:min(340px,58vw);display:flex;flex-direction:column;gap:3px}
+.logline{font-size:13px;color:var(--parch-dim);text-shadow:0 1px 3px #000;opacity:1;transition:opacity .6s}
+.logline b{color:var(--gold);font-weight:600}
+.logline.gone{opacity:0}
+
+#quests{position:absolute;right:12px;top:96px;width:min(230px,52vw);display:flex;flex-direction:column;gap:6px}
+.qcard{background:rgba(10,13,20,.72);border:1px solid var(--edge);border-left:2px solid var(--gold);
+  padding:7px 9px;border-radius:2px}
+.qcard h4{margin:0 0 2px;font-family:var(--d-display);font-weight:600;font-size:14px;letter-spacing:.02em}
+.qcard p{margin:0;font-family:var(--d-mono);font-size:10px;color:var(--parch-dim)}
+.qcard.done{border-left-color:var(--arcane);opacity:.75}
+
+/* ---------- touch controls ---------- */
+#touch{position:absolute;inset:0;display:none;pointer-events:none}
+#touch.on{display:block}
+#stick{position:absolute;left:22px;bottom:22px;width:132px;height:132px;border-radius:50%;
+  border:1px solid var(--edge);background:rgba(10,13,20,.4);pointer-events:auto}
+#stick i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
+  background:rgba(238,226,198,.16);border:1px solid var(--parch-dim)}
+.tbtns{position:absolute;right:18px;bottom:20px;display:grid;grid-template-columns:auto auto;gap:12px;
+  align-items:end;pointer-events:auto}
+.tbtn{width:64px;height:64px;border-radius:50%;border:1px solid var(--edge);background:rgba(17,21,34,.8);
+  font-family:var(--d-mono);font-size:10px;letter-spacing:.06em;color:var(--parch);display:grid;place-items:center;line-height:1.2}
+.tbtn.big{width:82px;height:82px;border-color:var(--ember);color:#FFD2BB;background:rgba(58,26,13,.85);font-size:11px}
+.tbtn:active{background:#28304A}
+
+/* ---------- overlays ---------- */
+.screen{position:absolute;inset:0;display:none;place-items:center;padding:20px;
+  background:radial-gradient(120% 90% at 50% 0%,rgba(228,100,43,.10),transparent 60%),rgba(4,6,10,.86);
+  backdrop-filter:blur(3px);overflow:auto;pointer-events:auto}
+.screen.on{display:grid}
+.sheet{width:min(560px,94vw);max-height:92vh;overflow:auto;padding:22px}
+.sheet h2{margin:0 0 2px;font-family:var(--d-display);font-weight:600;font-size:28px;letter-spacing:.02em}
+.sheet h3{margin:18px 0 8px;font-family:var(--d-display);font-weight:600;font-size:18px;color:var(--gold)}
+.sheet p{margin:0 0 12px;font-size:14px;line-height:1.55;color:var(--parch-dim);max-width:62ch}
+
+/* title */
+#title .sheet{width:min(620px,94vw);text-align:center;background:none;border:none;box-shadow:none}
+#brand{font-family:var(--d-display);font-weight:800;font-size:clamp(56px,15vw,116px);line-height:.92;
+  letter-spacing:.01em;margin:0;
+  background:linear-gradient(180deg,#FFE7B8 8%,#E4642B 62%,#8E3413 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 30px rgba(228,100,43,.35))}
+#tagline{font-family:var(--d-mono);font-size:11px;letter-spacing:.42em;text-transform:uppercase;
+  color:var(--parch-dim);margin:2px 0 26px}
+#titleMenu{display:flex;flex-direction:column;gap:10px;align-items:center}
+#titleMenu .btn{width:min(300px,80vw)}
+#worldline{margin-top:24px;font-family:var(--d-mono);font-size:10.5px;color:var(--mute);letter-spacing:.06em;line-height:1.9}
+#worldline b{color:var(--arcane);font-weight:400}
+
+/* dialogue */
+#dialogue{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);width:min(620px,92vw);
+  padding:16px 18px;display:none;pointer-events:auto;z-index:5}
+#dialogue.on{display:block}
+#dlgWho{font-family:var(--d-display);font-size:19px;font-weight:600;color:var(--gold);margin-bottom:4px}
+#dlgText{font-size:15px;line-height:1.55;margin:0 0 12px}
+#dlgOpts{display:flex;flex-wrap:wrap;gap:8px}
+
+/* lists */
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 10px;
+  border:1px solid var(--edge);border-radius:2px;background:#0E1220;margin-bottom:7px}
+.row .t{font-size:14px}
+.row .t small{display:block;font-family:var(--d-mono);font-size:10px;color:var(--mute);margin-top:2px}
+.row.sel{border-color:var(--gold)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.stat{border:1px solid var(--edge);padding:8px 10px;border-radius:2px;background:#0E1220}
+.stat .v{font-family:var(--d-mono);font-size:17px;color:var(--parch)}
+.chron{max-height:230px;overflow:auto;padding-right:4px}
+.chron .e{padding:7px 0;border-bottom:1px solid #1A2032;font-size:13px;color:var(--parch-dim)}
+.chron .e b{color:var(--gold);font-weight:600;font-family:var(--d-display);font-size:15px}
+.chron .e i{font-style:normal;float:right;font-family:var(--d-mono);font-size:9.5px;color:var(--mute)}
+.warn{font-family:var(--d-mono);font-size:11px;color:var(--ember);letter-spacing:.04em}
+.ok{font-family:var(--d-mono);font-size:11px;color:var(--arcane);letter-spacing:.04em}
+.foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+/* ---------- responsive ---------- */
+@media (hover:none){ #log{bottom:176px} }
+@media (max-width:640px){
+  .hud-tl{width:min(196px,50vw)}
+  .hud-name b{font-size:16px}
+  .hud-name em{font-size:9px}
+  #compass{top:96px;font-size:9px;padding:4px 11px;max-width:76vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #quests{top:132px;width:min(190px,46vw)}
+  #zoneToast{top:20%}
+  .sheet{padding:16px}
+  .sheet h2{font-size:23px}
+  .btn{padding:9px 13px;font-size:11px}
+}
+@media (max-height:540px){
+  #stick{width:104px;height:104px;left:14px;bottom:14px}
+  #stick i{width:42px;height:42px;margin:-21px 0 0 -21px}
+  .tbtns{right:12px;bottom:12px;gap:9px}
+  .tbtn{width:52px;height:52px;font-size:9px}
+  .tbtn.big{width:66px;height:66px;font-size:10px}
+  #log{bottom:130px;width:min(300px,42vw)}
+  #zoneToast{top:30%}
+  #quests{top:auto;bottom:12px;right:150px;width:min(170px,30vw)}
+  .sheet{max-height:94vh}
+}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms !important;animation-duration:.01ms !important}}
+</style>
+
+<div id="stage">
+  <canvas id="world"></canvas>
+
+  <div id="hud">
+    <div class="hud-tl">
+      <div class="hud-name"><b id="hName">—</b><em id="hLvl">LV 1</em></div>
+      <div class="bar hp"><i id="hHp"></i><span id="hHpT"></span></div>
+      <div class="bar mp"><i id="hMp"></i><span id="hMpT"></span></div>
+      <div class="bar xp"><i id="hXp"></i></div>
+    </div>
+    <div id="compass">—</div>
+    <div class="hud-tr">
+      <button id="menuBtn" class="btn">Menu</button>
+      <div class="chip"><span class="k">Gold</span><span class="num" id="hGold">0</span></div>
+      <div class="chip"><span class="k">Sigils</span><span class="num" id="hSig">0/5</span></div>
+      <div class="chip"><span class="k" id="hClockK">Dawn</span><span class="num" id="hClock">06:00</span></div>
+    </div>
+    <div id="quests"></div>
+    <div id="zoneToast"><b id="ztName"></b><i id="ztSub"></i></div>
+    <div id="log"></div>
+  </div>
+
+  <div id="touch">
+    <div id="stick"><i id="stickNub"></i></div>
+    <div class="tbtns">
+      <button class="tbtn" id="tbRoll">ROLL</button>
+      <button class="tbtn" id="tbSpell">SPELL</button>
+      <button class="tbtn" id="tbUse">USE</button>
+      <button class="tbtn big" id="tbAtk">STRIKE</button>
+    </div>
+  </div>
+
+  <div class="panel" id="dialogue">
+    <div id="dlgWho"></div>
+    <p id="dlgText"></p>
+    <div id="dlgOpts"></div>
+  </div>
+
+  <div class="screen" id="title">
+    <div class="sheet">
+      <h1 id="brand">Emberfall</h1>
+      <div id="tagline">A shared world · Epoch <span id="tEpoch">1</span></div>
+      <div id="titleMenu">
+        <button class="btn primary" id="btnNew">Begin a new saga</button>
+        <button class="btn" id="btnLoad">Load a saved hero</button>
+        <button class="btn" id="btnChron">Read the Chronicle</button>
+        <button class="btn" id="btnHelp">How to play</button>
+      </div>
+      <div id="worldline"></div>
+    </div>
+  </div>
+
+  <div class="screen" id="modal"><div class="panel sheet" id="modalSheet"></div></div>
+</div>
+<script>
+/* ============================================================
+   EMBERFALL — a shared persistent open world
+   p2: capture, state, world generation, terrain rendering
+   ============================================================ */
+"use strict";
+
+/* Capture the pristine document before anything mutates it. Used to
+   republish the page with new shared-world data (Chronicle commits). */
+const PAGE_SOURCE = (function () {
+  try { return "<!doctype html>\n" + document.documentElement.outerHTML; }
+  catch (e) { return null; }
+})();
+
+const SHARED = (function () {
+  try { return JSON.parse(document.getElementById("world-state").textContent); }
+  catch (e) { return { seed: 20260826, shrines: {}, boss: { hp: 6000, maxHp: 6000, slain: false, slayers: [] }, chronicle: [], heroes: [], epoch: 1 }; }
+})();
+
+const SEED = SHARED.seed | 0;
+
+/* ---------- math / noise ---------- */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const dist = (x, y, x2, y2) => Math.hypot(x2 - x, y2 - y);
+
+function hash2(x, y, s) {
+  let h = (x | 0) * 374761393 + (y | 0) * 668265263 + (s | 0) * 1442695041;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function mulberry(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const sm = t => t * t * (3 - 2 * t);
+function vnoise(x, y, s) {
+  const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+  const a = hash2(x0, y0, s), b = hash2(x0 + 1, y0, s), c = hash2(x0, y0 + 1, s), d = hash2(x0 + 1, y0 + 1, s);
+  const u = sm(fx), v = sm(fy);
+  return a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + d * u * v;
+}
+function fbm(x, y, s, oct) {
+  let tot = 0, norm = 0, amp = 1, f = 1;
+  for (let i = 0; i < (oct || 4); i++) { tot += vnoise(x * f, y * f, s + i * 131) * amp; norm += amp; amp *= 0.5; f *= 2; }
+  return tot / norm;
+}
+
+/* ---------- tiles ---------- */
+const T = { DEEP: 0, SHOAL: 1, SAND: 2, PLAIN: 3, FOREST: 4, SWAMP: 5, ROCK: 6, PEAK: 7, SNOW: 8, ASH: 9, LAVA: 10, ROAD: 11, FLOOR: 12, WALL: 13, VOID: 14, BRIDGE: 15 };
+const TILE = 32, CH = 12, CHPX = TILE * CH;
+
+const TILEDEF = {
+  0: { a: "#0B1F35", b: "#0E2742", solid: 1, name: "the deep" },
+  1: { a: "#17456A", b: "#1D5480", solid: 0, slow: .55, name: "shallows" },
+  2: { a: "#C6A662", b: "#D6BA79", solid: 0, name: "the Sunken Dunes" },
+  3: { a: "#38663E", b: "#477A4C", solid: 0, name: "the Verdant Reach" },
+  4: { a: "#1E4028", b: "#2B5637", solid: 0, name: "Mournwood" },
+  5: { a: "#2A3E33", b: "#374B3D", solid: 0, slow: .7, name: "the Mirebottom" },
+  6: { a: "#5A5A63", b: "#67676F", solid: 0, name: "the Grey Steps" },
+  7: { a: "#3A3A42", b: "#43434C", solid: 1, name: "peaks" },
+  8: { a: "#C6D2DC", b: "#D5DFE7", solid: 0, name: "the Hoarfrost" },
+  9: { a: "#4A342E", b: "#573D35", solid: 0, name: "the Ashen Waste" },
+  10: { a: "#C4471C", b: "#E4642B", solid: 1, name: "lava" },
+  11: { a: "#7E7058", b: "#968A72", solid: 0, name: "road" },
+  12: { a: "#3B3548", b: "#443D52", solid: 0, name: "vault" },
+  13: { a: "#100D18", b: "#171320", solid: 1, name: "wall" },
+  14: { a: "#05060A", b: "#05060A", solid: 1, name: "void" },
+  15: { a: "#7A6249", b: "#876E52", solid: 0, name: "bridge" }
+};
+
+const MAP = 300;                     // overworld is MAP x MAP tiles
+const CX = MAP / 2, CY = MAP / 2;
+
+/* ---------- overworld terrain ---------- */
+function elevAt(tx, ty) {
+  const e = fbm(tx / 58, ty / 58, SEED, 5);
+  const d = Math.hypot(tx - CX, ty - CY) / (MAP * 0.5);
+  const ridge = Math.abs(fbm(tx / 30 + 90, ty / 30 + 90, SEED + 41, 3) - .5) * .55;
+  return e + ridge * .5 - Math.max(0, d - .58) * 2.1;
+}
+function moistAt(tx, ty) { return fbm(tx / 44 + 400, ty / 44 + 400, SEED + 77, 4); }
+
+function overworldTile(tx, ty) {
+  if (tx < 0 || ty < 0 || tx >= MAP || ty >= MAP) return T.DEEP;
+  const s = SITEMAP.get(ty * MAP + tx);
+  if (s !== undefined) return s;
+  const e = elevAt(tx, ty);
+  if (e < 0.305) return T.DEEP;
+  if (e < 0.345) return T.SHOAL;
+  const lat = ty / MAP;
+  if (e > 0.735) return e > 0.80 ? T.PEAK : T.ROCK;
+  if (lat < 0.15) return e > 0.60 ? T.ROCK : T.SNOW;
+  if (lat > 0.855) {
+    const l = fbm(tx / 14, ty / 14, SEED + 303, 2);
+    return l > 0.70 ? T.LAVA : T.ASH;
+  }
+  const m = moistAt(tx, ty);
+  if (m < 0.355) return T.SAND;
+  if (m < 0.505) return T.PLAIN;
+  if (m < 0.715) return T.FOREST;
+  return T.SWAMP;
+}
+
+/* props: 0 none, else name. blocking props listed in PROP_SOLID */
+const PROP_SOLID = { tree: 1, pine: 1, rock: 1, cactus: 1, crystal: 1, stump: 1, pillar: 1, hut: 1 };
+function overworldProp(tx, ty, t) {
+  if (SITEMAP.has(ty * MAP + tx)) return PROPMAP.get(ty * MAP + tx) || 0;
+  const h = hash2(tx, ty, SEED + 909);
+  switch (t) {
+    case T.FOREST: return h < .40 ? "tree" : h < .48 ? "bush" : h < .52 ? "fern" : 0;
+    case T.PLAIN: return h < .045 ? "tree" : h < .13 ? "tuft" : h < .15 ? "rock" : 0;
+    case T.SWAMP: return h < .16 ? "reed" : h < .21 ? "stump" : h < .24 ? "bones" : 0;
+    case T.SAND: return h < .045 ? "cactus" : h < .075 ? "bones" : h < .11 ? "rock" : 0;
+    case T.SNOW: return h < .17 ? "pine" : h < .21 ? "rock" : 0;
+    case T.ROCK: return h < .13 ? "rock" : h < .16 ? "crystal" : 0;
+    case T.ASH: return h < .10 ? "stump" : h < .16 ? "rock" : h < .19 ? "bones" : 0;
+    default: return 0;
+  }
+}
+
+/* ---------- sites (towns, dungeons, shrines, lair) ---------- */
+const SITEMAP = new Map();   // tileIndex -> tile override
+const PROPMAP = new Map();   // tileIndex -> prop override
+const SITES = [];            // {kind,id,name,tx,ty,...}
+
+const TOWN_NAMES = ["Hearthwatch", "Gallowmere", "Saltrest"];
+const DUNGEON_NAMES = ["The Weeping Barrow", "Cinderdeep Mine", "The Drowned Chapel", "Wyrmroot Hollow", "The Pale Spire"];
+const SHRINE_NAMES = ["Shrine of First Light", "Shrine of Still Water", "Shrine of the Long Road", "Shrine of Ash and Oath", "Shrine of the Hollow Bell", "Shrine of Nine Winds", "Shrine of the Last Ember"];
+
+function landAt(tx, ty) {
+  const e = elevAt(tx, ty);
+  if (e < 0.36 || e > 0.735) return false;
+  const lat = ty / MAP;
+  if (lat > 0.855) { if (fbm(tx / 14, ty / 14, SEED + 303, 2) > 0.70) return false; }
+  return true;
+}
+function areaClear(tx, ty, r) {
+  for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (!landAt(tx + x, ty + y)) return false;
+  return true;
+}
+function setTile(tx, ty, t, prop) {
+  if (tx < 0 || ty < 0 || tx >= MAP || ty >= MAP) return;
+  SITEMAP.set(ty * MAP + tx, t);
+  if (prop !== undefined) { if (prop) PROPMAP.set(ty * MAP + tx, prop); else PROPMAP.delete(ty * MAP + tx); }
+  else PROPMAP.set(ty * MAP + tx, 0);
+}
+
+function buildSites() {
+  const rnd = mulberry(SEED ^ 0x5A17);
+  const taken = [];
+  const far = (tx, ty, d) => taken.every(p => dist(tx, ty, p[0], p[1]) > d);
+
+  function findSpot(minR, ring0, ring1, minSep, tries) {
+    for (let i = 0; i < (tries || 4000); i++) {
+      const ang = rnd() * Math.PI * 2;
+      const rad = lerp(ring0, ring1, rnd()) * (MAP * 0.5);
+      const tx = Math.round(CX + Math.cos(ang) * rad), ty = Math.round(CY + Math.sin(ang) * rad);
+      if (tx < 12 || ty < 12 || tx > MAP - 12 || ty > MAP - 12) continue;
+      if (!areaClear(tx, ty, minR)) continue;
+      if (!far(tx, ty, minSep)) continue;
+      taken.push([tx, ty]);
+      return { tx, ty };
+    }
+    return null;
+  }
+
+  /* --- capital at the centre --- */
+  let home = null;
+  for (let r = 0; r < 60 && !home; r++) {
+    for (let a = 0; a < 24; a++) {
+      const tx = Math.round(CX + Math.cos(a / 24 * 6.283) * r), ty = Math.round(CY + Math.sin(a / 24 * 6.283) * r);
+      if (areaClear(tx, ty, 7)) { home = { tx, ty }; break; }
+    }
+  }
+  if (!home) home = { tx: CX, ty: CY };
+  taken.push([home.tx, home.ty]);
+  makeTown(home.tx, home.ty, 0, TOWN_NAMES[0], true);
+
+  const t1 = findSpot(6, .30, .46, 46) || { tx: home.tx + 40, ty: home.ty };
+  makeTown(t1.tx, t1.ty, 1, TOWN_NAMES[1], false);
+  const t2 = findSpot(6, .30, .48, 46) || { tx: home.tx - 40, ty: home.ty };
+  makeTown(t2.tx, t2.ty, 2, TOWN_NAMES[2], false);
+
+  for (let i = 0; i < 5; i++) {
+    const p = findSpot(3, .16 + i * .06, .30 + i * .09, 26);
+    if (p) makeDungeon(p.tx, p.ty, i, DUNGEON_NAMES[i]);
+  }
+  for (let i = 0; i < 7; i++) {
+    const p = findSpot(2, .12 + (i % 4) * .10, .26 + (i % 4) * .12, 20);
+    if (p) makeShrine(p.tx, p.ty, i, SHRINE_NAMES[i]);
+  }
+  const lair = findSpot(5, .70, .84, 30) || findSpot(5, .55, .84, 20) || { tx: home.tx, ty: home.ty - 60 };
+  makeLair(lair.tx, lair.ty);
+
+  /* roads: capital -> every town, dungeon and shrine */
+  SITES.filter(s => s.kind !== "town" || s.id !== 0).forEach(s => carveRoad(home.tx, home.ty, s.tx, s.ty));
+}
+
+function carveRoad(x0, y0, x1, y1) {
+  const steps = Math.ceil(dist(x0, y0, x1, y1) * 1.4);
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const wob = Math.sin(t * 9 + SEED % 7) * 5 * Math.sin(t * Math.PI);
+    const nx = lerp(x0, x1, t) - (y1 - y0) / (steps || 1) * wob;
+    const ny = lerp(y0, y1, t) + (x1 - x0) / (steps || 1) * wob;
+    const tx = Math.round(nx), ty = Math.round(ny);
+    for (let dy = 0; dy <= 0; dy++) for (let dx = 0; dx <= 0; dx++) {
+      const k = (ty + dy) * MAP + (tx + dx);
+      if (SITEMAP.has(k)) continue;
+      const base = overworldTile(tx + dx, ty + dy);
+      if (base === T.DEEP || base === T.SHOAL) setTile(tx + dx, ty + dy, T.BRIDGE, 0);
+      else if (base === T.PEAK || base === T.LAVA) setTile(tx + dx, ty + dy, T.ROCK, 0);
+      else setTile(tx + dx, ty + dy, T.ROAD, 0);
+    }
+  }
+}
+
+function makeTown(tx, ty, id, name, capital) {
+  const r = capital ? 7 : 6;
+  for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+    if (Math.hypot(x, y) > r + .4) continue;
+    setTile(tx + x, ty + y, Math.hypot(x, y) > r - 1.2 ? T.PLAIN : T.ROAD, 0);
+  }
+  const huts = capital
+    ? [[-4, -3], [0, -4], [4, -3], [-5, 1], [5, 1], [-2, 4], [3, 4]]
+    : [[-3, -3], [3, -3], [-4, 2], [4, 2], [0, 4]];
+  huts.forEach(h => setTile(tx + h[0], ty + h[1], T.ROAD, "hut"));
+  SITES.push({
+    kind: "town", id, name, tx, ty, capital,
+    npcs: TOWN_NPCS[id].map(n => ({ ...n, tx: tx + n.ox, ty: ty + n.oy }))
+  });
+}
+function makeShrine(tx, ty, id, name) {
+  for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++)
+    setTile(tx + x, ty + y, Math.abs(x) === 2 || Math.abs(y) === 2 ? T.ROCK : T.FLOOR, 0);
+  setTile(tx - 2, ty - 2, T.ROCK, "pillar"); setTile(tx + 2, ty - 2, T.ROCK, "pillar");
+  setTile(tx - 2, ty + 2, T.ROCK, "pillar"); setTile(tx + 2, ty + 2, T.ROCK, "pillar");
+  SITES.push({ kind: "shrine", id, name, tx, ty });
+}
+function makeDungeon(tx, ty, id, name) {
+  for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++)
+    if (Math.hypot(x, y) < 3.4) setTile(tx + x, ty + y, T.ROCK, 0);
+  setTile(tx - 1, ty - 1, T.ROCK, "pillar"); setTile(tx + 1, ty - 1, T.ROCK, "pillar");
+  SITES.push({ kind: "dungeon", id, name, tx, ty });
+}
+function makeLair(tx, ty) {
+  for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) {
+    const d = Math.hypot(x, y);
+    if (d > 5.4) continue;
+    setTile(tx + x, ty + y, d > 4.4 ? T.ROCK : T.ASH, 0);
+  }
+  [[-4, 0], [4, 0], [0, -4], [0, 4], [-3, -3], [3, 3], [-3, 3], [3, -3]].forEach(p => setTile(tx + p[0], ty + p[1], T.ASH, "pillar"));
+  SITES.push({ kind: "lair", id: 0, name: "The Emberfall", tx, ty });
+}
+
+/* ---------- dungeon interiors ---------- */
+const DSIZE = 56;
+function genDungeon(id) {
+  const rnd = mulberry(SEED + 7777 + id * 313);
+  const grid = new Uint8Array(DSIZE * DSIZE).fill(T.VOID);
+  const rooms = [];
+  const want = 9 + Math.floor(rnd() * 4);
+  for (let i = 0; i < 400 && rooms.length < want; i++) {
+    const w = 5 + Math.floor(rnd() * 7), h = 5 + Math.floor(rnd() * 6);
+    const x = 2 + Math.floor(rnd() * (DSIZE - w - 4)), y = 2 + Math.floor(rnd() * (DSIZE - h - 4));
+    if (rooms.some(r => x < r.x + r.w + 2 && x + w + 2 > r.x && y < r.y + r.h + 2 && y + h + 2 > r.y)) continue;
+    rooms.push({ x, y, w, h, cx: Math.round(x + w / 2), cy: Math.round(y + h / 2) });
+  }
+  const put = (x, y, t) => { if (x > 0 && y > 0 && x < DSIZE - 1 && y < DSIZE - 1) grid[y * DSIZE + x] = t; };
+  rooms.forEach(r => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) put(x, y, T.FLOOR); });
+  rooms.sort((a, b) => (a.cx + a.cy) - (b.cx + b.cy));
+  for (let i = 1; i < rooms.length; i++) {
+    const a = rooms[i - 1], b = rooms[i];
+    for (let x = Math.min(a.cx, b.cx); x <= Math.max(a.cx, b.cx); x++) { put(x, a.cy, T.FLOOR); put(x, a.cy + 1, T.FLOOR); }
+    for (let y = Math.min(a.cy, b.cy); y <= Math.max(a.cy, b.cy); y++) { put(b.cx, y, T.FLOOR); put(b.cx + 1, y, T.FLOOR); }
+  }
+  for (let y = 1; y < DSIZE - 1; y++) for (let x = 1; x < DSIZE - 1; x++) {
+    if (grid[y * DSIZE + x] !== T.VOID) continue;
+    let near = false;
+    for (let j = -1; j <= 1 && !near; j++) for (let i2 = -1; i2 <= 1; i2++)
+      if (grid[(y + j) * DSIZE + (x + i2)] === T.FLOOR) { near = true; break; }
+    if (near) grid[y * DSIZE + x] = T.WALL;
+  }
+  const props = new Map();
+  rooms.forEach((r, i) => {
+    if (i === 0) return;
+    const n = Math.floor(rnd() * 3);
+    for (let k = 0; k < n; k++) {
+      const x = r.x + 1 + Math.floor(rnd() * (r.w - 2)), y = r.y + 1 + Math.floor(rnd() * (r.h - 2));
+      props.set(y * DSIZE + x, rnd() < .5 ? "pillar" : rnd() < .6 ? "bones" : "crystal");
+    }
+  });
+  rooms.forEach(r => {
+    for (let x = r.x + 1; x < r.x + r.w - 1; x += 3) {
+      if (rnd() < .55) props.set(r.y * DSIZE + x, "torch");
+      if (rnd() < .35) props.set((r.y + r.h - 1) * DSIZE + x, "torch");
+    }
+  });
+  return { id, grid, props, rooms, entry: rooms[0], boss: rooms[rooms.length - 1] };
+}
+
+/* ---------- realm abstraction ---------- */
+let realm = null;               // {kind, w, h, tileAt, propAt, key}
+const CHUNKS = new Map();
+
+function overworldRealm() {
+  return {
+    kind: "overworld", key: "ow", w: MAP, h: MAP, crisp: false,
+    tileAt: overworldTile,
+    propAt: (x, y) => overworldProp(x, y, overworldTile(x, y))
+  };
+}
+function dungeonRealm(d) {
+  return {
+    kind: "dungeon", key: "dg" + d.id, w: DSIZE, h: DSIZE, data: d, crisp: true,
+    tileAt: (x, y) => (x < 0 || y < 0 || x >= DSIZE || y >= DSIZE) ? T.VOID : d.grid[y * DSIZE + x],
+    propAt: (x, y) => d.props.get(y * DSIZE + x) || 0
+  };
+}
+function solidAt(px, py) {
+  const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+  const t = realm.tileAt(tx, ty);
+  if (TILEDEF[t].solid) return true;
+  const p = realm.propAt(tx, ty);
+  return !!(p && PROP_SOLID[p]);
+}
+function slowAt(px, py) {
+  const t = TILEDEF[realm.tileAt(Math.floor(px / TILE), Math.floor(py / TILE))];
+  return t.slow || 1;
+}
+
+/* ---------- terrain chunk rendering ---------- */
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = clamp(((n >> 16) & 255) * k, 0, 255), g = clamp(((n >> 8) & 255) * k, 0, 255), b = clamp((n & 255) * k, 0, 255);
+  return "rgb(" + (r | 0) + "," + (g | 0) + "," + (b | 0) + ")";
+}
+
+function drawProp(g, px, py, kind, tx, ty) {
+  const h = hash2(tx, ty, SEED + 55), h2 = hash2(tx, ty, SEED + 56);
+  const cx = px + TILE / 2 + (h - .5) * 6, by = py + TILE - 3 + (h2 - .5) * 4;
+  g.save();
+  switch (kind) {
+    case "tree": {
+      const s = .82 + h * .40, hue = h2;
+      g.fillStyle = "rgba(0,0,0,.30)"; g.beginPath(); g.ellipse(cx, by, 11 * s, 4.2 * s, 0, 0, 6.283); g.fill();
+      g.strokeStyle = "#3A2A1C"; g.lineWidth = 4 * s; g.lineCap = "round";
+      g.beginPath(); g.moveTo(cx, by - 2); g.lineTo(cx + (h - .5) * 5, by - 15 * s); g.stroke();
+      const dark = hue > .5 ? "#1C3E28" : "#22482C", mid = hue > .5 ? "#2A5A38" : "#316543";
+      g.fillStyle = dark;
+      g.beginPath();
+      g.arc(cx - 7 * s, by - 18 * s, 8 * s, 0, 6.283);
+      g.arc(cx + 7 * s, by - 19 * s, 7.5 * s, 0, 6.283);
+      g.arc(cx, by - 26 * s, 9 * s, 0, 6.283);
+      g.arc(cx, by - 17 * s, 10 * s, 0, 6.283);
+      g.fill();
+      g.fillStyle = mid;
+      g.beginPath(); g.arc(cx - 2 * s, by - 24 * s, 7 * s, 0, 6.283); g.fill();
+      g.fillStyle = "rgba(176,214,142,.22)";
+      g.beginPath(); g.arc(cx - 4 * s, by - 27 * s, 4.4 * s, 0, 6.283); g.fill();
+      break;
+    }
+    case "pine": {
+      const s = .9 + h * .3;
+      g.fillStyle = "rgba(0,0,0,.25)"; g.beginPath(); g.ellipse(cx, by, 8 * s, 3 * s, 0, 0, 6.283); g.fill();
+      g.fillStyle = "#3A2A1E"; g.fillRect(cx - 2, by - 8 * s, 4, 8 * s);
+      g.fillStyle = "#1E4433";
+      for (let i = 0; i < 3; i++) {
+        const w = (11 - i * 2.6) * s, yy = by - (8 + i * 7) * s;
+        g.beginPath(); g.moveTo(cx, yy - 9 * s); g.lineTo(cx + w, yy); g.lineTo(cx - w, yy); g.closePath(); g.fill();
+      }
+      break;
+    }
+    case "bush": g.fillStyle = "#2C5C38"; g.beginPath(); g.arc(cx, by - 5, 7, 0, 6.283); g.fill();
+      g.fillStyle = "rgba(140,200,140,.18)"; g.beginPath(); g.arc(cx - 2, by - 7, 4, 0, 6.283); g.fill(); break;
+    case "fern": g.strokeStyle = "#356E42"; g.lineWidth = 2; g.beginPath();
+      for (let i = -2; i <= 2; i++) { g.moveTo(cx, by); g.lineTo(cx + i * 3.2, by - 9 - Math.abs(i)); } g.stroke(); break;
+    case "tuft": g.strokeStyle = "rgba(180,210,140,.5)"; g.lineWidth = 1.6; g.beginPath();
+      for (let i = -1; i <= 1; i++) { g.moveTo(cx + i * 3, by); g.lineTo(cx + i * 4, by - 6); } g.stroke(); break;
+    case "reed": g.strokeStyle = "#6E7A4A"; g.lineWidth = 2; g.beginPath();
+      for (let i = -1; i <= 1; i++) { g.moveTo(cx + i * 4, by); g.quadraticCurveTo(cx + i * 6, by - 8, cx + i * 3, by - 15); } g.stroke(); break;
+    case "rock": {
+      const s = .8 + h * .6;
+      g.fillStyle = "rgba(0,0,0,.25)"; g.beginPath(); g.ellipse(cx, by, 8 * s, 3 * s, 0, 0, 6.283); g.fill();
+      g.fillStyle = "#6B6B74"; g.beginPath(); g.moveTo(cx - 8 * s, by); g.lineTo(cx - 4 * s, by - 9 * s);
+      g.lineTo(cx + 3 * s, by - 10 * s); g.lineTo(cx + 8 * s, by); g.closePath(); g.fill();
+      g.fillStyle = "rgba(255,255,255,.12)"; g.beginPath(); g.moveTo(cx - 4 * s, by - 9 * s); g.lineTo(cx + 3 * s, by - 10 * s); g.lineTo(cx + 1 * s, by - 4 * s); g.closePath(); g.fill();
+      break;
+    }
+    case "crystal": g.fillStyle = "rgba(87,195,176,.85)"; g.beginPath(); g.moveTo(cx, by - 20); g.lineTo(cx + 6, by - 6);
+      g.lineTo(cx + 2, by); g.lineTo(cx - 5, by - 3); g.closePath(); g.fill();
+      g.fillStyle = "rgba(220,255,250,.4)"; g.beginPath(); g.moveTo(cx, by - 20); g.lineTo(cx + 2, by - 6); g.lineTo(cx - 5, by - 3); g.closePath(); g.fill(); break;
+    case "cactus": g.fillStyle = "#3F6B41"; g.fillRect(cx - 3, by - 20, 6, 20);
+      g.fillRect(cx - 9, by - 14, 6, 4); g.fillRect(cx - 9, by - 18, 3, 8);
+      g.fillRect(cx + 3, by - 11, 6, 4); g.fillRect(cx + 6, by - 15, 3, 8); break;
+    case "stump": g.fillStyle = "#3B2A1C"; g.beginPath(); g.ellipse(cx, by - 5, 8, 6, 0, 0, 6.283); g.fill();
+      g.fillStyle = "#54402C"; g.beginPath(); g.ellipse(cx, by - 8, 8, 5, 0, 0, 6.283); g.fill(); break;
+    case "bones": g.strokeStyle = "#CFC6B0"; g.lineWidth = 2.4; g.lineCap = "round"; g.beginPath();
+      g.moveTo(cx - 7, by - 3); g.lineTo(cx + 6, by - 7); g.moveTo(cx - 5, by - 8); g.lineTo(cx + 5, by - 2); g.stroke(); break;
+    case "pillar": g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(cx, by, 10, 4, 0, 0, 6.283); g.fill();
+      g.fillStyle = "#8A8478"; g.fillRect(cx - 7, by - 26, 14, 26);
+      g.fillStyle = "#A39C8C"; g.fillRect(cx - 9, by - 30, 18, 5); g.fillRect(cx - 9, by - 4, 18, 5);
+      g.fillStyle = "rgba(0,0,0,.22)"; g.fillRect(cx + 2, by - 26, 5, 26); break;
+    case "torch": {
+      const fl = .8 + hash2(tx, ty, SEED + 71) * .4;
+      const grd = g.createRadialGradient(cx, by - 16, 4, cx, by - 16, 78 * fl);
+      grd.addColorStop(0, "rgba(255,190,110,.30)"); grd.addColorStop(.45, "rgba(255,150,70,.10)");
+      grd.addColorStop(1, "rgba(255,140,60,0)");
+      g.fillStyle = grd; g.beginPath(); g.arc(cx, by - 16, 78 * fl, 0, 6.283); g.fill();
+      g.fillStyle = "#3A3038"; g.fillRect(cx - 2, by - 20, 4, 14);
+      g.fillStyle = "#FFB05E"; g.beginPath(); g.ellipse(cx, by - 24, 4.4, 7, 0, 0, 6.283); g.fill();
+      g.fillStyle = "#FFEBB0"; g.beginPath(); g.ellipse(cx, by - 23, 2.2, 4, 0, 0, 6.283); g.fill();
+      break;
+    }
+    case "hut": {
+      g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(cx, by + 2, 20, 6, 0, 0, 6.283); g.fill();
+      g.fillStyle = "#6B5641"; g.fillRect(cx - 16, by - 22, 32, 22);
+      g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(cx + 4, by - 22, 12, 22);
+      g.fillStyle = "#2B2028"; g.fillRect(cx - 5, by - 12, 10, 12);
+      g.fillStyle = h > .5 ? "#7C3A2A" : "#5E4A6B";
+      g.beginPath(); g.moveTo(cx - 21, by - 21); g.lineTo(cx, by - 36); g.lineTo(cx + 21, by - 21); g.closePath(); g.fill();
+      g.fillStyle = "rgba(255,220,160,.5)"; g.fillRect(cx - 13, by - 18, 6, 5); g.fillRect(cx + 8, by - 18, 5, 5);
+      break;
+    }
+  }
+  g.restore();
+}
+
+/* Terrain is painted at quarter resolution and bilinearly blended between
+   neighbouring tiles, so biomes meet in soft edges instead of a 32px quilt.
+   Props live on their own transparent layer with a generous margin, so a
+   tall tree near a chunk edge is never sliced off. */
+const SS = 2, SN = CHPX / SS, PM = 64;
+const TCOL = {};
+for (const k in TILEDEF) {
+  const n = parseInt(TILEDEF[k].a.slice(1), 16);
+  TCOL[k] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function detailPass(g, tl, W, cx, cy) {
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CH; x++) {
+    const tx = cx * CH + x, ty = cy * CH + y, t = tl[(y + 1) * W + (x + 1)];
+    const px = x * TILE, py = y * TILE;
+    const n = hash2(tx, ty, SEED + 4);
+    if (n > .82 && t !== T.DEEP && t !== T.WALL) {
+      g.globalAlpha = .28; g.fillStyle = shade(TILEDEF[t].a, n > .94 ? 1.3 : .78);
+      g.beginPath(); g.ellipse(px + (n * 900 % 24) + 4, py + (n * 1700 % 24) + 4, 4.5, 2.6, n * 3, 0, 6.283); g.fill();
+      g.globalAlpha = 1;
+    }
+    if (t === T.SHOAL || t === T.DEEP) {
+      g.strokeStyle = "rgba(200,230,255,.11)"; g.lineWidth = 1.4;
+      g.beginPath(); g.moveTo(px + 4, py + 16); g.quadraticCurveTo(px + 16, py + 9, px + 28, py + 16); g.stroke();
+    }
+    if (t === T.LAVA) {
+      const grd = g.createRadialGradient(px + 16, py + 16, 1, px + 16, py + 16, 18);
+      grd.addColorStop(0, "rgba(255,214,120,.55)"); grd.addColorStop(1, "rgba(255,120,40,0)");
+      g.fillStyle = grd; g.fillRect(px - 4, py - 4, TILE + 8, TILE + 8);
+    }
+    if (t === T.WALL) {
+      const below = tl[(y + 2) * W + (x + 1)];
+      g.fillStyle = "rgba(238,226,198,.10)"; g.fillRect(px, py, TILE, 4);
+      g.fillStyle = "rgba(0,0,0,.45)"; g.fillRect(px, py + TILE - 5, TILE, 5);
+      if (below === T.FLOOR) {
+        g.fillStyle = "rgba(126,112,88,.34)"; g.fillRect(px, py + TILE - 9, TILE, 5);
+        g.fillStyle = "rgba(0,0,0,.5)"; g.fillRect(px, py + TILE - 2, TILE, 2);
+      }
+    }
+    if (t === T.FLOOR && realm.crisp) {
+      g.strokeStyle = "rgba(0,0,0,.30)"; g.lineWidth = 1;
+      g.strokeRect(px + .5, py + .5, TILE - 1, TILE - 1);
+      g.strokeStyle = "rgba(238,226,198,.05)";
+      g.beginPath(); g.moveTo(px + 1, py + 1); g.lineTo(px + TILE - 1, py + 1); g.stroke();
+    }
+  }
+}
+
+function chunkTerrain(cx, cy) {
+  const key = realm.key + ":t:" + cx + "," + cy;
+  let c = CHUNKS.get(key);
+  if (c) return c;
+
+  const W = CH + 3, tl = new Uint8Array(W * W);
+  for (let y = -1; y <= CH + 1; y++) for (let x = -1; x <= CH + 1; x++)
+    tl[(y + 1) * W + (x + 1)] = realm.tileAt(cx * CH + x, cy * CH + y);
+
+  c = document.createElement("canvas");
+  c.width = c.height = CHPX;
+  const g = c.getContext("2d");
+
+  if (realm.crisp) {
+    /* interiors want hard edges: a wall must read as a wall */
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CH; x++) {
+      const tx = cx * CH + x, ty = cy * CH + y, t = tl[(y + 1) * W + (x + 1)];
+      const n = hash2(tx, ty, SEED + 3);
+      g.fillStyle = shade(TILEDEF[t].a, .90 + n * .22);
+      g.fillRect(x * TILE, y * TILE, TILE, TILE);
+    }
+    detailPass(g, tl, W, cx, cy);
+    cacheSet(key, c);
+    return c;
+  }
+
+  const small = document.createElement("canvas");
+  small.width = small.height = SN;
+  const sg = small.getContext("2d"), img = sg.createImageData(SN, SN), D = img.data;
+  for (let sy = 0; sy < SN; sy++) {
+    const fv = (sy + .5) * SS / TILE - .5, j0 = Math.floor(fv), tv = sm(sm(fv - j0));
+    for (let sx = 0; sx < SN; sx++) {
+      const fu = (sx + .5) * SS / TILE - .5, i0 = Math.floor(fu), tu = sm(sm(fu - i0));
+      const a = TCOL[tl[(j0 + 1) * W + (i0 + 1)]], b = TCOL[tl[(j0 + 1) * W + (i0 + 2)]];
+      const cc = TCOL[tl[(j0 + 2) * W + (i0 + 1)]], d = TCOL[tl[(j0 + 2) * W + (i0 + 2)]];
+      const wx = (cx * CHPX + sx * SS) / 26, wy = (cy * CHPX + sy * SS) / 26;
+      const k = .84 + vnoise(wx, wy, SEED + 9) * .22 + vnoise(wx * 3.1, wy * 3.1, SEED + 12) * .12;
+      const i = (sy * SN + sx) * 4;
+      for (let ch = 0; ch < 3; ch++) {
+        const top = a[ch] + (b[ch] - a[ch]) * tu, bot = cc[ch] + (d[ch] - cc[ch]) * tu;
+        D[i + ch] = clamp((top + (bot - top) * tv) * k, 0, 255);
+      }
+      D[i + 3] = 255;
+    }
+  }
+  sg.putImageData(img, 0, 0);
+  g.imageSmoothingEnabled = true;
+  g.drawImage(small, 0, 0, CHPX, CHPX);
+
+  detailPass(g, tl, W, cx, cy);
+  cacheSet(key, c);
+  return c;
+}
+
+function chunkProps(cx, cy) {
+  const key = realm.key + ":p:" + cx + "," + cy;
+  let c = CHUNKS.get(key);
+  if (c) return c;
+  c = document.createElement("canvas");
+  c.width = c.height = CHPX + PM * 2;
+  const g = c.getContext("2d");
+  g.translate(PM, PM);
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CH; x++) {
+    const tx = cx * CH + x, ty = cy * CH + y, p = realm.propAt(tx, ty);
+    if (p) drawProp(g, x * TILE, y * TILE, p, tx, ty);
+  }
+  cacheSet(key, c);
+  return c;
+}
+function cacheSet(key, c) {
+  if (CHUNKS.size > 300) { const k0 = CHUNKS.keys().next().value; CHUNKS.delete(k0); }
+  CHUNKS.set(key, c);
+}
+function invalidateChunkAt(tx, ty) {
+  const k = Math.floor(tx / CH) + "," + Math.floor(ty / CH);
+  CHUNKS.delete(realm.key + ":t:" + k); CHUNKS.delete(realm.key + ":p:" + k);
+}
+/* ============================================================
+   p3: content tables, actors, combat, loot, sprites
+   ============================================================ */
+
+const CLASSES = [
+  { id: "warden", name: "Warden", blurb: "Shield-first. Highest health, hardest strikes, slow of foot.", hp: 130, mp: 40, spd: 118, atk: 1.25, spell: "Ember Shout", sc: 12, sd: 26, might: 6, focus: 2, vigor: 6 },
+  { id: "emberwright", name: "Emberwright", blurb: "Fire-caller. Frail in the melee, devastating at range.", hp: 92, mp: 100, spd: 128, atk: 0.85, spell: "Firebolt", sc: 8, sd: 34, might: 2, focus: 7, vigor: 3 },
+  { id: "vagrant", name: "Vagrant", blurb: "Fast, lucky, hits the seams. Rolls further, crits often.", hp: 104, mp: 62, spd: 146, atk: 1.05, spell: "Thrown Ember", sc: 9, sd: 22, might: 4, focus: 4, vigor: 4 }
+];
+
+const WEAPONS = [
+  { n: "Rusted Sword", dmg: 6, cost: 0 }, { n: "Iron Falchion", dmg: 12, cost: 140 },
+  { n: "Silvered Blade", dmg: 20, cost: 420 }, { n: "Emberbrand", dmg: 31, cost: 1100 },
+  { n: "Dawnsplitter", dmg: 46, cost: 2600 }
+];
+const ARMORS = [
+  { n: "Traveller's Rags", def: 0, cost: 0 }, { n: "Hide Jerkin", def: 3, cost: 120 },
+  { n: "Ringmail", def: 7, cost: 380 }, { n: "Warden Plate", def: 13, cost: 980 },
+  { n: "Sigil Aegis", def: 21, cost: 2400 }
+];
+
+const BEASTS = {
+  boar: { name: "Tusked Boar", hp: 34, dmg: 7, spd: 74, xp: 12, gold: 6, r: 13, art: "boar", col: "#7A5638", aggro: 150 },
+  bandit: { name: "Road Bandit", hp: 42, dmg: 9, spd: 88, xp: 18, gold: 16, r: 12, art: "human", col: "#6B4B5C", aggro: 190 },
+  wolf: { name: "Grey Wolf", hp: 30, dmg: 8, spd: 108, xp: 15, gold: 4, r: 12, art: "wolf", col: "#5E6472", aggro: 230 },
+  spriggan: { name: "Spriggan", hp: 55, dmg: 11, spd: 66, xp: 26, gold: 12, r: 14, art: "spriggan", col: "#33633F", aggro: 160 },
+  slime: { name: "Mire Slime", hp: 46, dmg: 6, spd: 52, xp: 14, gold: 5, r: 14, art: "slime", col: "#4E7A55", aggro: 130 },
+  drowned: { name: "The Drowned", hp: 60, dmg: 13, spd: 70, xp: 30, gold: 18, r: 13, art: "human", col: "#3E5A63", aggro: 180 },
+  scarab: { name: "Sand Scarab", hp: 38, dmg: 9, spd: 96, xp: 20, gold: 9, r: 12, art: "scarab", col: "#8A6B33", aggro: 200 },
+  husk: { name: "Dune Husk", hp: 70, dmg: 15, spd: 62, xp: 34, gold: 22, r: 14, art: "human", col: "#8E7A55", aggro: 170 },
+  frostwolf: { name: "Frost Wolf", hp: 62, dmg: 16, spd: 116, xp: 38, gold: 14, r: 13, art: "wolf", col: "#93A8BE", aggro: 250 },
+  revenant: { name: "Hoar Revenant", hp: 88, dmg: 19, spd: 74, xp: 48, gold: 30, r: 14, art: "wraith", col: "#9FC2D6", aggro: 200, ranged: 1 },
+  golem: { name: "Stone Golem", hp: 140, dmg: 24, spd: 50, xp: 70, gold: 40, r: 17, art: "golem", col: "#6B6B74", aggro: 160 },
+  cinderling: { name: "Cinderling", hp: 66, dmg: 18, spd: 104, xp: 44, gold: 24, r: 12, art: "slime", col: "#C4551F", aggro: 220 },
+  wraith: { name: "Ash Wraith", hp: 78, dmg: 21, spd: 84, xp: 55, gold: 34, r: 14, art: "wraith", col: "#B08AA8", aggro: 240, ranged: 1 },
+  skeleton: { name: "Barrow Skeleton", hp: 54, dmg: 14, spd: 82, xp: 32, gold: 20, r: 12, art: "skeleton", col: "#CFC6B0", aggro: 210 },
+  warden_dead: { name: "Fallen Warden", hp: 120, dmg: 26, spd: 78, xp: 80, gold: 55, r: 15, art: "human", col: "#5A4E6B", aggro: 220 }
+};
+
+const BIOME_SPAWN = {
+  [T.PLAIN]: ["boar", "bandit", "wolf"], [T.FOREST]: ["wolf", "spriggan", "bandit"],
+  [T.SWAMP]: ["slime", "drowned", "spriggan"], [T.SAND]: ["scarab", "husk", "bandit"],
+  [T.SNOW]: ["frostwolf", "revenant", "wolf"], [T.ROCK]: ["golem", "skeleton", "wolf"],
+  [T.ASH]: ["cinderling", "wraith", "husk"], [T.SHOAL]: ["slime"], [T.ROAD]: ["bandit", "wolf"]
+};
+const DUNGEON_SPAWN = ["skeleton", "wraith", "golem", "warden_dead", "revenant"];
+
+/* ---------- NPCs & quests ---------- */
+const TOWN_NPCS = {
+  0: [
+    { key: "elder", name: "Elder Maren", art: "elder", col: "#B8A06A", ox: 0, oy: -1 },
+    { key: "smith", name: "Bram the Smith", art: "smith", col: "#8A5A3C", ox: -3, oy: 1 },
+    { key: "healer", name: "Sister Ivo", art: "healer", col: "#7FA8C4", ox: 3, oy: 1 },
+    { key: "waystone", name: "The Waystone", art: "waystone", col: "#57C3B0", ox: 0, oy: 3 }
+  ],
+  1: [
+    { key: "smith", name: "Halgrim's Forge", art: "smith", col: "#8A5A3C", ox: -2, oy: 0 },
+    { key: "healer", name: "Widow Ess", art: "healer", col: "#7FA8C4", ox: 2, oy: 0 },
+    { key: "scout", name: "Scout Delle", art: "elder", col: "#9A7FB8", ox: 0, oy: 2 },
+    { key: "waystone", name: "The Waystone", art: "waystone", col: "#57C3B0", ox: 0, oy: -3 }
+  ],
+  2: [
+    { key: "smith", name: "Coalhand Ruk", art: "smith", col: "#8A5A3C", ox: -2, oy: 1 },
+    { key: "healer", name: "Brother Tam", art: "healer", col: "#7FA8C4", ox: 2, oy: 1 },
+    { key: "scout", name: "Netmender Sol", art: "elder", col: "#9A7FB8", ox: 0, oy: -2 },
+    { key: "waystone", name: "The Waystone", art: "waystone", col: "#57C3B0", ox: 0, oy: 3 }
+  ]
+};
+
+const QUESTS = [
+  { id: "q_beasts", name: "Thin the Wilds", give: "elder", text: "Slay 12 beasts of the open country.", need: 12, kind: "kill", gold: 120, xp: 90 },
+  { id: "q_shrine", name: "Light the Way", give: "elder", text: "Wake any 3 shrines.", need: 3, kind: "shrine", gold: 200, xp: 160 },
+  { id: "q_sigil", name: "The First Sigil", give: "elder", text: "Take a Sigil from any barrow.", need: 1, kind: "sigil", gold: 300, xp: 260 },
+  { id: "q_hunt", name: "Deep Hunting", give: "scout", text: "Slay 20 things that dwell below.", need: 20, kind: "kill", gold: 320, xp: 300 },
+  { id: "q_all", name: "Five Sigils", give: "elder", text: "Gather all 5 Sigils and open the Emberfall.", need: 5, kind: "sigil", gold: 900, xp: 900 }
+];
+
+/* ---------- player ---------- */
+let P = null;
+function newPlayer(name, clsId) {
+  const c = CLASSES.find(x => x.id === clsId) || CLASSES[0];
+  const home = SITES.find(s => s.kind === "town" && s.id === 0);
+  return {
+    name, cls: c.id, lv: 1, xp: 0, next: 60,
+    hp: c.hp, maxHp: c.hp, mp: c.mp, maxMp: c.mp,
+    might: c.might, focus: c.focus, vigor: c.vigor, points: 0,
+    gold: 40, wpn: 0, arm: 0, potHp: 3, potMp: 2,
+    sigils: [], shrines: [], quests: [], flags: {},
+    x: home.tx * TILE + TILE / 2, y: (home.ty + 3) * TILE,
+    dir: 0, realmKind: "overworld", realmId: -1,
+    home: { x: home.tx * TILE + TILE / 2, y: (home.ty + 3) * TILE },
+    time: 6 * 60, playtime: 0, kills: 0, bossDmg: 0, bossDmgSent: 0, deaths: 0,
+    walk: 0, stam: 1, iframe: 0, atkT: 0, spellT: 0, rollT: 0, kbx: 0, kby: 0, dead: false,
+    seen: {}, epoch: SHARED.epoch || 1
+  };
+}
+const pClass = () => CLASSES.find(c => c.id === P.cls) || CLASSES[0];
+const pAtk = () => Math.round((WEAPONS[P.wpn].dmg + P.might * 1.6 + P.lv * 1.2) * pClass().atk);
+const pDef = () => ARMORS[P.arm].def + Math.floor(P.vigor * 0.9);
+const pSpell = () => Math.round(pClass().sd + P.focus * 2.4 + P.lv * 1.1);
+
+/* ---------- actors ---------- */
+let mobs = [], shots = [], fx = [], drops = [], npcs = [];
+let boss = null;
+
+function tierAt(x, y) {
+  if (realm.kind === "dungeon") return clamp(1 + realm.data.id, 1, 5);
+  const d = dist(x / TILE, y / TILE, CX, CY);
+  return clamp(Math.floor(d / 26), 0, 5);
+}
+
+function spawnMob(kind, x, y, tier) {
+  const b = BEASTS[kind];
+  const k = 1 + tier * 0.55;
+  const m = {
+    kind, name: b.name, x, y, r: b.r, art: b.art, col: b.col, tier,
+    hp: Math.round(b.hp * k), maxHp: Math.round(b.hp * k), dmg: Math.round(b.dmg * k),
+    spd: b.spd, xp: Math.round(b.xp * (1 + tier * .45)), gold: Math.round(b.gold * (1 + tier * .6)),
+    aggro: b.aggro, ranged: b.ranged || 0, cd: 0, state: "idle", hurt: 0, vx: 0, vy: 0,
+    wob: Math.random() * 6.283, hx: x, hy: y
+  };
+  mobs.push(m);
+  return m;
+}
+
+function spawnBoss(x, y) {
+  boss = {
+    kind: "wyrm", name: "The Emberfall", x, y, r: 34, art: "wyrm", col: "#E4642B", tier: 6,
+    hp: SHARED.boss.hp, maxHp: SHARED.boss.maxHp, dmg: 34, spd: 62, xp: 1200, gold: 900,
+    aggro: 900, cd: 0, phase: 0, state: "idle", hurt: 0, vx: 0, vy: 0, wob: 0, isBoss: 1
+  };
+  mobs.push(boss);
+  return boss;
+}
+
+/* population of the area around the player */
+let spawnTimer = 0;
+function populate(dt) {
+  spawnTimer -= dt;
+  const cap = realm.kind === "dungeon" ? 16 : 14;
+  const live = mobs.filter(m => !m.isBoss).length;
+  if (spawnTimer > 0 || live >= cap) return;
+  spawnTimer = 0.9;
+  for (let att = 0; att < 24; att++) {
+    const a = Math.random() * 6.283, d = lerp(420, 760, Math.random());
+    const x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    if (tx < 1 || ty < 1 || tx >= realm.w - 1 || ty >= realm.h - 1) continue;
+    if (solidAt(x, y)) continue;
+    if (nearSite(x, y, 8 * TILE)) continue;
+    let pool;
+    if (realm.kind === "dungeon") pool = DUNGEON_SPAWN.slice(0, 2 + realm.data.id);
+    else { pool = BIOME_SPAWN[realm.tileAt(tx, ty)]; if (!pool) continue; }
+    const night = isNight() ? 1 : 0;
+    const kind = pool[Math.floor(Math.random() * pool.length)];
+    spawnMob(kind, x, y, tierAt(x, y) + night);
+    break;
+  }
+  /* cull the far away */
+  mobs = mobs.filter(m => m.isBoss || dist(m.x, m.y, P.x, P.y) < 1500);
+}
+function nearSite(x, y, r) {
+  if (realm.kind !== "overworld") return false;
+  return SITES.some(s => dist(x, y, s.tx * TILE, s.ty * TILE) < r);
+}
+
+/* ---------- damage ---------- */
+function floatText(x, y, text, col, big) {
+  fx.push({ t: "text", x, y, text, col, life: big ? 1.3 : .85, max: big ? 1.3 : .85, big: !!big });
+}
+function ring(x, y, col, r) { fx.push({ t: "ring", x, y, col, r: r || 30, life: .35, max: .35 }); }
+function puff(x, y, col, n) {
+  for (let i = 0; i < (n || 8); i++) {
+    const a = Math.random() * 6.283, s = 40 + Math.random() * 110;
+    fx.push({ t: "bit", x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, col, life: .5 + Math.random() * .4, max: .9, r: 1.6 + Math.random() * 2.4 });
+  }
+}
+
+function hurtMob(m, amount, crit) {
+  m.hp -= amount; m.hurt = .18;
+  floatText(m.x, m.y - m.r - 6, (crit ? "!" : "") + Math.round(amount), crit ? "#FFD98A" : "#FFF1DA", crit);
+  puff(m.x, m.y, m.col, crit ? 12 : 6);
+  if (m.isBoss) { P.bossDmg += amount; SHARED.boss.hp = Math.max(0, SHARED.boss.hp - amount); }
+  if (m.hp <= 0) killMob(m);
+}
+function killMob(m) {
+  mobs = mobs.filter(x => x !== m);
+  puff(m.x, m.y, m.col, 18);
+  ring(m.x, m.y, "rgba(228,100,43,.6)", m.r + 20);
+  if (m.isBoss) { boss = null; onBossSlain(); return; }
+  P.kills++;
+  gainXp(m.xp);
+  if (m.gold > 0) drops.push({ x: m.x, y: m.y, kind: "gold", v: m.gold + Math.floor(Math.random() * 6), b: Math.random() * 6.283 });
+  const r = Math.random();
+  if (r < .07) drops.push({ x: m.x + 8, y: m.y, kind: "potHp", v: 1, b: Math.random() * 6.283 });
+  else if (r < .11) drops.push({ x: m.x + 8, y: m.y, kind: "potMp", v: 1, b: Math.random() * 6.283 });
+  bumpQuests("kill", 1);
+}
+function gainXp(n) {
+  P.xp += n;
+  while (P.xp >= P.next) {
+    P.xp -= P.next; P.lv++; P.points += 3;
+    P.next = Math.round(60 * Math.pow(1.28, P.lv - 1));
+    const c = pClass();
+    P.maxHp += 9 + Math.round(c.hp / 18); P.maxMp += 5 + Math.round(c.mp / 16);
+    P.hp = P.maxHp; P.mp = P.maxMp;
+    ring(P.x, P.y, "rgba(215,166,74,.85)", 60);
+    floatText(P.x, P.y - 40, "LEVEL " + P.lv, "#D7A64A", true);
+    log("You reach <b>level " + P.lv + "</b>. 3 points to spend.");
+  }
+}
+function hurtPlayer(amount, srcx, srcy) {
+  if (P.iframe > 0 || P.dead) return;
+  const dmg = Math.max(1, Math.round(amount - pDef() * 0.55));
+  P.hp -= dmg; P.iframe = .5; P.hurtT = .25;
+  const a = Math.atan2(P.y - srcy, P.x - srcx);
+  P.kbx = Math.cos(a) * 190; P.kby = Math.sin(a) * 190;
+  floatText(P.x, P.y - 34, "-" + dmg, "#FF8E8E");
+  shakeT = .22;
+  if (P.hp <= 0) playerDies();
+}
+function playerDies() {
+  P.hp = 0; P.dead = true; P.deaths++;
+  const lost = Math.floor(P.gold * .25); P.gold -= lost;
+  puff(P.x, P.y, "#A02B36", 28);
+  setTimeout(() => {
+    P.dead = false; P.hp = Math.round(P.maxHp * .55); P.mp = Math.round(P.maxMp * .5);
+    if (realm.kind === "dungeon") enterOverworld();
+    const s = nearestRespawn();
+    P.x = s.x; P.y = s.y; P.iframe = 1.4;
+    log("You wake at <b>" + s.name + "</b>. " + lost + " gold slipped away.");
+    save(0, true);
+  }, 1500);
+}
+function nearestRespawn() {
+  let best = { x: P.home.x, y: P.home.y, name: "Hearthwatch", d: 1e9 };
+  SITES.forEach(s => {
+    if (s.kind !== "town" && !(s.kind === "shrine" && P.shrines.indexOf(s.id) >= 0)) return;
+    const d = dist(P.x, P.y, s.tx * TILE, s.ty * TILE);
+    if (d < best.d) best = { x: s.tx * TILE + TILE / 2, y: (s.ty + 2) * TILE, name: s.name, d };
+  });
+  return best;
+}
+
+/* ---------- player actions ---------- */
+function doAttack() {
+  if (P.atkT > 0 || P.rollT > 0 || P.dead) return;
+  P.atkT = .34; P.atkHit = false;
+  ring(P.x + Math.cos(P.dir) * 22, P.y + Math.sin(P.dir) * 22, "rgba(238,226,198,.35)", 26);
+}
+function resolveSwing() {
+  const reach = 46, arc = 1.25;
+  const targets = boss ? mobs : mobs;
+  targets.slice().forEach(m => {
+    const d = dist(P.x, P.y, m.x, m.y);
+    if (d > reach + m.r) return;
+    let a = Math.atan2(m.y - P.y, m.x - P.x) - P.dir;
+    while (a > Math.PI) a -= 6.283; while (a < -Math.PI) a += 6.283;
+    if (Math.abs(a) > arc) return;
+    const crit = Math.random() < (P.cls === "vagrant" ? .28 : .12);
+    hurtMob(m, pAtk() * (crit ? 1.9 : 1) * (0.9 + Math.random() * 0.25), crit);
+    m.vx += Math.cos(P.dir) * 150; m.vy += Math.sin(P.dir) * 150;
+  });
+}
+function doSpell() {
+  const c = pClass();
+  if (P.mp < c.sc || P.spellT > 0 || P.dead) { if (P.mp < c.sc) floatText(P.x, P.y - 40, "no focus", "#57C3B0"); return; }
+  P.mp -= c.sc; P.spellT = .45;
+  if (P.cls === "warden") {
+    ring(P.x, P.y, "rgba(228,100,43,.75)", 96);
+    mobs.slice().forEach(m => { if (dist(P.x, P.y, m.x, m.y) < 100 + m.r) { hurtMob(m, pSpell(), false); m.vx += (m.x - P.x) * 3; m.vy += (m.y - P.y) * 3; } });
+  } else {
+    const n = P.cls === "vagrant" ? 3 : 1, spread = .22;
+    for (let i = 0; i < n; i++) {
+      const a = P.dir + (i - (n - 1) / 2) * spread;
+      shots.push({ x: P.x + Math.cos(a) * 18, y: P.y + Math.sin(a) * 18, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, dmg: pSpell() / (n > 1 ? 1.7 : 1), life: 1.1, mine: 1, col: "#FFB067", r: 6 });
+    }
+  }
+}
+function doRoll() {
+  if (P.rollT > 0 || P.stam < .34 || P.dead) return;
+  P.rollT = .34; P.stam -= .34; P.iframe = .3;
+  const a = (P.mx || P.my) ? Math.atan2(P.my, P.mx) : P.dir;
+  P.rvx = Math.cos(a) * (P.cls === "vagrant" ? 460 : 380);
+  P.rvy = Math.sin(a) * (P.cls === "vagrant" ? 460 : 380);
+}
+function usePotion(which) {
+  if (which === "hp" && P.potHp > 0 && P.hp < P.maxHp) {
+    P.potHp--; P.hp = Math.min(P.maxHp, P.hp + Math.round(P.maxHp * .45));
+    floatText(P.x, P.y - 36, "+life", "#FF9AA2"); ring(P.x, P.y, "rgba(255,120,130,.5)", 40); return true;
+  }
+  if (which === "mp" && P.potMp > 0 && P.mp < P.maxMp) {
+    P.potMp--; P.mp = Math.min(P.maxMp, P.mp + Math.round(P.maxMp * .55));
+    floatText(P.x, P.y - 36, "+focus", "#8AE7D6"); ring(P.x, P.y, "rgba(87,195,176,.5)", 40); return true;
+  }
+  return false;
+}
+
+/* ---------- mob logic ---------- */
+function updateMobs(dt) {
+  mobs.forEach(m => {
+    m.hurt = Math.max(0, m.hurt - dt);
+    m.wob += dt * 4;
+    const d = dist(m.x, m.y, P.x, P.y);
+    const aggro = m.aggro * (isNight() ? 1.35 : 1);
+    if (P.dead) m.state = "idle";
+    else if (d < aggro) m.state = "chase";
+    else if (d > aggro * 1.8) m.state = "idle";
+
+    let ax = 0, ay = 0;
+    if (m.state === "chase") {
+      const want = m.ranged ? 190 : (m.r + 18);
+      const a = Math.atan2(P.y - m.y, P.x - m.x);
+      const push = d > want ? 1 : (d < want * .7 ? -.8 : 0);
+      ax = Math.cos(a) * push; ay = Math.sin(a) * push;
+      m.cd -= dt;
+      if (m.cd <= 0) {
+        if (m.ranged && d < 340) {
+          m.cd = 1.9;
+          shots.push({ x: m.x, y: m.y, vx: Math.cos(a) * 250, vy: Math.sin(a) * 250, dmg: m.dmg, life: 1.8, mine: 0, col: m.col, r: 6 });
+        } else if (!m.ranged && d < m.r + 30) {
+          m.cd = 1.1; hurtPlayer(m.dmg, m.x, m.y); ring(m.x, m.y, "rgba(255,120,120,.4)", m.r + 16);
+        }
+      }
+      if (m.isBoss) bossBrain(m, dt, d, a);
+    } else {
+      const a = m.wob * .35 + (m.hx * .01);
+      ax = Math.cos(a) * .35; ay = Math.sin(a) * .35;
+      if (dist(m.x, m.y, m.hx, m.hy) > 120) { const b = Math.atan2(m.hy - m.y, m.hx - m.x); ax = Math.cos(b); ay = Math.sin(b); }
+    }
+    mobs.forEach(o => { if (o === m) return; const dd = dist(m.x, m.y, o.x, o.y); if (dd < m.r + o.r && dd > .01) { ax += (m.x - o.x) / dd * .5; ay += (m.y - o.y) / dd * .5; } });
+
+    const sp = m.spd * (m.isBoss ? 1 : slowAt(m.x, m.y));
+    m.vx = m.vx * 0.86 + ax * sp * .5; m.vy = m.vy * 0.86 + ay * sp * .5;
+    moveActor(m, m.vx * dt, m.vy * dt, m.r * .7);
+  });
+}
+function bossBrain(m, dt, d, a) {
+  m.phaseT = (m.phaseT || 0) - dt;
+  const frac = m.hp / m.maxHp;
+  if (m.phaseT <= 0) {
+    m.phaseT = frac < .4 ? 2.0 : 3.0;
+    const n = frac < .4 ? 12 : 8;
+    for (let i = 0; i < n; i++) {
+      const ang = a + (i - n / 2) * .22 + (Math.random() - .5) * .1;
+      shots.push({ x: m.x, y: m.y, vx: Math.cos(ang) * 230, vy: Math.sin(ang) * 230, dmg: m.dmg * .6, life: 2.4, mine: 0, col: "#FF8A3C", r: 8 });
+    }
+    ring(m.x, m.y, "rgba(228,100,43,.6)", 90);
+  }
+}
+function updateShots(dt) {
+  shots = shots.filter(s => {
+    s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
+    if (s.life <= 0) return false;
+    if (solidAt(s.x, s.y)) { puff(s.x, s.y, s.col, 5); return false; }
+    if (s.mine) {
+      for (const m of mobs) if (dist(s.x, s.y, m.x, m.y) < m.r + s.r) { hurtMob(m, s.dmg, false); puff(s.x, s.y, s.col, 6); return false; }
+    } else if (!P.dead && dist(s.x, s.y, P.x, P.y) < 15 + s.r && P.iframe <= 0) {
+      hurtPlayer(s.dmg, s.x, s.y); puff(s.x, s.y, s.col, 6); return false;
+    }
+    return true;
+  });
+}
+function updateDrops(dt) {
+  drops = drops.filter(d => {
+    d.b += dt * 4;
+    const dd = dist(d.x, d.y, P.x, P.y);
+    if (dd < 90) { d.x += (P.x - d.x) * dt * 5; d.y += (P.y - d.y) * dt * 5; }
+    if (dd < 20) {
+      if (d.kind === "gold") { P.gold += d.v; floatText(P.x, P.y - 30, "+" + d.v + "g", "#D7A64A"); }
+      if (d.kind === "potHp") { P.potHp++; floatText(P.x, P.y - 30, "+potion", "#FF9AA2"); }
+      if (d.kind === "potMp") { P.potMp++; floatText(P.x, P.y - 30, "+ether", "#8AE7D6"); }
+      return false;
+    }
+    return true;
+  });
+}
+function updateFx(dt) {
+  fx = fx.filter(f => {
+    f.life -= dt;
+    if (f.t === "bit") { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= .94; f.vy *= .94; }
+    if (f.t === "text") f.y -= dt * 26;
+    return f.life > 0;
+  });
+}
+
+/* ---------- movement with collision ---------- */
+function moveActor(a, dx, dy, r) {
+  r = r || 11;
+  if (!blocked(a.x + dx, a.y, r)) a.x += dx; else a.vx = 0;
+  if (!blocked(a.x, a.y + dy, r)) a.y += dy; else a.vy = 0;
+  a.x = clamp(a.x, TILE, realm.w * TILE - TILE);
+  a.y = clamp(a.y, TILE, realm.h * TILE - TILE);
+}
+function blocked(x, y, r) {
+  return solidAt(x - r, y - r * .5) || solidAt(x + r, y - r * .5) ||
+    solidAt(x - r, y + r * .6) || solidAt(x + r, y + r * .6);
+}
+
+/* ---------- sprites ---------- */
+function drawShadow(g, x, y, w) { g.fillStyle = "rgba(0,0,0,.32)"; g.beginPath(); g.ellipse(x, y, w, w * .38, 0, 0, 6.283); g.fill(); }
+
+function drawCreature(g, m, t) {
+  const bob = Math.sin(m.wob) * 1.6;
+  g.save();
+  drawShadow(g, m.x, m.y + m.r * .8, m.r * .8);
+  if (m.hurt > 0) { g.globalAlpha = .9; g.filter = "brightness(2.4)"; }
+  const x = m.x, y = m.y + bob, c = m.col;
+  switch (m.art) {
+    case "wolf":
+      g.fillStyle = c; g.beginPath(); g.ellipse(x, y, m.r, m.r * .68, 0, 0, 6.283); g.fill();
+      g.beginPath(); g.arc(x + m.r * .75, y - m.r * .28, m.r * .48, 0, 6.283); g.fill();
+      g.beginPath(); g.moveTo(x + m.r * .55, y - m.r * .7); g.lineTo(x + m.r * .78, y - m.r * 1.15); g.lineTo(x + m.r * .95, y - m.r * .6); g.closePath(); g.fill();
+      g.fillStyle = "#22262E"; g.fillRect(x - m.r, y + m.r * .2, m.r * .5, m.r * .5);
+      g.fillStyle = "#FFCF6A"; g.beginPath(); g.arc(x + m.r * .95, y - m.r * .35, 1.9, 0, 6.283); g.fill(); break;
+    case "boar":
+      g.fillStyle = c; g.beginPath(); g.ellipse(x, y, m.r * 1.05, m.r * .78, 0, 0, 6.283); g.fill();
+      g.beginPath(); g.arc(x + m.r * .85, y, m.r * .5, 0, 6.283); g.fill();
+      g.strokeStyle = "#E8DFC8"; g.lineWidth = 2; g.beginPath(); g.moveTo(x + m.r * 1.2, y); g.lineTo(x + m.r * 1.45, y - m.r * .5); g.stroke();
+      g.fillStyle = "rgba(0,0,0,.3)"; g.fillRect(x - m.r * .6, y - m.r * .8, m.r * 1.1, m.r * .35); break;
+    case "slime":
+      g.fillStyle = c; g.beginPath();
+      g.ellipse(x, y + m.r * .2, m.r * (1 + Math.sin(m.wob) * .06), m.r * (.8 - Math.sin(m.wob) * .08), 0, 0, 6.283); g.fill();
+      g.fillStyle = "rgba(255,255,255,.28)"; g.beginPath(); g.arc(x - m.r * .3, y - m.r * .2, m.r * .22, 0, 6.283); g.fill();
+      g.fillStyle = "#101018"; g.beginPath(); g.arc(x - m.r * .3, y + m.r * .15, 2.2, 0, 6.283); g.arc(x + m.r * .3, y + m.r * .15, 2.2, 0, 6.283); g.fill(); break;
+    case "human": case "skeleton":
+      g.fillStyle = m.art === "skeleton" ? "#D8D0BC" : c;
+      g.beginPath(); g.ellipse(x, y + 2, m.r * .62, m.r * .82, 0, 0, 6.283); g.fill();
+      g.fillStyle = m.art === "skeleton" ? "#EDE6D2" : "#D9B48C";
+      g.beginPath(); g.arc(x, y - m.r * .82, m.r * .42, 0, 6.283); g.fill();
+      g.fillStyle = "#14161E"; g.beginPath(); g.arc(x - 3, y - m.r * .85, 1.7, 0, 6.283); g.arc(x + 3, y - m.r * .85, 1.7, 0, 6.283); g.fill();
+      g.strokeStyle = "#B9B2A0"; g.lineWidth = 2.6; g.beginPath();
+      g.moveTo(x + m.r * .55, y); g.lineTo(x + m.r * 1.15, y - m.r * .7); g.stroke(); break;
+    case "spriggan":
+      g.fillStyle = c; g.beginPath(); g.ellipse(x, y, m.r * .7, m.r * .95, 0, 0, 6.283); g.fill();
+      g.strokeStyle = "#2A4E31"; g.lineWidth = 3; g.beginPath();
+      g.moveTo(x, y - m.r * .7); g.lineTo(x - m.r * .8, y - m.r * 1.5);
+      g.moveTo(x, y - m.r * .7); g.lineTo(x + m.r * .8, y - m.r * 1.4); g.stroke();
+      g.fillStyle = "#C9E86A"; g.beginPath(); g.arc(x - 3.5, y - m.r * .3, 2.2, 0, 6.283); g.arc(x + 3.5, y - m.r * .3, 2.2, 0, 6.283); g.fill(); break;
+    case "scarab":
+      g.fillStyle = c; g.beginPath(); g.ellipse(x, y, m.r * .95, m.r * .7, 0, 0, 6.283); g.fill();
+      g.strokeStyle = "#3A2A12"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(x, y - m.r * .65); g.lineTo(x, y + m.r * .65); g.stroke();
+      g.fillStyle = "rgba(255,235,170,.35)"; g.beginPath(); g.ellipse(x - m.r * .3, y - m.r * .2, m.r * .3, m.r * .18, 0, 0, 6.283); g.fill(); break;
+    case "wraith": {
+      const a2 = .55 + Math.sin(m.wob) * .12;
+      g.globalAlpha *= a2 + .25;
+      g.fillStyle = c; g.beginPath();
+      g.moveTo(x, y - m.r * 1.1); g.quadraticCurveTo(x + m.r, y, x + m.r * .5, y + m.r);
+      g.quadraticCurveTo(x, y + m.r * .5, x - m.r * .5, y + m.r);
+      g.quadraticCurveTo(x - m.r, y, x, y - m.r * 1.1); g.fill();
+      g.globalAlpha = 1;
+      g.fillStyle = "#FFF3CC"; g.beginPath(); g.arc(x - 4, y - m.r * .45, 2.4, 0, 6.283); g.arc(x + 4, y - m.r * .45, 2.4, 0, 6.283); g.fill(); break;
+    }
+    case "golem":
+      g.fillStyle = c; g.fillRect(x - m.r * .8, y - m.r * .7, m.r * 1.6, m.r * 1.5);
+      g.fillStyle = shade(c, 1.25); g.fillRect(x - m.r * .8, y - m.r * .7, m.r * 1.6, m.r * .3);
+      g.fillStyle = "#57C3B0"; g.beginPath(); g.arc(x - 5, y - m.r * .3, 2.6, 0, 6.283); g.arc(x + 5, y - m.r * .3, 2.6, 0, 6.283); g.fill();
+      g.fillStyle = shade(c, .7); g.fillRect(x - m.r * 1.15, y - m.r * .4, m.r * .34, m.r * 1.0);
+      g.fillRect(x + m.r * .81, y - m.r * .4, m.r * .34, m.r * 1.0); break;
+    case "wyrm": {
+      const pulse = 1 + Math.sin(m.wob * 1.4) * .04;
+      g.fillStyle = "rgba(228,100,43,.18)"; g.beginPath(); g.arc(x, y, m.r * 2.1 * pulse, 0, 6.283); g.fill();
+      g.fillStyle = "#3A1B12"; g.beginPath(); g.ellipse(x, y, m.r * 1.1, m.r * .82, 0, 0, 6.283); g.fill();
+      g.fillStyle = c; g.beginPath(); g.ellipse(x, y - 4, m.r * .95, m.r * .68, 0, 0, 6.283); g.fill();
+      for (let i = 0; i < 5; i++) {
+        const ang = m.wob * .5 + i * 1.256;
+        g.fillStyle = "rgba(255,160,80,.55)";
+        g.beginPath(); g.arc(x + Math.cos(ang) * m.r * 1.5, y + Math.sin(ang) * m.r * 1.5, 5, 0, 6.283); g.fill();
+      }
+      g.fillStyle = "#1A0C08"; g.beginPath();
+      g.moveTo(x - m.r * .6, y - m.r * .8); g.lineTo(x - m.r * .3, y - m.r * 1.5); g.lineTo(x - m.r * .05, y - m.r * .75); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(x + m.r * .6, y - m.r * .8); g.lineTo(x + m.r * .3, y - m.r * 1.5); g.lineTo(x + m.r * .05, y - m.r * .75); g.closePath(); g.fill();
+      g.fillStyle = "#FFE9A8"; g.beginPath(); g.arc(x - 9, y - 8, 4, 0, 6.283); g.arc(x + 9, y - 8, 4, 0, 6.283); g.fill(); break;
+    }
+    default:
+      g.fillStyle = c; g.beginPath(); g.arc(x, y, m.r, 0, 6.283); g.fill();
+  }
+  g.filter = "none"; g.globalAlpha = 1;
+  /* health pip */
+  if (m.hp < m.maxHp) {
+    const w = m.isBoss ? 0 : m.r * 1.8;
+    if (w) {
+      g.fillStyle = "rgba(0,0,0,.55)"; g.fillRect(x - w / 2, y - m.r - 12, w, 4);
+      g.fillStyle = "#C7434F"; g.fillRect(x - w / 2, y - m.r - 12, w * (m.hp / m.maxHp), 4);
+    }
+  }
+  g.restore();
+}
+
+function drawPlayer(g) {
+  const bob = P.rollT > 0 ? 0 : Math.sin(P.walk) * 1.8;
+  const x = P.x, y = P.y + bob;
+  drawShadow(g, P.x, P.y + 12, 11);
+  g.save();
+  if (P.iframe > 0 && Math.floor(P.iframe * 18) % 2 === 0) g.globalAlpha = .5;
+  if (P.rollT > 0) { g.translate(x, y); g.rotate((1 - P.rollT / .34) * 6.283 * (P.cls === "vagrant" ? 1.4 : 1)); g.translate(-x, -y); }
+  const c = pClass();
+  const cloak = P.cls === "warden" ? "#4A5A78" : P.cls === "emberwright" ? "#7A3A2A" : "#4E5A3A";
+  const trim = P.cls === "warden" ? "#8FA6C8" : P.cls === "emberwright" ? "#E4642B" : "#C9B86A";
+  /* body */
+  g.fillStyle = cloak; g.beginPath(); g.ellipse(x, y + 2, 9.5, 12, 0, 0, 6.283); g.fill();
+  g.fillStyle = trim; g.fillRect(x - 9.5, y + 4, 19, 3);
+  /* head */
+  g.fillStyle = "#E3BE95"; g.beginPath(); g.arc(x, y - 11, 6.6, 0, 6.283); g.fill();
+  g.fillStyle = "#2A2230"; g.beginPath(); g.arc(x, y - 14, 6.6, Math.PI, 0); g.fill();
+  /* facing marker: weapon / focus */
+  const wx = x + Math.cos(P.dir) * 13, wy = y + Math.sin(P.dir) * 13;
+  if (P.atkT > 0) {
+    const k = 1 - P.atkT / .34, sweep = lerp(-1.15, 1.15, k);
+    g.strokeStyle = "rgba(255,244,214,.9)"; g.lineWidth = 3.4; g.lineCap = "round";
+    g.beginPath(); g.arc(x, y, 30, P.dir + sweep - .5, P.dir + sweep + .3); g.stroke();
+    g.strokeStyle = "rgba(228,100,43,.5)"; g.lineWidth = 8;
+    g.beginPath(); g.arc(x, y, 30, P.dir + sweep - .35, P.dir + sweep + .15); g.stroke();
+  } else {
+    g.strokeStyle = "#CBBFA4"; g.lineWidth = 3; g.lineCap = "round";
+    g.beginPath(); g.moveTo(x + Math.cos(P.dir) * 6, y + Math.sin(P.dir) * 6); g.lineTo(wx, wy); g.stroke();
+  }
+  if (P.spellT > 0) { g.fillStyle = "rgba(255,176,103,.6)"; g.beginPath(); g.arc(wx, wy, 6 * (P.spellT / .45 + .4), 0, 6.283); g.fill(); }
+  g.restore();
+}
+
+function drawNpc(g, n) {
+  drawShadow(g, n.x, n.y + 11, 10);
+  const x = n.x, y = n.y + Math.sin(n.wob) * 1.2;
+  if (n.art === "waystone") {
+    const glow = .5 + Math.sin(n.wob * 1.2) * .2;
+    g.fillStyle = "rgba(87,195,176," + (glow * .3) + ")"; g.beginPath(); g.arc(x, y - 6, 34, 0, 6.283); g.fill();
+    g.fillStyle = "#3A4152"; g.beginPath();
+    g.moveTo(x - 11, y + 12); g.lineTo(x - 8, y - 22); g.lineTo(x + 8, y - 26); g.lineTo(x + 11, y + 12); g.closePath(); g.fill();
+    g.fillStyle = "rgba(87,195,176," + (.55 + glow * .4) + ")";
+    g.beginPath(); g.arc(x, y - 6, 5.5, 0, 6.283); g.fill();
+    g.strokeStyle = "rgba(238,226,198,.4)"; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(x - 5, y + 2); g.lineTo(x + 5, y + 2); g.moveTo(x - 4, y + 6); g.lineTo(x + 4, y + 6); g.stroke();
+    return;
+  }
+  g.fillStyle = n.col; g.beginPath(); g.ellipse(x, y + 2, 9, 11.5, 0, 0, 6.283); g.fill();
+  g.fillStyle = "#E3BE95"; g.beginPath(); g.arc(x, y - 10, 6.2, 0, 6.283); g.fill();
+  if (n.art === "elder") { g.fillStyle = "#DDD6C4"; g.beginPath(); g.arc(x, y - 12, 6.6, Math.PI, 0); g.fill(); g.fillRect(x - 5, y - 6, 10, 6); }
+  if (n.art === "smith") { g.fillStyle = "#3A2E28"; g.beginPath(); g.arc(x, y - 13, 6.4, Math.PI, 0); g.fill(); g.fillStyle = "#8A8478"; g.fillRect(x + 8, y - 6, 8, 4); }
+  if (n.art === "healer") { g.fillStyle = "#E7EDF3"; g.beginPath(); g.arc(x, y - 13, 6.8, Math.PI, 0); g.fill(); g.fillStyle = "#57C3B0"; g.fillRect(x - 1.5, y - 2, 3, 8); g.fillRect(x - 4, y + 1, 8, 3); }
+  /* name plate */
+  g.font = "600 11px 'IBM Plex Mono', monospace"; g.textAlign = "center";
+  g.fillStyle = "rgba(0,0,0,.55)"; const w = g.measureText(n.name).width + 10;
+  g.fillRect(x - w / 2, y - 34, w, 14);
+  g.fillStyle = "#EEE2C6"; g.fillText(n.name, x, y - 24);
+  g.textAlign = "left";
+}
+/* ============================================================
+   p4: view, input, world flow, UI, saves, the shared Chronicle
+   ============================================================ */
+
+const cv = document.getElementById("world");
+const ctx = cv.getContext("2d");
+const $ = id => document.getElementById(id);
+
+let VW = 0, VH = 0, ZOOM = 1, DPR = 1, shakeT = 0;
+let running = false, paused = true, lastT = 0;
+let cam = { x: 0, y: 0 };
+
+/* ---------- responsive view ---------- */
+function fit() {
+  const w = window.innerWidth, h = window.innerHeight;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+  VW = w; VH = h;
+  /* keep a consistent slice of world on screen at any size:
+     phones see ~17 tiles across, desktops ~30, never fewer than 13 */
+  const target = clamp(Math.min(w, h) / 15, 26, 56);
+  ZOOM = clamp(target / TILE, 0.82, 2.0);
+  if (w < 560 || h < 480) ZOOM = clamp(ZOOM * 1.06, .82, 2.2);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  document.getElementById("touch").classList.toggle("on", TOUCH && running);
+}
+const TOUCH = window.matchMedia("(hover: none)").matches || "ontouchstart" in window;
+window.addEventListener("resize", fit);
+window.addEventListener("orientationchange", () => setTimeout(fit, 180));
+
+/* ---------- input ---------- */
+const keys = Object.create(null);
+let stick = { active: false, id: null, dx: 0, dy: 0 };
+const held = { atk: false, spell: false };
+
+addEventListener("keydown", e => {
+  if (e.repeat) { return; }
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].indexOf(k) >= 0) e.preventDefault();
+  if (!running) return;
+  if (k === "escape" || k === "p") togglePause();
+  if (paused) return;
+  if (k === " ") doAttack();
+  if (k === "q" || k === "f") doSpell();
+  if (k === "shift") doRoll();
+  if (k === "e") interact();
+  if (k === "1") usePotion("hp");
+  if (k === "2") usePotion("mp");
+  if (k === "m") openMenu("map");
+});
+addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
+
+function bindHold(el, on, off) {
+  el.addEventListener("pointerdown", e => { e.preventDefault(); el.setPointerCapture(e.pointerId); on(); });
+  el.addEventListener("pointerup", e => { e.preventDefault(); if (off) off(); });
+  el.addEventListener("pointercancel", () => { if (off) off(); });
+}
+bindHold($("tbAtk"), () => { held.atk = true; doAttack(); }, () => held.atk = false);
+bindHold($("tbSpell"), () => { held.spell = true; doSpell(); }, () => held.spell = false);
+bindHold($("tbRoll"), doRoll);
+bindHold($("tbUse"), interact);
+
+const stickEl = $("stick"), nub = $("stickNub");
+stickEl.addEventListener("pointerdown", e => {
+  e.preventDefault(); stick.active = true; stick.id = e.pointerId;
+  stickEl.setPointerCapture(e.pointerId); moveStick(e);
+});
+stickEl.addEventListener("pointermove", e => { if (stick.active && e.pointerId === stick.id) { e.preventDefault(); moveStick(e); } });
+const endStick = () => { stick.active = false; stick.dx = stick.dy = 0; nub.style.transform = ""; };
+stickEl.addEventListener("pointerup", endStick);
+stickEl.addEventListener("pointercancel", endStick);
+function moveStick(e) {
+  const r = stickEl.getBoundingClientRect();
+  let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+  let dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+  const m = Math.hypot(dx, dy);
+  if (m > 1) { dx /= m; dy /= m; }
+  stick.dx = Math.abs(dx) < .18 ? 0 : dx; stick.dy = Math.abs(dy) < .18 ? 0 : dy;
+  nub.style.transform = "translate(" + (stick.dx * r.width * .3) + "px," + (stick.dy * r.height * .3) + "px)";
+}
+/* tap the world to face + strike (desktop mouse too) */
+cv.addEventListener("pointerdown", e => {
+  if (!running || paused) return;
+  const wx = cam.x + (e.clientX - VW / 2) / ZOOM, wy = cam.y + (e.clientY - VH / 2) / ZOOM;
+  P.dir = Math.atan2(wy - P.y, wx - P.x);
+  if (e.pointerType === "mouse") { if (e.button === 2) doSpell(); else doAttack(); }
+});
+cv.addEventListener("contextmenu", e => e.preventDefault());
+
+/* ---------- log ---------- */
+function log(html) {
+  const el = document.createElement("div");
+  el.className = "logline"; el.innerHTML = html;
+  $("log").appendChild(el);
+  while ($("log").children.length > 5) $("log").removeChild($("log").firstChild);
+  setTimeout(() => el.classList.add("gone"), 5200);
+  setTimeout(() => el.remove(), 6000);
+}
+let ztT = 0;
+function zoneToast(name, sub) {
+  $("ztName").textContent = name; $("ztSub").textContent = sub || "";
+  $("zoneToast").classList.add("show"); ztT = 2.6;
+}
+
+/* ---------- day / night ---------- */
+const isNight = () => P && (P.time < 5 * 60 || P.time > 20 * 60);
+function clockStr() {
+  const h = Math.floor(P.time / 60) % 24, m = Math.floor(P.time % 60);
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+function phaseName() {
+  const h = P.time / 60;
+  return h < 5 ? "Night" : h < 8 ? "Dawn" : h < 17 ? "Day" : h < 20 ? "Dusk" : "Night";
+}
+
+/* ---------- realm transitions ---------- */
+function enterOverworld() {
+  realm = overworldRealm(); P.realmKind = "overworld"; P.realmId = -1;
+  mobs = []; shots = []; drops = []; boss = null;
+  refreshNpcs();
+}
+function enterDungeon(site) {
+  const d = genDungeon(site.id);
+  realm = dungeonRealm(d);
+  P.realmKind = "dungeon"; P.realmId = site.id;
+  P.retX = P.x; P.retY = P.y;
+  P.x = (d.entry.cx + .5) * TILE; P.y = (d.entry.cy + .5) * TILE;
+  mobs = []; shots = []; drops = []; npcs = []; boss = null;
+  /* seed the boss room with a warden and the sigil */
+  const b = d.boss;
+  if (P.sigils.indexOf(site.id) < 0) {
+    for (let i = 0; i < 3; i++) spawnMob(DUNGEON_SPAWN[(site.id + i) % DUNGEON_SPAWN.length], (b.cx + i - 1 + .5) * TILE, (b.cy + .5) * TILE, 2 + site.id);
+  }
+  zoneToast(site.name, "barrow · depth " + (site.id + 1));
+  log("You descend into <b>" + site.name + "</b>.");
+}
+function leaveDungeon() {
+  const site = SITES.find(s => s.kind === "dungeon" && s.id === P.realmId);
+  enterOverworld();
+  P.x = site.tx * TILE + TILE / 2; P.y = (site.ty + 3) * TILE;
+  zoneToast("The surface", "daylight, of a sort");
+}
+function refreshNpcs() {
+  npcs = [];
+  if (realm.kind !== "overworld") return;
+  SITES.filter(s => s.kind === "town").forEach(s => {
+    if (dist(P.x, P.y, s.tx * TILE, s.ty * TILE) > 900) return;
+    s.npcs.forEach(n => npcs.push({ ...n, x: n.tx * TILE + TILE / 2, y: n.ty * TILE + TILE / 2, wob: Math.random() * 6, town: s }));
+  });
+}
+
+/* ---------- interaction ---------- */
+function nearestThing() {
+  let best = null, bd = 62;
+  npcs.forEach(n => { const d = dist(P.x, P.y, n.x, n.y); if (d < bd) { bd = d; best = { t: "npc", n }; } });
+  if (realm.kind === "overworld") {
+    SITES.forEach(s => {
+      if (s.kind === "town") return;
+      const d = dist(P.x, P.y, s.tx * TILE, s.ty * TILE);
+      if (d < (s.kind === "lair" ? 110 : 70) && d < bd + 40) { bd = d; best = { t: s.kind, s }; }
+    });
+  } else if (realm.data) {
+    const e = realm.data.entry, b = realm.data.boss;
+    if (dist(P.x, P.y, (e.cx + .5) * TILE, (e.cy + .5) * TILE) < 60) best = { t: "exit" };
+    else if (P.sigils.indexOf(realm.data.id) < 0 && dist(P.x, P.y, (b.cx + .5) * TILE, (b.cy + .5) * TILE) < 70) best = { t: "sigil" };
+  }
+  return best;
+}
+function interact() {
+  if (paused || P.dead || $("dialogue").classList.contains("on")) return;
+  const it = nearestThing();
+  if (!it) { return; }
+  if (it.t === "npc") return talkTo(it.n);
+  if (it.t === "shrine") return useShrine(it.s);
+  if (it.t === "dungeon") return enterDungeon(it.s);
+  if (it.t === "exit") return leaveDungeon();
+  if (it.t === "sigil") return takeSigil();
+  if (it.t === "lair") return approachLair(it.s);
+}
+function takeSigil() {
+  const id = realm.data.id;
+  if (mobs.length) { log("Something still guards it."); return; }
+  P.sigils.push(id);
+  const site = SITES.find(s => s.kind === "dungeon" && s.id === id);
+  ring(P.x, P.y, "rgba(215,166,74,.9)", 120);
+  floatText(P.x, P.y - 40, "SIGIL", "#D7A64A", true);
+  log("You take the <b>Sigil of " + site.name.replace(/^The /, "") + "</b>.");
+  gainXp(240 + id * 90);
+  bumpQuests("sigil", 1);
+  save(0, true);
+}
+function useShrine(s) {
+  if (P.shrines.indexOf(s.id) >= 0) {
+    P.hp = P.maxHp; P.mp = P.maxMp;
+    ring(P.x, P.y, "rgba(87,195,176,.7)", 90);
+    log("The shrine mends you.");
+    return;
+  }
+  P.shrines.push(s.id);
+  P.hp = P.maxHp; P.mp = P.maxMp; P.maxHp += 4; P.maxMp += 3;
+  ring(P.x, P.y, "rgba(87,195,176,.9)", 140);
+  floatText(P.x, P.y - 40, "SHRINE WOKEN", "#57C3B0", true);
+  const lit = SHARED.shrines[s.id];
+  log("You wake <b>" + s.name + "</b>." + (lit ? " " + lit.by + " woke it before you." : " No one had touched it."));
+  bumpQuests("shrine", 1);
+  gainXp(80);
+  save(0, true);
+}
+function approachLair(s) {
+  if (SHARED.boss.slain) { log("The Emberfall is cold. It was ended in this epoch."); return; }
+  if (P.sigils.length < 5) {
+    dialogue("The Sealed Caldera",
+      "Five sockets ring the pit, and " + P.sigils.length + " hold a Sigil. The rest are dark. Nothing you do here will matter until all five are set.",
+      [{ t: "Step back", f: closeDialogue }]);
+    return;
+  }
+  if (!boss) {
+    spawnBoss(s.tx * TILE + TILE / 2, s.ty * TILE + TILE / 2);
+    zoneToast("The Emberfall", "it has been waiting");
+    log("The sockets take the Sigils. Something enormous uncoils.");
+  }
+}
+function onBossSlain() {
+  SHARED.boss.slain = true; SHARED.boss.hp = 0;
+  P.flags.slayer = true;
+  zoneToast("The Emberfall falls", "the sky goes quiet");
+  log("<b>The Emberfall is slain.</b> Carry word to a Waystone.");
+  gainXp(3000); P.gold += 2000;
+  save(0, true);
+}
+
+/* ---------- quests ---------- */
+function bumpQuests(kind, n) {
+  P.quests.forEach(q => {
+    if (q.done) return;
+    const def = QUESTS.find(d => d.id === q.id);
+    if (def.kind !== kind) return;
+    q.n = (q.n || 0) + n;
+    if (kind === "sigil") q.n = P.sigils.length;
+    if (kind === "shrine") q.n = P.shrines.length;
+    if (q.n >= def.need) { q.done = true; log("<b>" + def.name + "</b> — complete. Return for your due."); }
+  });
+  drawQuestCards();
+}
+function drawQuestCards() {
+  const wrap = $("quests"); wrap.innerHTML = "";
+  P.quests.filter(q => !q.claimed).slice(0, 3).forEach(q => {
+    const def = QUESTS.find(d => d.id === q.id);
+    const el = document.createElement("div");
+    el.className = "qcard" + (q.done ? " done" : "");
+    el.innerHTML = "<h4>" + def.name + "</h4><p>" + (q.done ? "COMPLETE — return to " + def.give : Math.min(q.n || 0, def.need) + " / " + def.need) + "</p>";
+    wrap.appendChild(el);
+  });
+}
+
+/* ---------- dialogue ---------- */
+function dialogue(who, text, opts) {
+  $("dlgWho").textContent = who;
+  $("dlgText").textContent = text;
+  const box = $("dlgOpts"); box.innerHTML = "";
+  (opts || [{ t: "Leave", f: closeDialogue }]).forEach(o => {
+    const b = document.createElement("button");
+    b.className = "btn" + (o.p ? " primary" : ""); b.textContent = o.t;
+    if (o.dis) b.disabled = true;
+    b.onclick = o.f; box.appendChild(b);
+  });
+  $("dialogue").classList.add("on");
+}
+function closeDialogue() { $("dialogue").classList.remove("on"); }
+
+function talkTo(n) {
+  if (n.key === "waystone") return waystoneDialogue();
+  if (n.key === "smith") return smithDialogue(n);
+  if (n.key === "healer") return healerDialogue(n);
+  return questDialogue(n);
+}
+function questDialogue(n) {
+  const mine = P.quests.filter(q => QUESTS.find(d => d.id === q.id).give === n.key);
+  const doneOne = mine.find(q => q.done && !q.claimed);
+  if (doneOne) {
+    const def = QUESTS.find(d => d.id === doneOne.id);
+    return dialogue(n.name, "“" + def.name + ". You did it. Take this, and my thanks.”", [{
+      t: "Accept " + def.gold + " gold", p: 1, f: () => {
+        doneOne.claimed = true; P.gold += def.gold; gainXp(def.xp);
+        log("Reward: <b>" + def.gold + " gold</b>, " + def.xp + " xp."); drawQuestCards(); closeDialogue(); save(0, true);
+      }
+    }]);
+  }
+  const avail = QUESTS.filter(d => d.give === n.key && !P.quests.some(q => q.id === d.id))
+    .filter(d => d.id !== "q_all" || P.sigils.length >= 1);
+  if (!avail.length) {
+    const lines = {
+      elder: "“The Emberfall stirs south of everything. Sigils, shrines, then the pit. In that order, if you'd like to live.”",
+      scout: "“I mapped as far as the ash and turned back. Whatever's down there doesn't like maps.”"
+    };
+    return dialogue(n.name, lines[n.key] || "“Nothing for you today.”", null);
+  }
+  const d = avail[0];
+  dialogue(n.name, "“" + d.text + " Do that and I'll see you paid.”", [
+    { t: "Take the work", p: 1, f: () => { P.quests.push({ id: d.id, n: d.kind === "sigil" ? P.sigils.length : d.kind === "shrine" ? P.shrines.length : 0 }); bumpQuests(d.kind, 0); log("New charge: <b>" + d.name + "</b>."); closeDialogue(); } },
+    { t: "Not now", f: closeDialogue }
+  ]);
+}
+function smithDialogue(n) {
+  const w = WEAPONS[P.wpn + 1], a = ARMORS[P.arm + 1];
+  const opts = [];
+  if (w) opts.push({ t: w.n + " · " + w.cost + "g", dis: P.gold < w.cost, p: 1, f: () => { P.gold -= w.cost; P.wpn++; log("You take up the <b>" + w.n + "</b>."); smithDialogue(n); save(0, true); } });
+  if (a) opts.push({ t: a.n + " · " + a.cost + "g", dis: P.gold < a.cost, f: () => { P.gold -= a.cost; P.arm++; log("You buckle on <b>" + a.n + "</b>."); smithDialogue(n); save(0, true); } });
+  opts.push({ t: "Potion · 45g", dis: P.gold < 45, f: () => { P.gold -= 45; P.potHp++; smithDialogue(n); } });
+  opts.push({ t: "Done", f: closeDialogue });
+  dialogue(n.name, "“Steel and stitching. " + P.gold + " gold on you. Now: " + WEAPONS[P.wpn].n + ", " + ARMORS[P.arm].n + ".”", opts);
+}
+function healerDialogue(n) {
+  const cost = Math.max(10, (P.maxHp - P.hp) * 2);
+  dialogue(n.name, "“Sit. " + (P.hp < P.maxHp ? "You're carrying " + (P.maxHp - P.hp) + " points of hurt." : "You're whole, for once.") + "”", [
+    { t: "Be mended · " + cost + "g", p: 1, dis: P.gold < cost || P.hp >= P.maxHp, f: () => { P.gold -= cost; P.hp = P.maxHp; P.mp = P.maxMp; log("Mended."); closeDialogue(); } },
+    { t: "Ether · 60g", dis: P.gold < 60, f: () => { P.gold -= 60; P.potMp++; healerDialogue(n); } },
+    { t: "Leave", f: closeDialogue }
+  ]);
+}
+
+/* ---------- render ---------- */
+function render(dt) {
+  const g = ctx;
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.fillStyle = "#05060A"; g.fillRect(0, 0, VW, VH);
+
+  let sx = 0, sy = 0;
+  if (shakeT > 0) { sx = (Math.random() - .5) * shakeT * 26; sy = (Math.random() - .5) * shakeT * 26; }
+  g.save();
+  g.translate(VW / 2 + sx, VH / 2 + sy);
+  g.scale(ZOOM, ZOOM);
+  g.translate(-cam.x, -cam.y);
+
+  /* terrain chunks */
+  const halfW = VW / 2 / ZOOM, halfH = VH / 2 / ZOOM;
+  const c0x = Math.floor((cam.x - halfW) / CHPX), c1x = Math.floor((cam.x + halfW) / CHPX);
+  const c0y = Math.floor((cam.y - halfH) / CHPX), c1y = Math.floor((cam.y + halfH) / CHPX);
+  for (let cy = c0y; cy <= c1y; cy++) for (let cx = c0x; cx <= c1x; cx++) {
+    if (cx < 0 || cy < 0 || cx * CH >= realm.w || cy * CH >= realm.h) continue;
+    g.drawImage(chunkTerrain(cx, cy), cx * CHPX, cy * CHPX);
+  }
+  for (let cy = c0y - 1; cy <= c1y + 1; cy++) for (let cx = c0x - 1; cx <= c1x + 1; cx++) {
+    if (cx < 0 || cy < 0 || cx * CH >= realm.w || cy * CH >= realm.h) continue;
+    g.drawImage(chunkProps(cx, cy), cx * CHPX - PM, cy * CHPX - PM);
+  }
+
+  /* site glyphs */
+  if (realm.kind === "overworld") {
+    SITES.forEach(s => {
+      const x = s.tx * TILE + TILE / 2, y = s.ty * TILE + TILE / 2;
+      if (Math.abs(x - cam.x) > halfW + 200 || Math.abs(y - cam.y) > halfH + 200) return;
+      if (s.kind === "shrine") {
+        const lit = P.shrines.indexOf(s.id) >= 0, other = !!SHARED.shrines[s.id];
+        const pul = .5 + Math.sin(now * 2 + s.id) * .2;
+        g.fillStyle = lit ? "rgba(87,195,176," + (.28 * pul + .12) + ")" : other ? "rgba(215,166,74,.14)" : "rgba(120,120,140,.10)";
+        g.beginPath(); g.arc(x, y, 44, 0, 6.283); g.fill();
+        g.fillStyle = "#3A4152"; g.beginPath();
+        g.moveTo(x - 9, y + 14); g.lineTo(x - 6, y - 18); g.lineTo(x + 6, y - 20); g.lineTo(x + 9, y + 14); g.closePath(); g.fill();
+        g.fillStyle = lit ? "#57C3B0" : other ? "#D7A64A" : "#4A5060";
+        g.beginPath(); g.arc(x, y - 4, 5, 0, 6.283); g.fill();
+      }
+      if (s.kind === "dungeon") {
+        g.fillStyle = "#0B0C12"; g.beginPath(); g.ellipse(x, y + 4, 20, 14, 0, 0, 6.283); g.fill();
+        g.fillStyle = "#2A2634";
+        g.beginPath(); g.moveTo(x - 24, y + 10); g.lineTo(x - 17, y - 16); g.lineTo(x + 17, y - 16); g.lineTo(x + 24, y + 10); g.closePath(); g.fill();
+        g.fillStyle = "#06070B"; g.beginPath(); g.moveTo(x - 12, y + 10); g.lineTo(x - 9, y - 8); g.lineTo(x + 9, y - 8); g.lineTo(x + 12, y + 10); g.closePath(); g.fill();
+        if (P.sigils.indexOf(s.id) >= 0) { g.fillStyle = "#D7A64A"; g.beginPath(); g.arc(x, y - 22, 4, 0, 6.283); g.fill(); }
+      }
+      if (s.kind === "lair") {
+        const pul = .5 + Math.sin(now * 1.4) * .3;
+        g.fillStyle = SHARED.boss.slain ? "rgba(80,90,110,.16)" : "rgba(228,100,43," + (.10 + pul * .16) + ")";
+        g.beginPath(); g.arc(x, y, 150, 0, 6.283); g.fill();
+        g.fillStyle = "#120A08"; g.beginPath(); g.arc(x, y, 52, 0, 6.283); g.fill();
+        g.strokeStyle = SHARED.boss.slain ? "#4A4A56" : "#E4642B"; g.lineWidth = 3;
+        g.beginPath(); g.arc(x, y, 60, 0, 6.283); g.stroke();
+        for (let i = 0; i < 5; i++) {
+          const a = i / 5 * 6.283 - 1.57;
+          g.fillStyle = P.sigils.length > i ? "#D7A64A" : "#2E3040";
+          g.beginPath(); g.arc(x + Math.cos(a) * 74, y + Math.sin(a) * 74, 7, 0, 6.283); g.fill();
+        }
+      }
+    });
+  }
+
+  /* ground drops */
+  drops.forEach(d => {
+    const b = Math.sin(d.b) * 2;
+    drawShadow(g, d.x, d.y + 6, 5);
+    if (d.kind === "gold") { g.fillStyle = "#D7A64A"; g.beginPath(); g.arc(d.x, d.y + b, 5, 0, 6.283); g.fill(); g.fillStyle = "rgba(255,240,200,.6)"; g.beginPath(); g.arc(d.x - 1.5, d.y + b - 1.5, 1.8, 0, 6.283); g.fill(); }
+    else {
+      g.fillStyle = d.kind === "potHp" ? "#C7434F" : "#2E9E8C";
+      g.fillRect(d.x - 4, d.y + b - 5, 8, 10); g.fillStyle = "#EEE2C6"; g.fillRect(d.x - 2, d.y + b - 8, 4, 3);
+    }
+  });
+
+  /* actors sorted by y */
+  const actors = [];
+  npcs.forEach(n => actors.push({ y: n.y, f: () => drawNpc(g, n) }));
+  mobs.forEach(m => actors.push({ y: m.y, f: () => drawCreature(g, m) }));
+  if (!P.dead) actors.push({ y: P.y, f: () => drawPlayer(g) });
+  actors.sort((a, b) => a.y - b.y).forEach(a => a.f());
+
+  /* shots */
+  shots.forEach(s => {
+    g.fillStyle = s.col; g.beginPath(); g.arc(s.x, s.y, s.r, 0, 6.283); g.fill();
+    g.fillStyle = "rgba(255,255,255,.5)"; g.beginPath(); g.arc(s.x - s.vx * .006, s.y - s.vy * .006, s.r * .5, 0, 6.283); g.fill();
+  });
+
+  /* effects */
+  fx.forEach(f => {
+    const k = f.life / f.max;
+    if (f.t === "bit") { g.globalAlpha = k; g.fillStyle = f.col; g.beginPath(); g.arc(f.x, f.y, f.r * k, 0, 6.283); g.fill(); }
+    else if (f.t === "ring") {
+      g.globalAlpha = k; g.strokeStyle = f.col; g.lineWidth = 3;
+      g.beginPath(); g.arc(f.x, f.y, f.r * (1 - k) + 6, 0, 6.283); g.stroke();
+    } else {
+      g.globalAlpha = clamp(k * 1.6, 0, 1);
+      g.font = (f.big ? "600 20px 'Grenze Gotisch'" : "600 14px 'IBM Plex Mono'") + ", serif";
+      g.textAlign = "center"; g.lineWidth = 3; g.strokeStyle = "rgba(0,0,0,.75)";
+      g.strokeText(f.text, f.x, f.y); g.fillStyle = f.col; g.fillText(f.text, f.x, f.y);
+      g.textAlign = "left";
+    }
+    g.globalAlpha = 1;
+  });
+
+  /* interaction prompt */
+  const it = nearestThing();
+  if (it && !paused) {
+    const label = it.t === "npc" ? "Speak" : it.t === "shrine" ? "Wake the shrine" : it.t === "dungeon" ? "Descend"
+      : it.t === "exit" ? "Climb out" : it.t === "sigil" ? "Take the Sigil" : "Approach";
+    g.font = "600 12px 'IBM Plex Mono', monospace"; g.textAlign = "center";
+    const txt = label + (TOUCH ? "  [USE]" : "  [E]");
+    const w = g.measureText(txt).width + 16;
+    g.fillStyle = "rgba(8,10,16,.85)"; g.fillRect(P.x - w / 2, P.y - 52, w, 20);
+    g.strokeStyle = "#D7A64A"; g.lineWidth = 1; g.strokeRect(P.x - w / 2 + .5, P.y - 51.5, w - 1, 19);
+    g.fillStyle = "#EEE2C6"; g.fillText(txt, P.x, P.y - 38);
+    g.textAlign = "left";
+  }
+  g.restore();
+
+  /* night / depth tint */
+  let tint = null;
+  if (realm.kind === "dungeon") tint = ["rgba(8,7,16,.34)", 1];
+  else {
+    const h = P.time / 60;
+    if (h < 5) tint = ["rgba(10,16,44,.52)", 1];
+    else if (h < 7.5) tint = ["rgba(72,48,86,.15)", 1];
+    else if (h > 21) tint = ["rgba(10,16,44,.52)", 1];
+    else if (h > 18.5) tint = ["rgba(140,68,32,.14)", 1];
+  }
+  if (tint) { g.fillStyle = tint[0]; g.fillRect(0, 0, VW, VH); }
+  if (realm.kind === "dungeon" || isNight()) {
+    const r = realm.kind === "dungeon" ? 360 : 420;
+    const px = VW / 2, py = VH / 2;
+    const grd = g.createRadialGradient(px, py, r * .2, px, py, r);
+    grd.addColorStop(0, realm.kind === "dungeon" ? "rgba(255,196,116,.22)" : "rgba(255,200,130,.14)"); grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd; g.fillRect(0, 0, VW, VH);
+  }
+  /* vignette */
+  const vg = g.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * .45, VW / 2, VH / 2, Math.max(VW, VH) * .78);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.46)");
+  g.fillStyle = vg; g.fillRect(0, 0, VW, VH);
+
+  if (boss) drawBossBar(g);
+  if (P.dead) {
+    g.fillStyle = "rgba(60,6,10,.45)"; g.fillRect(0, 0, VW, VH);
+    g.font = "600 " + Math.round(clamp(VW / 12, 34, 74)) + "px 'Grenze Gotisch', serif";
+    g.textAlign = "center"; g.fillStyle = "#EEE2C6";
+    g.fillText("You fall", VW / 2, VH / 2); g.textAlign = "left";
+  }
+}
+function drawBossBar(g) {
+  const w = Math.min(VW - 40, 620), x = (VW - w) / 2, y = VH - (TOUCH ? 132 : 46);
+  g.fillStyle = "rgba(8,10,16,.8)"; g.fillRect(x, y, w, 22);
+  g.fillStyle = "#4A1A0C"; g.fillRect(x + 2, y + 2, w - 4, 18);
+  const frac = clamp(SHARED.boss.hp / SHARED.boss.maxHp, 0, 1);
+  const grd = g.createLinearGradient(x, 0, x + w, 0);
+  grd.addColorStop(0, "#E4642B"); grd.addColorStop(1, "#8E3413");
+  g.fillStyle = grd; g.fillRect(x + 2, y + 2, (w - 4) * frac, 18);
+  g.strokeStyle = "#D7A64A"; g.lineWidth = 1; g.strokeRect(x + .5, y + .5, w - 1, 21);
+  g.font = "600 12px 'IBM Plex Mono', monospace"; g.textAlign = "center"; g.fillStyle = "#FFE7C8";
+  g.fillText("THE EMBERFALL  ·  " + Math.ceil(SHARED.boss.hp) + " / " + SHARED.boss.maxHp + "  (shared)", VW / 2, y + 15);
+  g.textAlign = "left";
+}
+
+/* ---------- HUD ---------- */
+let hudT = 0;
+function hud(dt) {
+  hudT -= dt; if (hudT > 0) return; hudT = .1;
+  $("hName").textContent = P.name;
+  $("hLvl").textContent = "LV " + P.lv + " · " + pClass().name;
+  $("hHp").style.transform = "scaleX(" + clamp(P.hp / P.maxHp, 0, 1) + ")";
+  $("hMp").style.transform = "scaleX(" + clamp(P.mp / P.maxMp, 0, 1) + ")";
+  $("hXp").style.transform = "scaleX(" + clamp(P.xp / P.next, 0, 1) + ")";
+  $("hHpT").textContent = Math.ceil(P.hp) + " / " + P.maxHp;
+  $("hMpT").textContent = Math.ceil(P.mp) + " / " + P.maxMp;
+  $("hGold").textContent = P.gold;
+  $("hSig").textContent = P.sigils.length + "/5";
+  $("hClock").textContent = clockStr();
+  $("hClockK").textContent = phaseName();
+  $("compass").textContent = compassText();
+}
+function compassText() {
+  if (realm.kind === "dungeon") {
+    const b = realm.data.boss, has = P.sigils.indexOf(realm.data.id) >= 0;
+    const d = dist(P.x, P.y, (b.cx + .5) * TILE, (b.cy + .5) * TILE) / TILE;
+    return has ? "sigil taken · find the way up" : "sigil " + Math.round(d) + " paces " + bearing(P.x, P.y, (b.cx + .5) * TILE, (b.cy + .5) * TILE);
+  }
+  let goal = null;
+  if (P.sigils.length >= 5 && !SHARED.boss.slain) goal = SITES.find(s => s.kind === "lair");
+  if (!goal) {
+    let bd = 1e9;
+    SITES.forEach(s => {
+      if (s.kind === "lair") return;
+      if (s.kind === "shrine" && P.shrines.indexOf(s.id) >= 0) return;
+      if (s.kind === "dungeon" && P.sigils.indexOf(s.id) >= 0) return;
+      const d = dist(P.x, P.y, s.tx * TILE, s.ty * TILE);
+      if (d < bd) { bd = d; goal = s; }
+    });
+  }
+  const t = TILEDEF[realm.tileAt(Math.floor(P.x / TILE), Math.floor(P.y / TILE))];
+  if (!goal) return t.name;
+  const d = Math.round(dist(P.x, P.y, goal.tx * TILE, goal.ty * TILE) / TILE);
+  return goal.name + " · " + d + " " + bearing(P.x, P.y, goal.tx * TILE, goal.ty * TILE);
+}
+function bearing(x, y, x2, y2) {
+  const a = Math.atan2(y2 - y, x2 - x) * 180 / Math.PI;
+  const dirs = ["E", "SE", "S", "SW", "W", "NW", "N", "NE"];
+  return dirs[(Math.round(a / 45) + 8) % 8];
+}
+
+/* ---------- main loop ---------- */
+let now = 0;
+function frame(t) {
+  requestAnimationFrame(frame);
+  if (!running) return;
+  const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t; now += dt;
+  if (!paused) step(dt);
+  render(dt);
+  hud(dt);
+  if (ztT > 0) { ztT -= dt; if (ztT <= 0) $("zoneToast").classList.remove("show"); }
+  if (shakeT > 0) shakeT -= dt;
+}
+function step(dt) {
+  P.playtime += dt;
+  P.time = (P.time + dt * 100 / 60) % 1440;
+  P.iframe = Math.max(0, (P.iframe || 0) - dt);
+  P.atkT = Math.max(0, (P.atkT || 0) - dt);
+  P.spellT = Math.max(0, (P.spellT || 0) - dt);
+  P.rollT = Math.max(0, (P.rollT || 0) - dt);
+  P.stam = clamp((P.stam === undefined ? 1 : P.stam) + dt * .42, 0, 1);
+  P.mp = clamp(P.mp + dt * (1.4 + P.focus * .18), 0, P.maxMp);
+  if (P.hp > 0 && P.hp < P.maxHp) P.hp = clamp(P.hp + dt * (.5 + P.vigor * .07), 0, P.maxHp);
+
+  if (P.atkT > 0 && !P.atkHit && P.atkT < .22) { P.atkHit = true; resolveSwing(); }
+  if (held.atk && P.atkT <= 0) doAttack();
+
+  /* movement */
+  let mx = 0, my = 0;
+  if (keys["w"] || keys["arrowup"]) my -= 1;
+  if (keys["s"] || keys["arrowdown"]) my += 1;
+  if (keys["a"] || keys["arrowleft"]) mx -= 1;
+  if (keys["d"] || keys["arrowright"]) mx += 1;
+  mx += stick.dx; my += stick.dy;
+  const mag = Math.hypot(mx, my);
+  if (mag > 1) { mx /= mag; my /= mag; }
+  P.mx = mx; P.my = my;
+  if ((mx || my) && P.atkT <= 0) P.dir = Math.atan2(my, mx);
+
+  if (!P.dead) {
+    let vx, vy;
+    if (P.rollT > 0) { vx = P.rvx * (P.rollT / .34); vy = P.rvy * (P.rollT / .34); }
+    else {
+      const sp = pClass().spd * slowAt(P.x, P.y) * (P.atkT > 0 ? .4 : 1);
+      vx = mx * sp; vy = my * sp;
+    }
+    vx += (P.kbx || 0); vy += (P.kby || 0);
+    P.kbx = (P.kbx || 0) * .86; P.kby = (P.kby || 0) * .86;
+    moveActor(P, vx * dt, vy * dt, 10);
+    P.walk += (Math.hypot(mx, my) > .1 ? dt * 11 : -P.walk * .2);
+  }
+
+  populate(dt);
+  updateMobs(dt);
+  updateShots(dt);
+  updateDrops(dt);
+  updateFx(dt);
+
+  /* camera */
+  const lead = 42;
+  const tx = P.x + Math.cos(P.dir) * lead * .35, ty = P.y + Math.sin(P.dir) * lead * .35;
+  cam.x += (tx - cam.x) * Math.min(1, dt * 6);
+  cam.y += (ty - cam.y) * Math.min(1, dt * 6);
+
+  /* zone naming + npc refresh */
+  zoneT -= dt;
+  if (zoneT <= 0) {
+    zoneT = .6;
+    refreshNpcs();
+    if (realm.kind === "overworld") {
+      const t = realm.tileAt(Math.floor(P.x / TILE), Math.floor(P.y / TILE));
+      const site = SITES.find(s => dist(P.x, P.y, s.tx * TILE, s.ty * TILE) < (s.kind === "town" ? 8 : 4) * TILE);
+      const label = site ? site.name : TILEDEF[t].name;
+      if (label !== lastZone && label !== "road" && label !== "bridge") {
+        lastZone = label;
+        if (!P.seen[label]) { P.seen[label] = 1; gainXp(25); zoneToast(label, "newly walked"); }
+        else zoneToast(label, "");
+      }
+    }
+  }
+  autoT -= dt; if (autoT <= 0) { autoT = 20; save(0, true); }
+}
+let zoneT = 0, lastZone = "", autoT = 20;
+/* ============================================================
+   p5: menus, map, saves, the shared Chronicle, boot
+   ============================================================ */
+
+const SKEY = n => "emberfall.slot." + n;
+const RESUME = "emberfall.resume";
+
+function save(slot, quiet) {
+  try {
+    const blob = { v: 3, at: Date.now(), epoch: SHARED.epoch, p: P };
+    localStorage.setItem(SKEY(slot), JSON.stringify(blob));
+    if (!quiet) log("Saved to slot " + slot + ".");
+    return true;
+  } catch (e) { if (!quiet) log("<b>Could not save</b> — storage is blocked here."); return false; }
+}
+function readSlot(slot) {
+  try { const s = localStorage.getItem(SKEY(slot)); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+}
+function load(slot) {
+  const b = readSlot(slot);
+  if (!b || !b.p) return false;
+  P = b.p;
+  P.iframe = 0; P.atkT = 0; P.spellT = 0; P.rollT = 0; P.stam = 1; P.walk = 0; P.dead = false;
+  P.kbx = P.kby = 0;
+  if (P.realmKind === "dungeon" && P.realmId >= 0) realm = dungeonRealm(genDungeon(P.realmId));
+  else enterOverworld();
+  mobs = []; shots = []; drops = []; fx = []; boss = null;
+  cam.x = P.x; cam.y = P.y;
+  refreshNpcs(); drawQuestCards();
+  startPlay();
+  log("Welcome back, <b>" + P.name + "</b>.");
+  return true;
+}
+function slotLabel(slot) {
+  const b = readSlot(slot);
+  if (!b || !b.p) return null;
+  const p = b.p, mins = Math.floor(p.playtime / 60);
+  return { name: p.name, sub: pretty(p) + " · " + mins + "m played · " + new Date(b.at).toLocaleDateString() };
+}
+const pretty = p => "Lv " + p.lv + " " + (CLASSES.find(c => c.id === p.cls) || CLASSES[0]).name + " · " + p.sigils.length + "/5 sigils";
+
+/* ---------- modal plumbing ---------- */
+function modal(html, onMount) {
+  $("modalSheet").innerHTML = html;
+  $("modal").classList.add("on");
+  if (onMount) onMount($("modalSheet"));
+}
+function closeModal() { $("modal").classList.remove("on"); }
+$("modal").addEventListener("pointerdown", e => { if (e.target === $("modal")) { closeModal(); if (running) paused = false; } });
+
+function togglePause() { if (!running) return; paused ? (closeModal(), paused = false) : openMenu("hero"); }
+
+/* ---------- pause menu ---------- */
+function openMenu(tab) {
+  paused = true;
+  const tabs = [["hero", "Hero"], ["quests", "Charges"], ["map", "Map"], ["saves", "Saves"], ["chron", "Chronicle"], ["help", "Keys"]];
+  const nav = tabs.map(t => '<button class="btn' + (t[0] === tab ? " primary" : "") + '" data-tab="' + t[0] + '">' + t[1] + "</button>").join("");
+  modal('<h2>' + P.name + '</h2><div class="label">' + pretty(P) + '</div>'
+    + '<div class="foot" style="margin:14px 0 6px">' + nav + '</div><div class="rule"></div>'
+    + '<div id="tabBody" style="margin-top:14px"></div>'
+    + '<div class="foot"><button class="btn primary" id="mResume">Back to the world</button></div>',
+    root => {
+      root.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => openMenu(b.dataset.tab));
+      $("mResume").onclick = () => { closeModal(); paused = false; };
+      renderTab(tab);
+    });
+}
+function renderTab(tab) {
+  const b = $("tabBody");
+  if (tab === "hero") {
+    b.innerHTML = '<div class="grid2">'
+      + statCard("Might", P.might, "melee damage")
+      + statCard("Focus", P.focus, "spell power & regen")
+      + statCard("Vigor", P.vigor, "armour & healing")
+      + statCard("Strike", pAtk(), "per swing")
+      + statCard("Guard", pDef(), "damage shrugged off")
+      + statCard("Spell", pSpell(), pClass().spell)
+      + '</div>'
+      + (P.points > 0 ? '<h3>' + P.points + ' point' + (P.points > 1 ? "s" : "") + ' to spend</h3><div class="foot">'
+        + ["might", "focus", "vigor"].map(s => '<button class="btn" data-sp="' + s + '">+1 ' + s[0].toUpperCase() + s.slice(1) + '</button>').join("") + '</div>' : "")
+      + '<h3>Carried</h3>'
+      + row(WEAPONS[P.wpn].n, "weapon · " + WEAPONS[P.wpn].dmg + " base")
+      + row(ARMORS[P.arm].n, "armour · " + ARMORS[P.arm].def + " guard")
+      + row(P.gold + " gold", "spent at any forge")
+      + row(P.potHp + " × Life Draught", "press 1 · restores 45% health")
+      + row(P.potMp + " × Ether", "press 2 · restores 55% focus")
+      + row(P.sigils.length + " / 5 Sigils", P.sigils.length >= 5 ? "the caldera will open for you" : "taken from the barrows");
+    b.querySelectorAll("[data-sp]").forEach(el => el.onclick = () => {
+      if (P.points <= 0) return;
+      P[el.dataset.sp]++; P.points--;
+      if (el.dataset.sp === "vigor") { P.maxHp += 6; P.hp += 6; }
+      if (el.dataset.sp === "focus") { P.maxMp += 5; P.mp += 5; }
+      save(0, true); renderTab("hero");
+    });
+  }
+  if (tab === "quests") {
+    const open = P.quests.filter(q => !q.claimed);
+    b.innerHTML = open.length ? open.map(q => {
+      const d = QUESTS.find(x => x.id === q.id);
+      return row(d.name, d.text + " — " + (q.done ? "COMPLETE, return to " + d.give : Math.min(q.n || 0, d.need) + "/" + d.need));
+    }).join("") : '<p>No charges taken. Elders and scouts in the towns will have work.</p>';
+    b.innerHTML += '<h3>Deeds</h3>'
+      + row(P.kills + " slain", "across every road and barrow")
+      + row(P.shrines.length + " / 7 shrines woken", "each one adds to your frame")
+      + row(Math.round(P.bossDmg) + " damage to the Emberfall", "counted toward the shared kill")
+      + row(P.deaths + " deaths", "gold lost each time");
+  }
+  if (tab === "map") {
+    b.innerHTML = '<p>The known shape of the world. Barrows you have emptied show gold.</p>'
+      + '<div style="overflow-x:auto"><canvas id="mini" width="320" height="320" style="width:min(320px,100%);border:1px solid var(--edge);border-radius:2px;display:block;margin:0 auto"></canvas></div>'
+      + '<div class="label" style="margin-top:10px;text-align:center">● you &nbsp; ▲ town &nbsp; ◆ barrow &nbsp; ✦ shrine &nbsp; ◉ the Emberfall</div>';
+    drawMini($("mini"));
+  }
+  if (tab === "saves") {
+    let h = '<p>Three slots, kept in this browser. Slot 0 saves itself every 20 seconds and whenever something matters.</p>';
+    for (let i = 0; i <= 3; i++) {
+      const s = slotLabel(i);
+      h += '<div class="row"><div class="t">' + (i === 0 ? "Autosave" : "Slot " + i) + '<small>' + (s ? s.name + " — " + s.sub : "empty") + '</small></div><div class="foot" style="margin:0">'
+        + (i > 0 ? '<button class="btn" data-save="' + i + '">Save</button>' : "")
+        + (s ? '<button class="btn" data-load="' + i + '">Load</button>' : "") + '</div></div>';
+    }
+    b.innerHTML = h;
+    b.querySelectorAll("[data-save]").forEach(el => el.onclick = () => { save(+el.dataset.save); renderTab("saves"); });
+    b.querySelectorAll("[data-load]").forEach(el => el.onclick = () => { if (load(+el.dataset.load)) { closeModal(); paused = false; } });
+  }
+  if (tab === "chron") b.innerHTML = chronicleHtml();
+  if (tab === "help") b.innerHTML = helpHtml();
+}
+const statCard = (k, v, sub) => '<div class="stat"><div class="label">' + k + '</div><div class="v num">' + v + '</div><div class="label" style="letter-spacing:.04em;text-transform:none">' + sub + '</div></div>';
+const row = (t, s) => '<div class="row"><div class="t">' + t + '<small>' + s + '</small></div></div>';
+
+function drawMini(c) {
+  if (!c) return;
+  const g = c.getContext("2d"), N = 320, step = MAP / N;
+  if (!drawMini.cache) {
+    const off = document.createElement("canvas"); off.width = off.height = N;
+    const og = off.getContext("2d"), img = og.createImageData(N, N);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const t = overworldTile(Math.floor(x * step), Math.floor(y * step));
+      const col = TILEDEF[t].a, n = parseInt(col.slice(1), 16), i = (y * N + x) * 4;
+      img.data[i] = (n >> 16) & 255; img.data[i + 1] = (n >> 8) & 255; img.data[i + 2] = n & 255; img.data[i + 3] = 255;
+    }
+    og.putImageData(img, 0, 0);
+    drawMini.cache = off;
+  }
+  g.clearRect(0, 0, N, N);
+  g.drawImage(drawMini.cache, 0, 0);
+  g.globalAlpha = .9;
+  SITES.forEach(s => {
+    const x = s.tx / step, y = s.ty / step;
+    g.beginPath();
+    if (s.kind === "town") { g.fillStyle = "#EEE2C6"; g.moveTo(x, y - 6); g.lineTo(x + 5, y + 4); g.lineTo(x - 5, y + 4); g.closePath(); g.fill(); }
+    else if (s.kind === "dungeon") { g.fillStyle = P.sigils.indexOf(s.id) >= 0 ? "#D7A64A" : "#B0A8C0"; g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath(); g.fill(); }
+    else if (s.kind === "shrine") { g.fillStyle = P.shrines.indexOf(s.id) >= 0 ? "#57C3B0" : SHARED.shrines[s.id] ? "#8A7C4A" : "#5A6070"; g.arc(x, y, 3.4, 0, 6.283); g.fill(); }
+    else { g.fillStyle = SHARED.boss.slain ? "#606878" : "#E4642B"; g.arc(x, y, 7, 0, 6.283); g.fill(); g.strokeStyle = "#120A08"; g.lineWidth = 2; g.stroke(); }
+  });
+  if (P.realmKind === "overworld") {
+    const px = P.x / TILE / step, py = P.y / TILE / step;
+    g.fillStyle = "#FFFFFF"; g.beginPath(); g.arc(px, py, 4.2, 0, 6.283); g.fill();
+    g.strokeStyle = "#080A10"; g.lineWidth = 2; g.stroke();
+  }
+  g.globalAlpha = 1;
+}
+
+function helpHtml() {
+  return '<div class="grid2">'
+    + statCard("Move", "WASD", "or arrows, or the left stick")
+    + statCard("Strike", "Space", "or tap the world, or STRIKE")
+    + statCard("Spell", "Q", "or right-click, or SPELL")
+    + statCard("Roll", "Shift", "brief invulnerability")
+    + statCard("Use", "E", "speak, wake, descend, take")
+    + statCard("Potions", "1 / 2", "life · ether")
+    + '</div><h3>How a run goes</h3>'
+    + '<p>Take charges from the elder in Hearthwatch. Wake shrines — they mend you, raise your frame, and let you wake there when you fall. '
+    + 'Five barrows hold five Sigils; with all five the sealed caldera in the far south opens and the Emberfall can be fought. '
+    + 'That fight is shared: every hero\'s damage comes off the same pool, so you can chip at it and hand the rest to whoever comes next.</p>'
+    + '<h3>The Waystone</h3><p>Every town has one. It is the only place your deeds are written into the world other players see — '
+    + 'shrines you woke, damage you dealt, a line in the Chronicle. Everything else stays yours.</p>';
+}
+
+/* ============================================================
+   the shared Chronicle
+   ============================================================ */
+let chronBusy = false;
+
+function chronicleHtml() {
+  const s = SHARED;
+  const lit = Object.keys(s.shrines).length;
+  const bossLine = s.boss.slain
+    ? '<span class="ok">The Emberfall was slain in epoch ' + s.epoch + ' by ' + (s.boss.slayers.slice(-3).join(", ") || "unknown hands") + '.</span>'
+    : '<span class="warn">The Emberfall holds ' + Math.ceil(s.boss.hp) + ' of ' + s.boss.maxHp + ' — worn down by everyone who has tried.</span>';
+  return '<p>' + bossLine + '</p>'
+    + '<div class="grid2">' + statCard("Epoch", s.epoch, "resets when the Emberfall dies")
+    + statCard("Shrines woken", lit + " / 7", "by any hero, ever")
+    + statCard("Heroes recorded", s.heroes.length, "at the Waystones")
+    + statCard("World seed", s.seed, "the same land for everyone") + '</div>'
+    + '<h3>Names at the stones</h3>'
+    + (s.heroes.length ? '<div class="chron">' + s.heroes.slice().sort((a, b) => b.lv - a.lv).slice(0, 12)
+      .map(h => '<div class="e"><b>' + esc(h.name) + '</b> <i>' + h.lv + ' · ' + h.sig + '/5 sigils</i></div>').join("") + '</div>'
+      : '<p>No one has reached a Waystone yet. Be first.</p>')
+    + '<h3>The Chronicle</h3>'
+    + (s.chronicle.length ? '<div class="chron">' + s.chronicle.slice().reverse().slice(0, 24)
+      .map(c => '<div class="e"><b>' + esc(c.by) + '</b> <i>' + esc(c.when || "") + '</i><br>' + esc(c.text) + '</div>').join("") + '</div>'
+      : '<p>Nothing written yet.</p>');
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function waystoneDialogue() {
+  const pending = pendingDeeds();
+  const lines = pending.length
+    ? "The stone hums. It will take " + pending.length + " thing" + (pending.length > 1 ? "s" : "") + " from you: " + pending.join("; ") + "."
+    : "The stone is quiet. You have nothing new the world does not already know.";
+  dialogue("The Waystone", lines, [
+    { t: "Write it into the world", p: 1, dis: !pending.length || chronBusy, f: () => commitChronicle(pending) },
+    { t: "Read the Chronicle", f: () => { closeDialogue(); paused = true; modal('<h2>The Chronicle</h2><div class="label">shared across every hero in this world</div><div style="margin-top:14px">' + chronicleHtml() + '</div><div class="foot"><button class="btn primary" id="cx">Back</button></div>', () => $("cx").onclick = () => { closeModal(); paused = false; }); } },
+    { t: "Rest here", f: () => { P.hp = P.maxHp; P.mp = P.maxMp; P.home = { x: P.x, y: P.y }; log("You rest at the stone."); closeDialogue(); save(0, true); } },
+    { t: "Step away", f: closeDialogue }
+  ]);
+}
+function pendingDeeds() {
+  const out = [];
+  P.shrines.forEach(id => { if (!SHARED.shrines[id]) out.push("the waking of " + SHRINE_NAMES[id]); });
+  if (P.bossDmg > (P.bossDmgSent || 0)) out.push(Math.round(P.bossDmg - (P.bossDmgSent || 0)) + " damage to the Emberfall");
+  if (P.flags.slayer && !SHARED.boss.slain) out.push("the death of the Emberfall");
+  const me = SHARED.heroes.find(h => h.name === P.name);
+  if (!me || me.lv !== P.lv || me.sig !== P.sigils.length) out.push("your name at level " + P.lv);
+  return out;
+}
+
+async function commitChronicle(pending) {
+  if (chronBusy) return;
+  chronBusy = true;
+  dialogue("The Waystone", "The stone takes it…", []);
+  let art = null;
+  try { art = window.claude && claude.use ? await claude.use("artifact") : null; } catch (e) { art = null; }
+  if (!art || !PAGE_SOURCE) {
+    chronBusy = false;
+    return dialogue("The Waystone",
+      "The stone is dark. This copy of the world cannot write to the shared Chronicle — your own saves are untouched, and everything you have done is still yours.",
+      [{ t: "Step away", f: closeDialogue }]);
+  }
+  const next = JSON.parse(JSON.stringify(SHARED));
+  P.shrines.forEach(id => { if (!next.shrines[id]) next.shrines[id] = { by: P.name, lv: P.lv }; });
+  const newDmg = Math.max(0, P.bossDmg - (P.bossDmgSent || 0));
+  if (newDmg > 0 && !next.boss.slain) next.boss.hp = Math.max(0, next.boss.hp - newDmg);
+  if (P.flags.slayer) {
+    next.boss.slain = true; next.boss.hp = 0;
+    if (next.boss.slayers.indexOf(P.name) < 0) next.boss.slayers.push(P.name);
+  }
+  const i = next.heroes.findIndex(h => h.name === P.name);
+  const rec = { name: P.name.slice(0, 24), lv: P.lv, sig: P.sigils.length, cls: P.cls };
+  if (i >= 0) next.heroes[i] = rec; else next.heroes.push(rec);
+  next.heroes = next.heroes.sort((a, b) => b.lv - a.lv).slice(0, 40);
+  next.chronicle.push({ by: P.name.slice(0, 24), text: pending.join("; ").slice(0, 240), when: "epoch " + next.epoch + " · level " + P.lv });
+  next.chronicle = next.chronicle.slice(-60);
+
+  let html = PAGE_SOURCE
+    .replace(/<script id="world-state"[^>]*>[\s\S]*?<\/script>/,
+      '<script id="world-state" type="application/json">' + JSON.stringify(next).replace(/<\//g, "<\\/") + '<\/script>')
+    .replace(/<script\b[^>]*\ssrc\s*=\s*["'](?:https?:)?\/\/[^>]*>\s*<\/script>/gi, "");
+
+  if (html.indexOf('id="world-state"') < 0 || html.indexOf("EMBERFALL_BOOT") < 0) {
+    chronBusy = false;
+    return dialogue("The Waystone", "The stone refuses the writing. Nothing was changed.", [{ t: "Step away", f: closeDialogue }]);
+  }
+
+  P.bossDmgSent = P.bossDmg;
+  save(0, true);
+  try { localStorage.setItem(RESUME, "1"); } catch (e) { }
+  try {
+    await art.publish(html);
+    dialogue("The Waystone", "Written. The world is reloading for everyone who has it open — you will wake exactly where you stand.", []);
+  } catch (err) {
+    chronBusy = false;
+    const code = (err && (err.code || err.message)) || "";
+    if (String(code).indexOf("conflict") >= 0) {
+      return dialogue("The Waystone", "Another hero reached a stone first. The world is reloading to theirs — walk back to the stone and write again.", [{ t: "Very well", f: closeDialogue }]);
+    }
+    if (String(code).indexOf("not_writer") >= 0 || String(code).indexOf("not_granted") >= 0) {
+      return dialogue("The Waystone", "You may read this world but not write to it — the Chronicle takes only its owner's hand. Your own progress is saved as normal.", [{ t: "Step away", f: closeDialogue }]);
+    }
+    return dialogue("The Waystone", "The stone would not take it. Nothing was lost.", [{ t: "Step away", f: closeDialogue }]);
+  }
+}
+
+/* ============================================================
+   title screen & boot
+   ============================================================ */
+function startPlay() {
+  running = true; paused = false;
+  $("title").classList.remove("on");
+  closeModal(); closeDialogue();
+  $("hud").classList.add("on");
+  fit();
+  drawQuestCards();
+}
+function showTitle() {
+  running = false; paused = true;
+  $("hud").classList.remove("on");
+  $("touch").classList.remove("on");
+  $("title").classList.add("on");
+  $("tEpoch").textContent = SHARED.epoch;
+  const lit = Object.keys(SHARED.shrines).length;
+  $("worldline").innerHTML =
+    "seed <b>" + SHARED.seed + "</b> — the same land for every hero<br>"
+    + "shrines woken by others: <b>" + lit + " / 7</b><br>"
+    + (SHARED.boss.slain
+      ? "the Emberfall lies <b>slain</b>"
+      : "the Emberfall holds <b>" + Math.ceil(SHARED.boss.hp / SHARED.boss.maxHp * 100) + "%</b> of its strength")
+    + "<br>heroes at the stones: <b>" + SHARED.heroes.length + "</b>";
+  $("btnLoad").disabled = ![0, 1, 2, 3].some(i => readSlot(i));
+}
+
+$("btnNew").onclick = () => {
+  let name = "", cls = "warden";
+  const mount = () => modal(
+    '<h2>Name yourself</h2><p>This name is what other heroes will read at the Waystones.</p>'
+    + '<input id="nm" maxlength="20" placeholder="a name" style="width:100%;padding:11px;background:#0E1220;border:1px solid var(--edge);color:var(--parch);font:16px var(--d-body);border-radius:2px">'
+    + '<h3>Choose a road</h3><div id="cls"></div>'
+    + '<div class="foot"><button class="btn primary" id="go">Walk out</button><button class="btn" id="bk">Back</button></div>',
+    root => {
+      const box = root.querySelector("#cls");
+      CLASSES.forEach(c => {
+        const d = document.createElement("div");
+        d.className = "row" + (c.id === cls ? " sel" : "");
+        d.innerHTML = '<div class="t">' + c.name + '<small>' + c.blurb + ' — ' + c.hp + ' health, ' + c.mp + ' focus, ' + c.spell + '</small></div>';
+        d.onclick = () => { cls = c.id; name = root.querySelector("#nm").value; mount(); };
+        box.appendChild(d);
+      });
+      root.querySelector("#nm").value = name;
+      root.querySelector("#go").onclick = () => {
+        const v = (root.querySelector("#nm").value || "").trim().slice(0, 20);
+        if (!v) { root.querySelector("#nm").focus(); return; }
+        P = newPlayer(v, cls);
+        enterOverworld();
+        cam.x = P.x; cam.y = P.y;
+        closeModal(); startPlay();
+        zoneToast("Hearthwatch", "epoch " + SHARED.epoch);
+        log("Speak to <b>Elder Maren</b> — she is standing just north of you.");
+        save(0, true);
+      };
+      root.querySelector("#bk").onclick = () => { closeModal(); };
+    });
+  mount();
+};
+$("btnLoad").onclick = () => {
+  let h = '<h2>Saved heroes</h2><p>Kept in this browser only. The shared world is the same for all of them.</p>';
+  for (let i = 0; i <= 3; i++) {
+    const s = slotLabel(i);
+    h += '<div class="row"><div class="t">' + (i === 0 ? "Autosave" : "Slot " + i) + '<small>' + (s ? s.name + " — " + s.sub : "empty") + '</small></div>'
+      + (s ? '<button class="btn" data-load="' + i + '">Load</button>' : '') + '</div>';
+  }
+  h += '<div class="foot"><button class="btn" id="bk2">Back</button></div>';
+  modal(h, root => {
+    root.querySelectorAll("[data-load]").forEach(el => el.onclick = () => { load(+el.dataset.load); });
+    root.querySelector("#bk2").onclick = closeModal;
+  });
+};
+$("btnChron").onclick = () => modal('<h2>The Chronicle</h2><div class="label">what every hero in this world has already done</div>'
+  + '<div style="margin-top:14px">' + chronicleHtml() + '</div><div class="foot"><button class="btn" id="bk3">Back</button></div>',
+  root => root.querySelector("#bk3").onclick = closeModal);
+$("btnHelp").onclick = () => modal('<h2>How to play</h2>' + helpHtml() + '<div class="foot"><button class="btn" id="bk4">Back</button></div>',
+  root => root.querySelector("#bk4").onclick = closeModal);
+$("menuBtn").onclick = () => openMenu("hero");
+
+/* ---------- boot ---------- */
+const EMBERFALL_BOOT = true;
+buildSites();
+realm = overworldRealm();
+P = newPlayer("—", "warden");
+cam.x = P.x; cam.y = P.y;
+fit();
+requestAnimationFrame(frame);
+
+let resumed = false;
+try {
+  if (localStorage.getItem(RESUME) === "1") {
+    localStorage.removeItem(RESUME);
+    resumed = load(0);
+    if (resumed) log("The world was rewritten. You are where you were.");
+  }
+} catch (e) { }
+if (!resumed) showTitle();
+
+</script>
+
+</body>
+</html>

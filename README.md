@@ -1,2 +1,2 @@
 # ai-games
-I asked AI to generate games for me and here are the output.
+I generated 3 games from simple to complex and here's what I got.

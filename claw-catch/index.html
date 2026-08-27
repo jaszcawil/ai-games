@@ -1,0 +1,847 @@
+<title>Claw Catch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Baloo+2:wght@500;600;700;800&family=VT323&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --cab-body:#241a3d;
+    --cab-body-dark:#150e28;
+    --cab-trim:#3d2c66;
+    --cab-trim-light:#5a4390;
+    --glass:#0a0620;
+    --glass-deep:#050310;
+    --neon-pink:#ff3d90;
+    --neon-cyan:#3de3ff;
+    --neon-amber:#ffcf4d;
+    --text-soft:#f1e9ff;
+    --text-muted:#a496c9;
+    --danger:#ff4757;
+    --floor:#1c1332;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse 60% 45% at 50% 8%, #241a3d 0%, transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 100%, #14101f 0%, transparent 55%),
+      var(--glass-deep);
+    color:var(--text-soft);
+    font-family:'Baloo 2', ui-rounded, 'Segoe UI', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px 14px;
+    overflow-x:auto;
+  }
+
+  .stage{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    width:100%;
+  }
+
+  .cabinet{
+    width:min(94vw, 560px);
+    background:
+      linear-gradient(180deg, var(--cab-trim-light) 0%, var(--cab-body) 6%, var(--cab-body) 94%, var(--cab-body-dark) 100%);
+    border-radius:22px;
+    padding:16px;
+    box-shadow:
+      0 30px 60px -20px rgba(0,0,0,0.7),
+      0 0 0 1px rgba(255,255,255,0.04) inset,
+      0 2px 0 rgba(255,255,255,0.08) inset;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .marquee{
+    background:linear-gradient(180deg, #1a1230, #0f0a1d);
+    border-radius:12px;
+    padding:12px 10px;
+    text-align:center;
+    box-shadow:0 0 0 1px rgba(255,255,255,0.05) inset, 0 4px 10px rgba(0,0,0,0.4) inset;
+  }
+
+  .marquee-text{
+    font-family:'Press Start 2P', monospace;
+    font-size:clamp(1rem, 4.2vw, 1.5rem);
+    letter-spacing:2px;
+    color:var(--text-soft);
+    text-shadow:
+      0 0 6px var(--neon-pink),
+      0 0 18px var(--neon-pink),
+      0 0 2px var(--neon-cyan);
+  }
+
+  @media (prefers-reduced-motion: no-preference){
+    .marquee-text{ animation:flicker 5.5s infinite; }
+  }
+
+  @keyframes flicker{
+    0%, 3%, 6%, 100%{ opacity:1; }
+    4%{ opacity:0.75; }
+    5%{ opacity:0.95; }
+  }
+
+  .viewport{
+    position:relative;
+    border-radius:10px;
+    overflow:hidden;
+    background:var(--glass);
+    box-shadow:
+      0 0 0 6px var(--cab-trim),
+      0 0 0 7px rgba(0,0,0,0.4),
+      0 10px 24px rgba(0,0,0,0.5) inset;
+    line-height:0;
+  }
+
+  canvas{
+    display:block;
+    width:100%;
+    height:auto;
+    touch-action:none;
+  }
+
+  .glass-glare{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background:linear-gradient(115deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 18%, transparent 32%);
+  }
+
+  .overlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    background:rgba(6,3,18,0.82);
+    backdrop-filter:blur(1px);
+    text-align:center;
+    padding:20px;
+  }
+
+  .overlay.hidden{ display:none; }
+
+  .overlay h2{
+    margin:0;
+    font-family:'Press Start 2P', monospace;
+    font-size:clamp(0.9rem, 4vw, 1.15rem);
+    color:var(--neon-amber);
+    text-shadow:0 0 10px rgba(255,207,77,0.6);
+  }
+
+  .overlay p{
+    margin:0;
+    color:var(--text-muted);
+    font-size:0.95rem;
+    max-width:32ch;
+  }
+
+  .coin-btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:1rem;
+    color:var(--glass-deep);
+    background:var(--neon-amber);
+    border:none;
+    border-radius:999px;
+    padding:10px 22px;
+    cursor:pointer;
+    box-shadow:0 4px 0 #b8862a, 0 6px 14px rgba(0,0,0,0.4);
+  }
+
+  .coin-btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #b8862a; }
+
+  .deck{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .readouts{
+    display:flex;
+    gap:10px;
+  }
+
+  .readout{
+    flex:1;
+    background:var(--cab-body-dark);
+    border-radius:8px;
+    padding:6px 4px 8px;
+    text-align:center;
+    box-shadow:0 0 0 1px rgba(255,255,255,0.05) inset;
+  }
+
+  .readout .label{
+    display:block;
+    font-size:0.62rem;
+    font-weight:700;
+    letter-spacing:1.5px;
+    color:var(--text-muted);
+    margin-bottom:2px;
+  }
+
+  .readout .value{
+    font-family:'VT323', monospace;
+    font-size:1.7rem;
+    line-height:1;
+    letter-spacing:2px;
+  }
+
+  #credits.value{ color:var(--neon-amber); text-shadow:0 0 8px rgba(255,207,77,0.5); }
+  #score.value{ color:var(--neon-cyan); text-shadow:0 0 8px rgba(61,227,255,0.5); }
+  #won.value{ color:var(--neon-pink); text-shadow:0 0 8px rgba(255,61,144,0.5); }
+
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+
+  .ctrl-btn, .drop-btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    border:none;
+    cursor:pointer;
+    color:var(--text-soft);
+    user-select:none;
+    -webkit-user-select:none;
+  }
+
+  .dpad{
+    display:flex;
+    gap:8px;
+    flex:1;
+  }
+
+  .ctrl-btn{
+    flex:1;
+    font-size:1.3rem;
+    padding:14px 0;
+    border-radius:10px;
+    background:linear-gradient(180deg, var(--cab-trim-light), var(--cab-trim));
+    box-shadow:0 4px 0 var(--cab-body-dark), 0 6px 10px rgba(0,0,0,0.35);
+  }
+
+  .ctrl-btn:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--cab-body-dark); }
+
+  .drop-btn{
+    font-size:0.85rem;
+    letter-spacing:1px;
+    padding:14px 22px;
+    border-radius:10px;
+    background:linear-gradient(180deg, #ff6b81, var(--danger));
+    box-shadow:0 4px 0 #a5222c, 0 6px 12px rgba(255,71,87,0.35);
+  }
+
+  .drop-btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #a5222c; }
+  .drop-btn:disabled{ opacity:0.5; cursor:default; }
+
+  .message{
+    margin:0;
+    text-align:center;
+    font-size:0.82rem;
+    font-weight:600;
+    letter-spacing:0.5px;
+    color:var(--text-muted);
+    min-height:1.2em;
+  }
+
+  .hint{
+    margin:0;
+    font-size:0.78rem;
+    color:var(--text-muted);
+    text-align:center;
+    opacity:0.8;
+  }
+
+  .hint kbd{
+    font-family:inherit;
+    background:rgba(255,255,255,0.08);
+    border-radius:4px;
+    padding:1px 6px;
+    font-size:0.78rem;
+  }
+
+  :focus-visible{ outline:2px solid var(--neon-cyan); outline-offset:2px; }
+</style>
+
+<div class="stage">
+  <div class="cabinet">
+    <div class="marquee"><span class="marquee-text">CLAW CATCH</span></div>
+
+    <div class="viewport">
+      <canvas id="game" width="480" height="360" role="img" aria-label="Claw machine game viewport"></canvas>
+      <div class="glass-glare"></div>
+      <div class="overlay hidden" id="overlay">
+        <h2 id="overlayTitle">OUT OF CREDITS</h2>
+        <p id="overlayText">The machine's empty-handed for now.</p>
+        <button class="coin-btn" id="coinBtn">INSERT COIN</button>
+      </div>
+    </div>
+
+    <div class="deck">
+      <div class="readouts">
+        <div class="readout"><span class="label">CREDITS</span><span class="value" id="credits">05</span></div>
+        <div class="readout"><span class="label">SCORE</span><span class="value" id="score">0000</span></div>
+        <div class="readout"><span class="label">WON</span><span class="value" id="won">00</span></div>
+      </div>
+
+      <div class="controls">
+        <div class="dpad">
+          <button class="ctrl-btn" id="btnLeft" aria-label="Move claw left">&#9664;</button>
+          <button class="ctrl-btn" id="btnRight" aria-label="Move claw right">&#9654;</button>
+        </div>
+        <button class="drop-btn" id="btnDrop">DROP</button>
+      </div>
+
+      <p class="message" id="message">AIM WITH &#9664; &#9654; THEN PRESS DROP</p>
+    </div>
+  </div>
+
+  <p class="hint">Keyboard: <kbd>&#8592;</kbd> <kbd>&#8594;</kbd> to aim &middot; <kbd>Space</kbd> or <kbd>&#8595;</kbd> to drop</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var W = 480, H = 360;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- audio ----------
+  var audioCtx = null;
+  function ensureAudio(){
+    if(!audioCtx){
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) audioCtx = new AC();
+    }
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beep(freq, dur, type, gain, delay){
+    if(!audioCtx) return;
+    type = type || 'square';
+    gain = gain === undefined ? 0.05 : gain;
+    delay = delay || 0;
+    var t0 = audioCtx.currentTime + delay;
+    var osc = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(gain, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  function sfxMove(){ beep(220, 0.03, 'square', 0.02); }
+  function sfxWall(){ beep(140, 0.06, 'square', 0.03); }
+  function sfxCoin(){ beep(660, 0.06, 'square', 0.05); beep(990, 0.08, 'square', 0.05, 0.06); }
+  function sfxClose(){ beep(180, 0.08, 'triangle', 0.05); }
+  function sfxSuccess(){ beep(523, 0.09, 'square', 0.05); beep(659, 0.09, 'square', 0.05, 0.09); beep(784, 0.14, 'square', 0.05, 0.18); }
+  function sfxFail(){ beep(160, 0.18, 'sawtooth', 0.04); }
+  function sfxWin(){ beep(784, 0.09, 'square', 0.06); beep(988, 0.09, 'square', 0.06, 0.08); beep(1318, 0.16, 'square', 0.06, 0.16); }
+  function sfxGameOver(){ beep(300, 0.14, 'sawtooth', 0.05); beep(220, 0.18, 'sawtooth', 0.05, 0.14); beep(140, 0.26, 'sawtooth', 0.05, 0.28); }
+  function sfxRestock(){ beep(880, 0.05, 'sine', 0.04); beep(1174, 0.05, 'sine', 0.04, 0.05); beep(1568, 0.08, 'sine', 0.04, 0.1); }
+
+  // ---------- layout constants ----------
+  var RAIL_Y = 34;
+  var HOME_Y = 46;
+  var MAX_Y = 296;
+  var FLOOR_Y = 322;
+  var MARGIN_X = 46;
+  var MAX_X = W - 46;
+  var CHUTE_X = 54;
+  var HOME_X = W / 2;
+  var H_SPEED = 190;
+  var V_SPEED = 230;
+  var GRIP_RADIUS = 27;
+
+  var TOY_COLORS = [
+    { body:'#ff8a65', dark:'#e06a48' },
+    { body:'#6be3b0', dark:'#43b98a' },
+    { body:'#6fb8ff', dark:'#4a8fe0' },
+    { body:'#ffe066', dark:'#e0b93f' },
+    { body:'#c9a4ff', dark:'#a37de0' },
+    { body:'#ff9ecb', dark:'#e070a3' }
+  ];
+
+  // ---------- state ----------
+  var prizes = [];
+  var nextId = 1;
+  var credits = 5;
+  var score = 0;
+  var prizesWon = 0;
+  var leftHeld = false, rightHeld = false;
+  var t = 0;
+
+  var claw = {
+    x: HOME_X, y: HOME_Y,
+    targetX: HOME_X,
+    close: 0,          // 0 = open, 1 = closed
+    state: 'IDLE',
+    holding: null,
+    grabRoll: null,
+    timer: 0
+  };
+
+  var els = {
+    credits: document.getElementById('credits'),
+    score: document.getElementById('score'),
+    won: document.getElementById('won'),
+    message: document.getElementById('message'),
+    overlay: document.getElementById('overlay'),
+    overlayTitle: document.getElementById('overlayTitle'),
+    overlayText: document.getElementById('overlayText'),
+    coinBtn: document.getElementById('coinBtn'),
+    drop: document.getElementById('btnDrop'),
+    left: document.getElementById('btnLeft'),
+    right: document.getElementById('btnRight')
+  };
+
+  function pad(n, len){
+    var s = String(Math.max(0, Math.floor(n)));
+    while(s.length < len) s = '0' + s;
+    return s;
+  }
+
+  function setMessage(msg){ els.message.textContent = msg; }
+
+  function updateReadouts(){
+    els.credits.textContent = pad(credits, 2);
+    els.score.textContent = pad(score, 4);
+    els.won.textContent = pad(prizesWon, 2);
+    els.drop.disabled = credits <= 0;
+  }
+
+  function rand(a, b){ return a + Math.random() * (b - a); }
+
+  function spawnPrizes(){
+    prizes = [];
+    var count = 7;
+    var attempts = 0;
+    while(prizes.length < count && attempts < 400){
+      attempts++;
+      var r = rand(20, 29);
+      var x = rand(MARGIN_X + r + 10, MAX_X - r);
+      var y = FLOOR_Y - r;
+      var ok = true;
+      for(var i = 0; i < prizes.length; i++){
+        var p = prizes[i];
+        var dx = p.x - x, dy = p.y - y;
+        if(Math.sqrt(dx*dx + dy*dy) < p.r + r - 6){ ok = false; break; }
+      }
+      if(!ok) continue;
+      var c = TOY_COLORS[Math.floor(Math.random() * TOY_COLORS.length)];
+      prizes.push({
+        id: nextId++,
+        x: x, y: y, r: r,
+        color: c.body, dark: c.dark,
+        ears: Math.random() < 0.5 ? 'round' : 'point',
+        rot: rand(-0.12, 0.12),
+        weight: (r - 20) / 9 + 1,   // ~1.0 (small) .. ~2.0 (large)
+        bob: rand(0, Math.PI * 2)
+      });
+    }
+  }
+
+  spawnPrizes();
+  updateReadouts();
+
+  // ---------- input ----------
+  function tryStartDrop(){
+    if(claw.state !== 'IDLE') return;
+    if(credits <= 0){
+      showGameOver();
+      sfxFail();
+      return;
+    }
+    ensureAudio();
+    credits -= 1;
+    updateReadouts();
+    claw.state = 'DESCENDING';
+    setMessage('DOWN SHE GOES...');
+  }
+
+  function showGameOver(){
+    els.overlayTitle.textContent = 'OUT OF CREDITS';
+    els.overlayText.textContent = "The machine's empty-handed for now.";
+    els.coinBtn.textContent = 'INSERT COIN';
+    els.overlay.classList.remove('hidden');
+  }
+
+  window.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A'){ leftHeld = true; e.preventDefault(); }
+    else if(e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D'){ rightHeld = true; e.preventDefault(); }
+    else if(e.key === ' ' || e.key === 'ArrowDown'){ ensureAudio(); tryStartDrop(); e.preventDefault(); }
+  });
+  window.addEventListener('keyup', function(e){
+    if(e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') leftHeld = false;
+    else if(e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') rightHeld = false;
+  });
+
+  function bindHold(el, onDown, onUp){
+    el.addEventListener('pointerdown', function(e){ ensureAudio(); onDown(); el.setPointerCapture && el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointerleave', onUp);
+    el.addEventListener('pointercancel', onUp);
+  }
+  bindHold(els.left, function(){ leftHeld = true; }, function(){ leftHeld = false; });
+  bindHold(els.right, function(){ rightHeld = true; }, function(){ rightHeld = false; });
+  els.drop.addEventListener('click', function(){ ensureAudio(); tryStartDrop(); });
+  els.coinBtn.addEventListener('click', function(){
+    ensureAudio();
+    sfxCoin();
+    credits = 5;
+    updateReadouts();
+    els.overlay.classList.add('hidden');
+    setMessage('CREDITS ADDED — GOOD LUCK!');
+  });
+
+  // ---------- update ----------
+  function findGrabCandidate(){
+    var best = null, bestErr = Infinity;
+    for(var i = 0; i < prizes.length; i++){
+      var p = prizes[i];
+      var err = Math.abs(p.x - claw.x);
+      if(err < GRIP_RADIUS && err < bestErr){
+        best = p; bestErr = err;
+      }
+    }
+    return { prize: best, err: bestErr };
+  }
+
+  function update(dt){
+    t += dt;
+
+    if(claw.state === 'IDLE'){
+      var vx = 0;
+      if(leftHeld) vx -= H_SPEED;
+      if(rightHeld) vx += H_SPEED;
+      var nx = claw.x + vx * dt;
+      if(nx <= MARGIN_X){ nx = MARGIN_X; if(vx < 0) sfxWall(); }
+      if(nx >= MAX_X){ nx = MAX_X; if(vx > 0) sfxWall(); }
+      claw.x = nx;
+    }
+    else if(claw.state === 'DESCENDING'){
+      claw.y += V_SPEED * dt;
+      if(claw.y >= MAX_Y){
+        claw.y = MAX_Y;
+        claw.state = 'GRABBING';
+        claw.timer = 0;
+      }
+    }
+    else if(claw.state === 'GRABBING'){
+      claw.timer += dt;
+      claw.close = Math.min(1, claw.timer / 0.32);
+      if(claw.close >= 1 && claw.grabRoll === null){
+        var res = findGrabCandidate();
+        if(res.prize){
+          var alignScore = 1 - (res.err / GRIP_RADIUS);
+          var chance = 0.92 * alignScore - (res.prize.weight - 1) * 0.16;
+          chance = Math.max(0.05, Math.min(0.9, chance));
+          if(Math.random() < chance){
+            claw.holding = res.prize.id;
+          }
+        }
+        claw.grabRoll = true;
+        sfxClose();
+      }
+      if(claw.close >= 1 && claw.timer > 0.4){
+        claw.state = 'ASCENDING';
+        setMessage(claw.holding ? 'GOT SOMETHING...' : 'HOOKED NOTHING BUT AIR');
+        if(claw.holding) sfxSuccess(); else sfxFail();
+      }
+    }
+    else if(claw.state === 'ASCENDING'){
+      claw.y -= V_SPEED * dt;
+      syncHeldPrize();
+      if(claw.y <= HOME_Y){
+        claw.y = HOME_Y;
+        claw.state = 'TO_CHUTE';
+      }
+    }
+    else if(claw.state === 'TO_CHUTE'){
+      var dir = CHUTE_X < claw.x ? -1 : 1;
+      claw.x += dir * H_SPEED * dt;
+      if((dir < 0 && claw.x <= CHUTE_X) || (dir > 0 && claw.x >= CHUTE_X)){
+        claw.x = CHUTE_X;
+        claw.state = 'DROPPING';
+        claw.timer = 0;
+      }
+      syncHeldPrize();
+    }
+    else if(claw.state === 'DROPPING'){
+      claw.timer += dt;
+      claw.close = Math.max(0, 1 - claw.timer / 0.3);
+      syncHeldPrize();
+      if(claw.timer >= 0.3){
+        if(claw.holding){
+          collectPrize(claw.holding);
+          claw.holding = null;
+        }
+        claw.grabRoll = null;
+        claw.state = 'RETURN';
+      }
+    }
+    else if(claw.state === 'RETURN'){
+      var d2 = HOME_X < claw.x ? -1 : 1;
+      claw.x += d2 * H_SPEED * dt;
+      if((d2 < 0 && claw.x <= HOME_X) || (d2 > 0 && claw.x >= HOME_X)){
+        claw.x = HOME_X;
+        claw.state = 'IDLE';
+        setMessage(credits > 0 ? 'AIM WITH ◄ ► THEN PRESS DROP' : 'OUT OF CREDITS');
+        if(credits <= 0) showGameOver();
+      }
+    }
+
+    if(!reduceMotion){
+      for(var i = 0; i < prizes.length; i++){
+        prizes[i].bob += dt;
+      }
+    }
+  }
+
+  function syncHeldPrize(){
+    if(!claw.holding) return;
+    var p = getPrize(claw.holding);
+    if(!p) return;
+    p.x = claw.x;
+    p.y = claw.y + p.r + 6;
+  }
+
+  function getPrize(id){
+    for(var i = 0; i < prizes.length; i++) if(prizes[i].id === id) return prizes[i];
+    return null;
+  }
+
+  function collectPrize(id){
+    var p = getPrize(id);
+    if(!p) return;
+    prizes = prizes.filter(function(pr){ return pr.id !== id; });
+    prizesWon += 1;
+    score += Math.round(p.weight * 50);
+    updateReadouts();
+    setMessage('YOU GOT IT! +' + Math.round(p.weight * 50));
+    sfxWin();
+    if(prizes.length === 0){
+      setTimeout(function(){
+        spawnPrizes();
+        setMessage('MACHINE RESTOCKED!');
+        sfxRestock();
+      }, 500);
+    }
+  }
+
+  // ---------- draw ----------
+  function drawToy(p){
+    var bob = reduceMotion ? 0 : Math.sin(p.bob * 2) * 1.5;
+    var x = p.x, y = p.y + bob, r = p.r;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(p.rot);
+
+    // shadow
+    ctx.save();
+    ctx.translate(0, r * 0.9 - bob);
+    ctx.scale(1, 0.32);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.9, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fill();
+    ctx.restore();
+
+    // ears
+    ctx.fillStyle = p.dark;
+    var earR = r * 0.34;
+    if(p.ears === 'round'){
+      ctx.beginPath(); ctx.arc(-r * 0.62, -r * 0.62, earR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 0.62, -r * 0.62, earR, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.75, -r * 0.35);
+      ctx.lineTo(-r * 0.55, -r * 1.15);
+      ctx.lineTo(-r * 0.2, -r * 0.5);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(r * 0.75, -r * 0.35);
+      ctx.lineTo(r * 0.55, -r * 1.15);
+      ctx.lineTo(r * 0.2, -r * 0.5);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // body
+    var grad = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.2, 0, 0, r);
+    grad.addColorStop(0, p.color);
+    grad.addColorStop(1, p.dark);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // face
+    ctx.fillStyle = '#231733';
+    var eyeR = r * 0.09;
+    ctx.beginPath(); ctx.arc(-r * 0.28, -r * 0.05, eyeR, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.28, -r * 0.05, eyeR, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, r * 0.22, r * 0.14, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.lineWidth = Math.max(1.5, r * 0.06);
+    ctx.strokeStyle = '#231733';
+    ctx.stroke();
+
+    // muzzle blush
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath(); ctx.ellipse(-r*0.15,-r*0.32, r*0.4, r*0.26, -0.4, 0, Math.PI*2); ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawClaw(){
+    // cable
+    ctx.strokeStyle = '#7a6bb0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(claw.x, RAIL_Y);
+    ctx.lineTo(claw.x, claw.y - 6);
+    ctx.stroke();
+
+    // held prize renders under the claw head, above cable
+    if(claw.holding){
+      var hp = getPrize(claw.holding);
+      if(hp) drawToy(hp);
+    }
+
+    // claw head
+    var open = 1 - claw.close;
+    var headY = claw.y;
+    ctx.save();
+    ctx.translate(claw.x, headY);
+
+    ctx.fillStyle = '#c9c2e8';
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    var prongCount = 3;
+    var spread = 16 + open * 14;
+    var baseAngles = [ -90, 30, 210 ];
+    ctx.strokeStyle = '#e3ddf7';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    for(var i = 0; i < prongCount; i++){
+      var ang = (baseAngles[i]) * Math.PI / 180;
+      var hipX = Math.cos(ang) * 6, hipY = Math.sin(ang) * 6;
+      var tipX = Math.cos(ang) * spread, tipY = 26 + Math.sin(ang) * 4;
+      var midX = Math.cos(ang) * (spread * 0.5), midY = 14;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.quadraticCurveTo(midX, midY, tipX * 0.4, tipY);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawScene(){
+    ctx.clearRect(0, 0, W, H);
+
+    // interior back gradient
+    var bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#160f2b');
+    bg.addColorStop(1, '#0a0620');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // ambient glow columns
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    var glowGrad = ctx.createLinearGradient(0, 0, W, 0);
+    glowGrad.addColorStop(0, '#3de3ff');
+    glowGrad.addColorStop(0.5, 'transparent');
+    glowGrad.addColorStop(1, '#ff3d90');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    // rail
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, RAIL_Y - 6, W, 6);
+    for(var rx = 10; rx < W; rx += 22){
+      ctx.fillStyle = '#241a3d';
+      ctx.fillRect(rx, RAIL_Y - 6, 4, 6);
+    }
+
+    // chute funnel (top-left)
+    ctx.fillStyle = '#0a0620';
+    ctx.beginPath();
+    ctx.moveTo(CHUTE_X - 34, 0);
+    ctx.lineTo(CHUTE_X + 34, 0);
+    ctx.lineTo(CHUTE_X + 14, RAIL_Y + 30);
+    ctx.lineTo(CHUTE_X - 14, RAIL_Y + 30);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,207,77,0.55)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // floor
+    var floorGrad = ctx.createLinearGradient(0, FLOOR_Y - 10, 0, H);
+    floorGrad.addColorStop(0, '#241a3d');
+    floorGrad.addColorStop(1, '#150e28');
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, FLOOR_Y, W, H - FLOOR_Y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.beginPath();
+    ctx.moveTo(0, FLOOR_Y);
+    ctx.lineTo(W, FLOOR_Y);
+    ctx.stroke();
+
+    // prizes not currently held
+    for(var i = 0; i < prizes.length; i++){
+      if(claw.holding === prizes[i].id) continue;
+      drawToy(prizes[i]);
+    }
+
+    drawClaw();
+
+    // grip radius hint while aiming (subtle)
+    if(claw.state === 'IDLE'){
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.strokeStyle = '#3de3ff';
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.moveTo(claw.x, HOME_Y + 14);
+      ctx.lineTo(claw.x, FLOOR_Y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ---------- loop ----------
+  var lastTime = null;
+  function frame(ts){
+    if(lastTime === null) lastTime = ts;
+    var dt = Math.min(0.05, (ts - lastTime) / 1000);
+    lastTime = ts;
+    update(dt);
+    drawScene();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+})();
+</script>
