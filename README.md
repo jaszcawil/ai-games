@@ -57,6 +57,22 @@ stays clickable regardless of what the game is drawing underneath.
   direction/colors — they weren't built with a light/dark variant, so we didn't
   reskin them.
 
+## "Add to Home Screen" prompt
+
+The homepage now asks people to install it:
+
+- A banner slides up from the bottom about a second after the page loads, with an
+  "Add" button and a dismiss (×). Dismissing it snoozes it for 14 days (stored in
+  `localStorage` as `aigames.installPromptDismissedAt`) — it never nags every visit.
+- A matching button sits in the header (next to the theme toggle) so the prompt is
+  always available on demand, even after the banner's been dismissed.
+- On Chrome/Edge (Android or desktop), tapping either one triggers the browser's real
+  native install prompt. On iPhone/iPad Safari and everywhere else that doesn't expose
+  that native prompt, it opens a small step-by-step sheet instead (Share icon → Add to
+  Home Screen on iOS; browser menu → Add to Home screen / Install app elsewhere).
+- Both the banner and the button hide automatically once the app is already installed
+  (running in standalone mode), so it doesn't pester people who've already added it.
+
 ## Storage / save games
 
 Every game already saves its own progress via the browser's `localStorage` (this was

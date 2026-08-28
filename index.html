@@ -92,17 +92,21 @@
   .brand h1{ font-size:1.15rem; margin:0; letter-spacing:-0.01em; }
   .brand span{ display:block; font-size:0.72rem; color:var(--text-soft); font-weight:500; }
 
-  #theme-toggle{
+  .icon-btn{
     display:flex; align-items:center; justify-content:center;
     width:42px; height:42px; border-radius:50%;
     background:var(--card); border:1px solid var(--card-border);
     box-shadow: var(--shadow);
     cursor:pointer; flex:none;
   }
-  #theme-toggle svg{ width:20px; height:20px; }
+  .icon-btn svg{ width:20px; height:20px; }
   #theme-toggle .icon-sun{ display:none; }
   html[data-theme="dark"] #theme-toggle .icon-moon{ display:none; }
   html[data-theme="dark"] #theme-toggle .icon-sun{ display:block; }
+
+  .header-actions{ display:flex; align-items:center; gap:8px; }
+  #install-btn{ display:none; }
+  #install-btn.visible{ display:flex; }
 
   main{ padding: 8px clamp(16px, 4vw, 32px) 48px; max-width:1100px; margin:0 auto; }
 
@@ -151,8 +155,90 @@
     color:var(--text-soft); font-size:0.75rem;
   }
 
+  /* ---------- Install prompt banner ---------- */
+  #install-banner{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    z-index:500;
+    display:flex; align-items:center; gap:12px;
+    padding:14px clamp(14px, 4vw, 24px);
+    padding-bottom:calc(14px + var(--safe-bottom));
+    padding-left:calc(clamp(14px, 4vw, 24px) + var(--safe-left));
+    padding-right:calc(clamp(14px, 4vw, 24px) + var(--safe-right));
+    background:var(--bg-elev);
+    border-top:1px solid var(--card-border);
+    box-shadow:0 -8px 24px rgba(20,10,40,0.14);
+    transform:translateY(110%);
+    transition:transform 0.3s ease;
+  }
+  #install-banner.visible{ transform:translateY(0); }
+  #install-banner .banner-icon{
+    width:40px; height:40px; border-radius:12px; flex:none;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    display:flex; align-items:center; justify-content:center;
+  }
+  #install-banner .banner-icon svg{ width:22px; height:22px; }
+  #install-banner .banner-text{ flex:1 1 auto; min-width:0; }
+  #install-banner .banner-text strong{ display:block; font-size:0.88rem; }
+  #install-banner .banner-text span{ display:block; font-size:0.76rem; color:var(--text-soft); margin-top:2px; }
+  #install-banner .banner-actions{ display:flex; align-items:center; gap:8px; flex:none; }
+  .btn-primary{
+    appearance:none; border:none; cursor:pointer;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    color:#fff; font-weight:700; font-size:0.85rem;
+    padding:9px 14px; border-radius:999px;
+    white-space:nowrap;
+  }
+  .btn-dismiss{
+    appearance:none; border:none; cursor:pointer;
+    background:transparent; color:var(--text-soft);
+    width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .btn-dismiss svg{ width:16px; height:16px; }
+
+  /* ---------- Install instructions modal (iOS / unsupported browsers) ---------- */
+  #install-modal{
+    position:fixed; inset:0; z-index:600;
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    background:rgba(10,8,20,0.45);
+    padding:0;
+  }
+  #install-modal.visible{ display:flex; }
+  @media (min-width:640px){
+    #install-modal{ align-items:center; }
+  }
+  .modal-sheet{
+    width:100%; max-width:420px;
+    background:var(--bg-elev);
+    border-radius:20px 20px 0 0;
+    padding:22px clamp(18px, 5vw, 26px) calc(22px + var(--safe-bottom));
+    box-shadow:0 -10px 40px rgba(0,0,0,0.25);
+  }
+  @media (min-width:640px){
+    .modal-sheet{ border-radius:20px; margin-bottom:0; }
+  }
+  .modal-sheet h3{ margin:0 0 4px; font-size:1.05rem; }
+  .modal-sheet p{ margin:0 0 16px; color:var(--text-soft); font-size:0.85rem; }
+  .modal-steps{ list-style:none; margin:0 0 18px; padding:0; display:flex; flex-direction:column; gap:12px; }
+  .modal-steps li{ display:flex; align-items:center; gap:12px; font-size:0.88rem; }
+  .modal-steps .step-num{
+    width:26px; height:26px; border-radius:50%; flex:none;
+    background:var(--card); border:1px solid var(--card-border);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:0.8rem; color:var(--accent);
+  }
+  .modal-steps svg{ width:18px; height:18px; flex:none; }
+  .modal-close{
+    width:100%; padding:11px; border-radius:12px; border:1px solid var(--card-border);
+    background:var(--card); color:var(--text); font-weight:600; font-size:0.9rem; cursor:pointer;
+  }
+
   @media (prefers-reduced-motion: reduce){
     .card{ transition:none; }
+    #install-banner{ transition:none; }
   }
 </style>
 </head>
@@ -170,20 +256,29 @@
     </div>
     <h1>AI Games<span>Pick a game to play</span></h1>
   </div>
-  <button id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle theme">
-    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="var(--text)" stroke-width="1.6" stroke-linejoin="round"/>
-    </svg>
-    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="4.2" stroke="var(--text)" stroke-width="1.6"/>
-      <g stroke="var(--text)" stroke-width="1.6" stroke-linecap="round">
-        <path d="M12 2.5v2.4"/><path d="M12 19.1v2.4"/>
-        <path d="M4.2 4.2l1.7 1.7"/><path d="M18.1 18.1l1.7 1.7"/>
-        <path d="M2.5 12h2.4"/><path d="M19.1 12h2.4"/>
-        <path d="M4.2 19.8l1.7-1.7"/><path d="M18.1 5.9l1.7-1.7"/>
-      </g>
-    </svg>
-  </button>
+  <div class="header-actions">
+    <button id="install-btn" class="icon-btn" type="button" aria-label="Add AI Games to Home Screen" title="Add to Home Screen">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="3" width="16" height="18" rx="3" stroke="var(--text)" stroke-width="1.6"/>
+        <path d="M12 8v6M9 11h6" stroke="var(--text)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M9 19h6" stroke="var(--text)" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle theme">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="var(--text)" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="4.2" stroke="var(--text)" stroke-width="1.6"/>
+        <g stroke="var(--text)" stroke-width="1.6" stroke-linecap="round">
+          <path d="M12 2.5v2.4"/><path d="M12 19.1v2.4"/>
+          <path d="M4.2 4.2l1.7 1.7"/><path d="M18.1 18.1l1.7 1.7"/>
+          <path d="M2.5 12h2.4"/><path d="M19.1 12h2.4"/>
+          <path d="M4.2 19.8l1.7-1.7"/><path d="M18.1 5.9l1.7-1.7"/>
+        </g>
+      </svg>
+    </button>
+  </div>
 </header>
 
 <main>
@@ -196,6 +291,39 @@
 </main>
 
 <footer>AI Games &middot; your progress is saved on this device</footer>
+
+<!-- Install prompt: bottom banner -->
+<div id="install-banner" role="dialog" aria-label="Add AI Games to your Home Screen">
+  <div class="banner-icon">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="3" width="16" height="18" rx="3" stroke="#fff" stroke-width="1.7"/>
+      <path d="M12 8v6M9 11h6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M9 19h6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="banner-text">
+    <strong>Add AI Games to your Home Screen</strong>
+    <span>Play like a real app — full screen, one tap, works offline.</span>
+  </div>
+  <div class="banner-actions">
+    <button id="banner-install-btn" class="btn-primary" type="button">Add</button>
+    <button id="banner-dismiss-btn" class="btn-dismiss" type="button" aria-label="Dismiss">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- Install prompt: instructions modal (iOS Safari / browsers without a native install prompt) -->
+<div id="install-modal" aria-hidden="true">
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-label="How to add AI Games to your Home Screen">
+    <h3 id="install-modal-title">Add to Home Screen</h3>
+    <p id="install-modal-subtitle">Follow these steps to install AI Games.</p>
+    <ol class="modal-steps" id="install-modal-steps"></ol>
+    <button class="modal-close" id="install-modal-close" type="button">Got it</button>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -321,6 +449,142 @@
       navigator.serviceWorker.register('./sw.js').catch(function(){ /* offline caching just won't be available */ });
     });
   }
+
+  // ---------- "Add to Home Screen" prompt ----------
+  var DISMISS_KEY = 'aigames.installPromptDismissedAt';
+  var DISMISS_SNOOZE_DAYS = 14;
+  var deferredInstallPrompt = null;
+
+  var installBtn = document.getElementById('install-btn');
+  var banner = document.getElementById('install-banner');
+  var bannerInstallBtn = document.getElementById('banner-install-btn');
+  var bannerDismissBtn = document.getElementById('banner-dismiss-btn');
+  var modal = document.getElementById('install-modal');
+  var modalTitle = document.getElementById('install-modal-title');
+  var modalSubtitle = document.getElementById('install-modal-subtitle');
+  var modalSteps = document.getElementById('install-modal-steps');
+  var modalClose = document.getElementById('install-modal-close');
+
+  function isStandalone(){
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true; // iOS Safari
+  }
+  function isIOS(){
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
+  }
+  function isAndroid(){
+    return /android/i.test(navigator.userAgent);
+  }
+  function recentlyDismissed(){
+    try{
+      var raw = localStorage.getItem(DISMISS_KEY);
+      if (!raw) return false;
+      var elapsedDays = (Date.now() - parseInt(raw, 10)) / (1000 * 60 * 60 * 24);
+      return elapsedDays < DISMISS_SNOOZE_DAYS;
+    }catch(e){ return false; }
+  }
+  function markDismissed(){
+    try{ localStorage.setItem(DISMISS_KEY, String(Date.now())); }catch(e){}
+  }
+
+  function stepRow(num, iconSvg, text){
+    var li = document.createElement('li');
+    var numEl = document.createElement('span');
+    numEl.className = 'step-num';
+    numEl.textContent = String(num);
+    var span = document.createElement('span');
+    span.innerHTML = iconSvg;
+    var textEl = document.createElement('span');
+    textEl.textContent = text;
+    li.appendChild(numEl);
+    li.appendChild(span);
+    li.appendChild(textEl);
+    return li;
+  }
+
+  var SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7l4-4 4 4" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="10" width="14" height="10" rx="2.5" stroke="var(--accent)" stroke-width="1.8"/></svg>';
+  var PLUS_ICON = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="4" stroke="var(--accent)" stroke-width="1.8"/><path d="M12 8v8M8 12h8" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  var MENU_ICON = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="5" r="1.6" fill="var(--accent)"/><circle cx="12" cy="12" r="1.6" fill="var(--accent)"/><circle cx="12" cy="19" r="1.6" fill="var(--accent)"/></svg>';
+
+  function openModal(){
+    modalSteps.innerHTML = '';
+    if (isIOS()){
+      modalTitle.textContent = 'Add to Home Screen';
+      modalSubtitle.textContent = "You're on iPhone/iPad Safari, so this is a couple of taps:";
+      modalSteps.appendChild(stepRow(1, SHARE_ICON, 'Tap the Share icon in the toolbar'));
+      modalSteps.appendChild(stepRow(2, PLUS_ICON, "Scroll down and tap 'Add to Home Screen'"));
+      modalSteps.appendChild(stepRow(3, PLUS_ICON, "Tap 'Add' to confirm"));
+    } else if (isAndroid()){
+      modalTitle.textContent = 'Add to Home Screen';
+      modalSubtitle.textContent = 'Your browser controls this menu, so here\'s where to find it:';
+      modalSteps.appendChild(stepRow(1, MENU_ICON, 'Tap the menu (⋮) in the top corner'));
+      modalSteps.appendChild(stepRow(2, PLUS_ICON, "Tap 'Add to Home screen' or 'Install app'"));
+      modalSteps.appendChild(stepRow(3, PLUS_ICON, 'Confirm to finish'));
+    } else {
+      modalTitle.textContent = 'Install AI Games';
+      modalSubtitle.textContent = 'Look for an install icon in your browser\'s address bar, or:';
+      modalSteps.appendChild(stepRow(1, MENU_ICON, "Open your browser's menu"));
+      modalSteps.appendChild(stepRow(2, PLUS_ICON, "Choose 'Install AI Games' or 'Add to Home screen'"));
+    }
+    modal.classList.add('visible');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  function closeModal(){
+    modal.classList.remove('visible');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function showBanner(){
+    if (isStandalone() || recentlyDismissed()) return;
+    banner.classList.add('visible');
+  }
+  function hideBanner(){
+    banner.classList.remove('visible');
+  }
+
+  function showInstallButton(){
+    if (isStandalone()) return;
+    installBtn.classList.add('visible');
+  }
+
+  // Chrome/Edge/Android: capture the native install prompt instead of letting it
+  // show its own mini-infobar, so our banner/button can trigger it on demand.
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredInstallPrompt = e;
+  });
+
+  window.addEventListener('appinstalled', function(){
+    deferredInstallPrompt = null;
+    hideBanner();
+    installBtn.classList.remove('visible');
+  });
+
+  function triggerInstall(){
+    if (deferredInstallPrompt){
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.finally(function(){
+        deferredInstallPrompt = null;
+        hideBanner();
+      });
+    } else {
+      openModal();
+    }
+  }
+
+  bannerInstallBtn.addEventListener('click', triggerInstall);
+  installBtn.addEventListener('click', triggerInstall);
+  bannerDismissBtn.addEventListener('click', function(){ markDismissed(); hideBanner(); });
+  modalClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(); });
+
+  // Show the header button and the banner on every platform (unless already
+  // installed, or the banner was dismissed recently). Chrome/Edge get a real
+  // native install prompt via beforeinstallprompt when it's captured above;
+  // everyone else gets step-by-step instructions from openModal().
+  showInstallButton();
+  setTimeout(showBanner, 1200);
 })();
 </script>
 </body>
