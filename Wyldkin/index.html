@@ -1,0 +1,2633 @@
+<title>Wyldkin: Champion's Path</title>
+<style>
+  :root{
+    --ink:#1c1a24; --paper:#fdf6e8; --accent:#3f6fd6; --accent2:#e0483c;
+    --panel:#fffaf0; --panelBorder:#3a3245; --btn:#4f6fd0; --btnDark:#33459a;
+    --hpgreen:#4caf50; --hpyellow:#ffb300; --hpred:#e53935;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --ink:#f0ecda; --paper:#1c1a24; --panel:#241f2e; --panelBorder:#6a5f80; }
+  }
+  :root[data-theme="dark"]{ --ink:#f0ecda; --paper:#1c1a24; --panel:#241f2e; --panelBorder:#6a5f80; }
+  *{ box-sizing:border-box; }
+  body{ background:var(--paper); }
+  #wyldkinRoot{
+    position:fixed; inset:0; background:#000; color:var(--ink);
+    font-family:'Segoe UI', Roboto, -apple-system, sans-serif; overflow:hidden; user-select:none;
+    display:flex; flex-direction:column;
+  }
+  button{ font-family:inherit; cursor:pointer; }
+  .btn{ background:var(--btn); color:#fff; border:2px solid var(--btnDark); border-radius:8px; padding:8px 12px; font-weight:600; font-size:14px; }
+  .btn:active{ transform:translateY(1px); }
+  .btn.small{ padding:5px 9px; font-size:12px; }
+  .btn.primary{ background:var(--accent2); border-color:#a5281f; }
+  .btn.danger{ background:#8a3030; border-color:#5a1c1c; }
+  .btn.disabled, .btn:disabled{ opacity:0.4; pointer-events:none; }
+  .btn.tabbtn.active{ background:var(--accent2); border-color:#a5281f; }
+
+  #hud{ display:flex; justify-content:space-between; align-items:center; padding:6px 10px;
+    background:rgba(0,0,0,0.55); color:#fff; font-size:13px; z-index:20; flex-wrap:wrap; gap:6px; }
+  #hud .hudLeft, #hud .hudRight{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+  #canvasWrap{ position:relative; flex:1; min-height:0; background:#111; }
+  #gameCanvas{ position:absolute; inset:0; display:block; }
+
+  #touchControls{ position:absolute; inset:0; pointer-events:none; z-index:15; }
+  .dpad{ position:absolute; left:14px; bottom:14px; width:130px; height:130px; pointer-events:auto; }
+  .dpadBtn{ position:absolute; width:44px; height:44px; background:rgba(255,255,255,0.22); border:2px solid rgba(255,255,255,0.5);
+    border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; touch-action:none; }
+  #dpad_up{ left:43px; top:0; } #dpad_down{ left:43px; top:86px; } #dpad_left{ left:0; top:43px; } #dpad_right{ left:86px; top:43px; }
+  #actionBtn{ position:absolute; right:20px; bottom:24px; width:64px; height:64px; border-radius:50%;
+    background:rgba(224,72,60,0.85); border:3px solid rgba(255,255,255,0.6); color:#fff; font-weight:700; pointer-events:auto; font-size:14px; }
+
+  #dialogueBox{ position:absolute; left:4%; right:4%; bottom:4%; max-width:760px; margin:0 auto;
+    background:var(--panel); border:3px solid var(--panelBorder); border-radius:12px; padding:16px 18px;
+    font-size:15px; line-height:1.4; z-index:30; box-shadow:0 6px 18px rgba(0,0,0,0.4); min-height:60px; }
+  #dialogueBox::after{ content:'▼ tap to continue'; display:block; text-align:right; font-size:11px; opacity:0.6; margin-top:6px; }
+
+  #toast{ position:absolute; left:50%; top:14px; transform:translate(-50%,-140%); background:rgba(0,0,0,0.85); color:#fff;
+    padding:8px 16px; border-radius:20px; font-size:13px; z-index:60; transition:transform 0.25s; }
+  #toast.show{ transform:translate(-50%,0); }
+  #fadeLayer{ position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity 0.22s; z-index:80; }
+
+  .overlayFull{ position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; flex-direction:column;
+    background:linear-gradient(160deg,#2a3f6b,#1b2542); color:#fff; padding:16px; text-align:center; overflow:auto; }
+  #titleScreen h1{ font-size:clamp(28px,6vw,52px); margin:0 0 6px; text-shadow:2px 3px 0 #12193a; }
+  #titleScreen p.tagline{ opacity:0.85; margin-bottom:26px; }
+  #titleScreen .btnCol{ display:flex; flex-direction:column; gap:10px; width:min(280px,80vw); }
+  #titleScreen .btn{ font-size:16px; padding:12px; }
+  #continuePicker{ display:none; position:absolute; inset:0; background:rgba(0,0,0,0.6); z-index:50; align-items:center; justify-content:center; }
+  #continuePicker .panel{ background:var(--panel); color:var(--ink); border-radius:12px; padding:18px; width:min(420px,90vw); border:3px solid var(--panelBorder); }
+
+  #starterScreen{ background:linear-gradient(160deg,#3a5f2e,#1b2b16); }
+  #starterCards{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center; max-width:960px; }
+  .starterCard{ background:var(--panel); color:var(--ink); border-radius:14px; padding:14px; width:220px; border:3px solid var(--panelBorder); }
+  .starterSprite{ image-rendering:pixelated; display:block; margin:0 auto 8px; }
+  .starterName{ font-size:18px; font-weight:700; }
+  .starterType{ font-size:12px; opacity:0.7; margin-bottom:8px; }
+  .starterDesc{ font-size:12px; min-height:52px; margin-bottom:10px; }
+
+  #battleScreen{ position:absolute; inset:0; z-index:35; display:flex; flex-direction:column; background:#000; }
+  #battleCanvas{ width:100%; flex:1; min-height:0; display:block; }
+  #battleMsgBox{ background:var(--panel); color:var(--ink); border-top:3px solid var(--panelBorder); padding:14px 16px; font-size:15px; min-height:50px; }
+  #battleActions{ background:var(--panel); color:var(--ink); padding:8px 10px 10px; max-height:44vh; overflow:auto; }
+  #battleTabsWrap{ display:flex; gap:6px; padding:6px 10px 0; background:var(--panel); color:var(--ink); flex-wrap:wrap; }
+  .moveGrid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+  .moveBtn{ text-align:left; padding:10px; border-radius:8px; }
+  .type-Ember{background:#d9542a;border-color:#8a3010;} .type-Aqua{background:#2680c2;border-color:#0c4870;}
+  .type-Verdant{background:#4d9a34;border-color:#1e4a1a;} .type-Volt{background:#c7a825;border-color:#5a4d0e;}
+  .type-Terra{background:#8a6a4a;border-color:#3a2a1c;} .type-Sky{background:#3d9ec4;border-color:#0d3646;}
+  .type-Shade{background:#5b4a8a;border-color:#241f33;} .type-Mind{background:#8a5cc9;border-color:#2a1740;}
+  .type-Basic{background:#7a7263;border-color:#332f28;}
+
+  .partyList, .bagList{ display:flex; flex-direction:column; gap:8px; }
+  .monRow{ display:flex; gap:10px; align-items:center; background:rgba(120,120,120,0.12); border-radius:10px; padding:8px; }
+  .monRow.fainted{ opacity:0.5; }
+  .monSprite{ image-rendering:pixelated; flex:none; }
+  .monInfo{ flex:1; font-size:13px; }
+  .hpBarBg{ background:#333; border-radius:4px; height:8px; margin:3px 0; overflow:hidden; }
+  .hpBarFg{ height:100%; }
+  .monActions{ display:flex; flex-direction:column; gap:4px; }
+  .status{ font-size:10px; padding:1px 5px; border-radius:6px; background:#a33; color:#fff; }
+  .itemRow{ display:flex; justify-content:space-between; align-items:center; gap:8px; background:rgba(120,120,120,0.12); border-radius:10px; padding:8px 10px; font-size:13px; }
+  .tag{ font-size:11px; opacity:0.6; }
+
+  #pauseMenu{ position:absolute; inset:0; z-index:45; background:rgba(10,8,16,0.92); color:var(--ink); display:flex; flex-direction:column; }
+  #pauseTabs{ display:flex; gap:4px; padding:10px; flex-wrap:wrap; background:var(--panel); border-bottom:3px solid var(--panelBorder); }
+  #pauseBody{ flex:1; overflow:auto; padding:12px; background:var(--panel); }
+  #pauseHeader{ display:flex; justify-content:space-between; align-items:center; padding:10px 14px; }
+  .badgeGrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+  .badgeItem{ background:rgba(120,120,120,0.12); border-radius:10px; padding:10px; display:flex; gap:8px; align-items:center; font-size:12px; opacity:0.5; }
+  .badgeItem.got{ opacity:1; }
+  .badgeIcon{ font-size:24px; color:#e0b32a; }
+  .champBanner{ text-align:center; font-size:18px; margin-top:14px; }
+  .slotList{ display:flex; flex-direction:column; gap:8px; }
+  .slotRow{ display:flex; justify-content:space-between; align-items:center; background:rgba(120,120,120,0.12); border-radius:10px; padding:10px; font-size:13px; gap:8px; }
+
+  #shopScreen{ position:absolute; inset:0; z-index:45; background:var(--panel); color:var(--ink); display:flex; flex-direction:column; }
+  #shopHeader{ display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:rgba(0,0,0,0.12); }
+  #shopBody{ flex:1; overflow:auto; padding:12px; }
+
+  @media (max-width:520px){
+    #hud{ font-size:11px; }
+    .starterCard{ width:44vw; min-width:150px; }
+    #dialogueBox{ font-size:13px; padding:12px; }
+    .moveGrid{ grid-template-columns:1fr; }
+    .dpad{ width:112px; height:112px; }
+    .dpadBtn{ width:38px; height:38px; }
+    #dpad_up{ left:37px; } #dpad_down{ left:37px; top:74px; } #dpad_right{ left:74px; top:37px; } #dpad_left{ top:37px; }
+    #actionBtn{ width:54px; height:54px; font-size:11px; }
+  }
+  @media (max-height:480px){
+    #battleActions{ max-height:36vh; }
+  }
+</style>
+
+<div id="wyldkinRoot">
+  <div id="hud" style="display:none">
+    <div class="hudLeft"><span id="hudLead"></span></div>
+    <div class="hudRight"><span id="hudMoney"></span><span id="hudBadges"></span><button class="btn small" id="menuBtn">Menu</button></div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="touchControls" style="display:none">
+      <div class="dpad">
+        <div class="dpadBtn" id="dpad_up">▲</div>
+        <div class="dpadBtn" id="dpad_down">▼</div>
+        <div class="dpadBtn" id="dpad_left">◀</div>
+        <div class="dpadBtn" id="dpad_right">▶</div>
+      </div>
+      <button id="actionBtn">TALK<br>/USE</button>
+    </div>
+
+    <div id="dialogueBox" style="display:none"><span id="dialogueText"></span></div>
+    <div id="toast"></div>
+    <div id="fadeLayer"></div>
+
+    <div id="titleScreen" class="overlayFull" style="display:none">
+      <h1>Wyldkin</h1>
+      <p class="tagline">Champion's Path &middot; catch, train, battle, become the best</p>
+      <div class="btnCol">
+        <button class="btn primary" id="newGameBtn">New Game</button>
+        <button class="btn" id="titleContinueBtn">Continue</button>
+      </div>
+    </div>
+    <div id="continuePicker">
+      <div class="panel">
+        <h3 style="margin-top:0">Continue</h3>
+        <div id="loadSlotsWrap"></div>
+        <button class="btn small" id="continueCancelBtn" style="margin-top:10px">Cancel</button>
+      </div>
+    </div>
+
+    <div id="starterScreen" class="overlayFull" style="display:none">
+      <h1 style="font-size:28px">Choose your partner, Jasz!</h1>
+      <div id="starterCards"></div>
+    </div>
+
+    <div id="battleScreen" style="display:none">
+      <canvas id="battleCanvas"></canvas>
+      <div id="battleMsgBox"></div>
+      <div id="battleTabsWrap"></div>
+      <div id="battleActions"></div>
+    </div>
+
+    <div id="pauseMenu" style="display:none">
+      <div id="pauseHeader"><h2 style="margin:0">Menu</h2><button class="btn small" id="closeMenuBtn">Close</button></div>
+      <div id="pauseTabs">
+        <button class="btn small" id="ptab_party">Party</button>
+        <button class="btn small" id="ptab_bag">Bag</button>
+        <button class="btn small" id="ptab_badges">Sigils</button>
+        <button class="btn small" id="ptab_save">Save</button>
+        <button class="btn small" id="ptab_load">Load</button>
+      </div>
+      <div id="pauseBody"></div>
+    </div>
+
+    <div id="shopScreen" style="display:none">
+      <div id="shopHeader"><h2 style="margin:0">Shop</h2><button class="btn small" id="closeShopBtn">Close</button></div>
+      <div id="shopBody"></div>
+    </div>
+  </div>
+</div>
+<script>
+/* ===================== WYLDKIN: CHAMPION'S PATH ===================== */
+/* p1: core data - types, moves, species */
+'use strict';
+const G = (window.G = window.G || {});
+
+/* ---------- Types ---------- */
+G.TYPES = ['Basic','Ember','Aqua','Verdant','Volt','Terra','Sky','Shade','Mind'];
+
+/* effectiveness chart: ATK type -> { DEF type: multiplier } ; default 1 */
+G.TYPE_CHART = {
+  Ember:  { Verdant:2, Aqua:0.5, Ember:0.5, Terra:0.5 },
+  Aqua:   { Ember:2, Terra:2, Aqua:0.5, Verdant:0.5 },
+  Verdant:{ Aqua:2, Terra:2, Verdant:0.5, Ember:0.5, Sky:0.5 },
+  Volt:   { Aqua:2, Sky:2, Volt:0.5, Verdant:0.5, Terra:0 },
+  Terra:  { Ember:2, Volt:2, Sky:0.5, Verdant:0.5 },
+  Sky:    { Verdant:2, Mind:2, Volt:0.5, Terra:0 },
+  Shade:  { Mind:2, Shade:0.5, Basic:0 },
+  Mind:   { Shade:0.5, Mind:0.5, Basic:1 },
+  Basic:  { Shade:0 }
+};
+function typeMult(atkType, defTypes){
+  let m = 1;
+  const row = G.TYPE_CHART[atkType] || {};
+  for (const dt of defTypes) m *= (row[dt] !== undefined ? row[dt] : 1);
+  return m;
+}
+G.typeMult = typeMult;
+
+/* ---------- Moves ---------- */
+/* kind: 'phys'|'spec'|'status'  ; effect: optional {status, chance, statChange:{stat,stages,target}} */
+G.MOVES = {
+  scratch:   { name:'Scratch',    type:'Basic',   kind:'phys', power:35, acc:100, pp:30 },
+  tackle:    { name:'Tackle',     type:'Basic',   kind:'phys', power:40, acc:100, pp:35 },
+  bodyslam:  { name:'Body Slam',  type:'Basic',   kind:'phys', power:60, acc:95,  pp:20, effect:{status:'para', chance:10} },
+  guard:     { name:'Guard Up',   type:'Basic',   kind:'status', power:0, acc:100, pp:20, effect:{statChange:{stat:'def',stages:1,target:'self'}} },
+  quickstep: { name:'Quickstep',  type:'Basic',   kind:'status', power:0, acc:100, pp:20, effect:{statChange:{stat:'spe',stages:1,target:'self'}} },
+  roar:      { name:'Roar',       type:'Basic',   kind:'status', power:0, acc:100, pp:15, effect:{statChange:{stat:'atk',stages:-1,target:'foe'}} },
+  focus:     { name:'Focus',      type:'Basic',   kind:'status', power:0, acc:100, pp:15, effect:{statChange:{stat:'atk',stages:1,target:'self'}} },
+  rest:      { name:'Rest',       type:'Basic',   kind:'status', power:0, acc:100, pp:10, effect:{heal:0.5} },
+
+  ember:     { name:'Ember',      type:'Ember',   kind:'spec', power:35, acc:100, pp:25, effect:{status:'burn', chance:15} },
+  flamewhip: { name:'Flame Whip', type:'Ember',   kind:'phys', power:55, acc:100, pp:20, effect:{status:'burn', chance:10} },
+  infernoblast:{name:'Inferno Blast',type:'Ember',kind:'spec', power:85, acc:90,  pp:10, effect:{status:'burn', chance:25} },
+  cinderclaw:{ name:'Cinder Claw',type:'Ember',   kind:'phys', power:70, acc:95,  pp:15 },
+  pyrostomp: { name:'Pyro Stomp', type:'Ember',   kind:'phys', power:50, acc:100, pp:20 },
+
+  splash:    { name:'Splash Jet', type:'Aqua',    kind:'spec', power:35, acc:100, pp:25 },
+  aquawhirl: { name:'Aqua Whirl', type:'Aqua',    kind:'spec', power:55, acc:100, pp:20 },
+  tidalcrash:{ name:'Tidal Crash',type:'Aqua',    kind:'phys', power:85, acc:90,  pp:10 },
+  bubblebeam:{ name:'Bubblebeam', type:'Aqua',    kind:'spec', power:45, acc:100, pp:20, effect:{statChange:{stat:'spe',stages:-1,target:'foe'},chance:20} },
+  finslash:  { name:'Fin Slash',  type:'Aqua',    kind:'phys', power:50, acc:100, pp:20 },
+
+  vinewhip:  { name:'Vine Whip',  type:'Verdant', kind:'phys', power:40, acc:100, pp:25 },
+  leafcutter:{ name:'Leaf Cutter',type:'Verdant', kind:'phys', power:55, acc:95,  pp:20 },
+  thornburst:{ name:'Thorn Burst',type:'Verdant', kind:'spec', power:85, acc:90,  pp:10 },
+  sporecloud:{ name:'Spore Cloud',type:'Verdant', kind:'status', power:0, acc:85, pp:15, effect:{status:'sleep', chance:100} },
+  leafgust:  { name:'Leaf Gust',  type:'Verdant', kind:'spec', power:45, acc:100, pp:20 },
+
+  sparkbite: { name:'Spark Bite', type:'Volt',    kind:'phys', power:40, acc:100, pp:25, effect:{status:'para', chance:15} },
+  voltdash:  { name:'Volt Dash',  type:'Volt',    kind:'phys', power:55, acc:100, pp:20 },
+  thunderbolt:{name:'Thunderbolt',type:'Volt',    kind:'spec', power:85, acc:90,  pp:10, effect:{status:'para', chance:20} },
+  staticshock:{name:'Static Shock',type:'Volt',   kind:'spec', power:35, acc:100, pp:25, effect:{status:'para', chance:25} },
+  chargebeam:{ name:'Charge Beam',type:'Volt',    kind:'spec', power:50, acc:100, pp:20 },
+
+  rockthrow: { name:'Rock Throw', type:'Terra',   kind:'phys', power:45, acc:95,  pp:20 },
+  mudslam:   { name:'Mud Slam',   type:'Terra',   kind:'phys', power:55, acc:95,  pp:20 },
+  boulderfall:{name:'Boulder Fall',type:'Terra',  kind:'phys', power:85, acc:85,  pp:10 },
+  harden:    { name:'Harden',     type:'Terra',   kind:'status', power:0, acc:100, pp:20, effect:{statChange:{stat:'def',stages:2,target:'self'}} },
+  quake:     { name:'Quake Stomp',type:'Terra',   kind:'phys', power:60, acc:95,  pp:15 },
+
+  gust:      { name:'Gust',       type:'Sky',     kind:'spec', power:35, acc:100, pp:25 },
+  windcutter:{ name:'Wind Cutter',type:'Sky',     kind:'phys', power:55, acc:100, pp:20 },
+  skydive:   { name:'Sky Dive',   type:'Sky',     kind:'phys', power:85, acc:90,  pp:10 },
+  tailwind:  { name:'Tailwind',   type:'Sky',     kind:'status', power:0, acc:100, pp:15, effect:{statChange:{stat:'spe',stages:1,target:'self'}} },
+  wingslap:  { name:'Wing Slap',  type:'Sky',     kind:'phys', power:45, acc:100, pp:20 },
+
+  shadowclaw:{ name:'Shadow Claw',type:'Shade',   kind:'phys', power:45, acc:100, pp:20 },
+  duskbite:  { name:'Dusk Bite',  type:'Shade',   kind:'phys', power:60, acc:95,  pp:15 },
+  nightmare: { name:'Nightmare',  type:'Shade',   kind:'spec', power:85, acc:90,  pp:10 },
+  spookyglare:{name:'Spooky Glare',type:'Shade',  kind:'status', power:0, acc:90, pp:15, effect:{statChange:{stat:'atk',stages:-2,target:'foe'}} },
+  hex:       { name:'Hex',        type:'Shade',   kind:'spec', power:50, acc:100, pp:20 },
+
+  mindpulse: { name:'Mind Pulse', type:'Mind',    kind:'spec', power:40, acc:100, pp:25 },
+  focusbeam: { name:'Focus Beam', type:'Mind',    kind:'spec', power:60, acc:95,  pp:15 },
+  psychcrush:{ name:'Psych Crush',type:'Mind',    kind:'spec', power:85, acc:90,  pp:10 },
+  calm:      { name:'Calm Mind',  type:'Mind',    kind:'status', power:0, acc:100, pp:20, effect:{statChange:{stat:'spatk',stages:1,target:'self'}} },
+  confuseray:{ name:'Puzzle Ray', type:'Mind',    kind:'spec', power:45, acc:95,  pp:20 }
+};
+
+/* ---------- Species ---------- */
+/* stats: hp, atk, def, spatk, spdef, spe  (base values ~ 25-120) */
+G.SPECIES = {
+  /* ===== Ember starter line ===== */
+  cindle:  { id:'cindle', name:'Cindle', types:['Ember'], base:{hp:39,atk:52,def:43,spatk:60,spdef:50,spe:65},
+    evolves:{to:'cindral', level:16}, moves:[[1,'scratch'],[1,'guard'],[7,'ember'],[13,'quickstep'],[19,'flamewhip']],
+    palette:['#3a2018','#e8622a','#ffb347','#7a3c1d'], desc:'A small fire lizard with a tail flame that flares when excited.' },
+  cindral: { id:'cindral', name:'Cindral', types:['Ember'], base:{hp:58,atk:72,def:58,spatk:80,spdef:65,spe:85},
+    evolves:{to:'cindrake', level:34}, moves:[[16,'flamewhip'],[22,'cinderclaw'],[28,'focus'],[34,'infernoblast']],
+    palette:['#2c150f','#f4712e','#ffcf5c','#8a4322'], desc:'Its flame burns hotter as its confidence grows.' },
+  cindrake:{ id:'cindrake', name:'Cindrake', types:['Ember','Sky'], base:{hp:78,atk:95,def:78,spatk:105,spdef:85,spe:100},
+    moves:[[34,'infernoblast'],[40,'skydive'],[46,'cinderclaw'],[52,'focus']],
+    palette:['#1c0f0c','#ff5a1f','#ffd166','#c0392b'], desc:'A blazing wyvern whose wingbeats fan its own inferno.' },
+
+  /* ===== Aqua starter line ===== */
+  ripplet: { id:'ripplet', name:'Ripplet', types:['Aqua'], base:{hp:44,atk:48,def:52,spatk:56,spdef:58,spe:44},
+    evolves:{to:'ripplash', level:16}, moves:[[1,'tackle'],[1,'guard'],[7,'splash'],[13,'bubblebeam'],[19,'aquawhirl']],
+    palette:['#123a5e','#2f8fd6','#a9e4ff','#0c2540'], desc:'A round little creature that stores water in its cheek pouches.' },
+  ripplash:{ id:'ripplash', name:'Ripplash', types:['Aqua'], base:{hp:63,atk:65,def:70,spatk:78,spdef:78,spe:60},
+    evolves:{to:'ripplord', level:34}, moves:[[16,'aquawhirl'],[22,'bubblebeam'],[28,'calm'],[34,'tidalcrash']],
+    palette:['#0e2c4a','#2680c2','#8fd8ff','#0a1e33'], desc:'Rides its own currents; calmer waters make it stronger.' },
+  ripplord:{ id:'ripplord', name:'Ripplord', types:['Aqua','Mind'], base:{hp:85,atk:80,def:90,spatk:110,spdef:100,spe:75},
+    moves:[[34,'tidalcrash'],[40,'psychcrush'],[46,'calm'],[52,'aquawhirl']],
+    palette:['#081b30','#1c6aa8','#7fd0ff','#4b3f8f'], desc:'A serene sovereign of the deep, said to calm entire storms.' },
+
+  /* ===== Verdant starter line ===== */
+  sproutle:{ id:'sproutle', name:'Sproutle', types:['Verdant'], base:{hp:45,atk:49,def:49,spatk:65,spdef:65,spe:45},
+    evolves:{to:'thornbud', level:16}, moves:[[1,'tackle'],[1,'guard'],[7,'vinewhip'],[13,'sporecloud'],[19,'leafcutter']],
+    palette:['#234d20','#5fae3d','#a8e063','#163312'], desc:'A budding sprout that hums when the sun is out.' },
+  thornbud:{ id:'thornbud', name:'Thornbud', types:['Verdant'], base:{hp:63,atk:68,def:66,spatk:86,spdef:82,spe:58},
+    evolves:{to:'florabeast', level:34}, moves:[[16,'leafcutter'],[22,'sporecloud'],[28,'harden'],[34,'thornburst']],
+    palette:['#1e4a1a','#4d9a34','#c6e872','#0f2810'], desc:'Thorned vines coil around its body, ready to lash out.' },
+  florabeast:{id:'florabeast', name:'Florabeast', types:['Verdant','Terra'], base:{hp:88,atk:88,def:95,spatk:110,spdef:100,spe:70},
+    moves:[[34,'thornburst'],[40,'boulderfall'],[46,'harden'],[52,'sporecloud']],
+    palette:['#173d14','#3f8a2b','#d9f28e','#5a3d1c'], desc:'An ancient bloom whose roots can crack open stone.' },
+
+  /* ===== Volt line ===== */
+  sparkit: { id:'sparkit', name:'Sparkit', types:['Volt'], base:{hp:40,atk:50,def:40,spatk:55,spdef:45,spe:75},
+    evolves:{to:'voltking', level:22}, moves:[[1,'tackle'],[6,'sparkbite'],[12,'quickstep'],[18,'staticshock']],
+    palette:['#3a3410','#f4d33c','#fff4b0','#8a7a1a'], desc:'Static crackles across its fur whenever it gets excited.' },
+  voltking:{ id:'voltking', name:'Voltking', types:['Volt'], base:{hp:62,atk:75,def:60,spatk:90,spdef:65,spe:110},
+    moves:[[22,'voltdash'],[28,'staticshock'],[34,'thunderbolt'],[40,'quickstep']],
+    palette:['#2a2508','#f7c716','#ffe98a','#5a4d0e'], desc:'Runs faster than the storms that gave it its power.' },
+  buzzfly: { id:'buzzfly', name:'Buzzfly', types:['Volt','Sky'], base:{hp:46,atk:48,def:42,spatk:62,spdef:48,spe:88},
+    moves:[[1,'gust'],[6,'sparkbite'],[12,'chargebeam'],[18,'windcutter']],
+    palette:['#2f2a08','#e0c62e','#fff9d0','#6b5c10'], desc:'Wingbeats build a static charge that crackles between antennae.' },
+
+  /* ===== Terra line ===== */
+  pebblit: { id:'pebblit', name:'Pebblit', types:['Terra'], base:{hp:55,atk:60,def:75,spatk:35,spdef:55,spe:30},
+    moves:[[1,'tackle'],[6,'rockthrow'],[12,'harden'],[18,'mudslam']],
+    palette:['#5a4a3a','#8a7360','#c9b89a','#3a2f24'], desc:'Small boulders that roll downhill just to see the view.' },
+  rockram:  { id:'rockram', name:'Rockram', types:['Terra'], base:{hp:70,atk:85,def:80,spatk:35,spdef:50,spe:40},
+    moves:[[1,'tackle'],[6,'rockthrow'],[14,'boulderfall'],[22,'harden']],
+    palette:['#4a3020','#8a6a4a','#d9c19a','#2a1a10'], desc:'Headbutts cliffsides just to test its own strength.' },
+  grubrock:{ id:'grubrock', name:'Grubrock', types:['Terra'], base:{hp:48,atk:58,def:60,spatk:30,spdef:45,spe:28},
+    evolves:{to:'golemite', level:26}, moves:[[1,'tackle'],[6,'rockthrow'],[12,'harden'],[20,'mudslam']],
+    palette:['#463020','#7a5636','#b39568','#241608'], desc:'Encases itself in wet clay that hardens under the sun.' },
+  golemite:{ id:'golemite', name:'Golemite', types:['Terra'], base:{hp:80,atk:100,def:110,spatk:40,spdef:80,spe:35},
+    moves:[[26,'mudslam'],[32,'boulderfall'],[38,'quake'],[44,'harden']],
+    palette:['#332214','#6b4a2c','#a8895a','#1a1008'], desc:'A walking mound of ancient clay, nearly impossible to knock down.' },
+
+  /* ===== Shade line ===== */
+  gloomoth: { id:'gloomoth', name:'Gloomoth', types:['Shade'], base:{hp:45,atk:55,def:40,spatk:65,spdef:45,spe:55},
+    evolves:{to:'duskmoth', level:20}, moves:[[1,'scratch'],[6,'shadowclaw'],[12,'spookyglare'],[18,'duskbite']],
+    palette:['#241f33','#5b4a8a','#9d8fd0','#100c1a'], desc:'Flutters only at dusk, drawn to flickering lantern light.' },
+  duskmoth:{ id:'duskmoth', name:'Duskmoth', types:['Shade','Sky'], base:{hp:64,atk:72,def:56,spatk:88,spdef:60,spe:85},
+    moves:[[20,'duskbite'],[26,'nightmare'],[32,'windcutter'],[38,'spookyglare']],
+    palette:['#1c1730','#4a3a80','#c0b0f0','#0a0812'], desc:'Its wing-dust is said to bring vivid, unsettling dreams.' },
+  gravepup:{ id:'gravepup', name:'Gravepup', types:['Shade','Terra'], base:{hp:50,atk:62,def:48,spatk:50,spdef:44,spe:58},
+    evolves:{to:'gravehound', level:28}, moves:[[1,'tackle'],[6,'shadowclaw'],[12,'rockthrow'],[20,'duskbite']],
+    palette:['#26201c','#5a4438','#8a705c','#120e0b'], desc:'Digs through graveyard soil, unbothered by what it might find.' },
+  gravehound:{id:'gravehound', name:'Gravehound', types:['Shade','Terra'], base:{hp:72,atk:95,def:70,spatk:65,spdef:62,spe:80},
+    moves:[[28,'duskbite'],[34,'quake'],[40,'nightmare'],[46,'spookyglare']],
+    palette:['#1c1712','#4a382c','#7a6248','#0c0906'], desc:'Howls echo through canyons; nothing crosses its territory unseen.' },
+
+  /* ===== Sky line ===== */
+  chirpling:{ id:'chirpling', name:'Chirpling', types:['Sky'], base:{hp:48,atk:52,def:45,spatk:50,spdef:48,spe:80},
+    evolves:{to:'skylark', level:18}, moves:[[1,'tackle'],[6,'gust'],[12,'tailwind'],[18,'windcutter']],
+    palette:['#2a4a5a','#5fb8d6','#d6f4ff','#163040'], desc:'Rides thermal winds all day just for the fun of it.' },
+  skylark: { id:'skylark', name:'Skylark', types:['Sky'], base:{hp:66,atk:70,def:60,spatk:68,spdef:64,spe:112},
+    moves:[[18,'windcutter'],[24,'skydive'],[30,'tailwind'],[36,'wingslap']],
+    palette:['#1c3646','#3d9ec4','#b8ecff','#0d1e28'], desc:'The fastest wings in the sky - few trainers ever see it land.' },
+  mossbat: { id:'mossbat', name:'Mossbat', types:['Verdant','Sky'], base:{hp:52,atk:56,def:50,spatk:60,spdef:54,spe:70},
+    moves:[[1,'tackle'],[6,'vinewhip'],[12,'gust'],[18,'leafgust']],
+    palette:['#243a1c','#5a8a3a','#a8d47a','#12200c'], desc:'Roosts in canopy vines, camouflaged until it takes flight.' },
+
+  /* ===== Mind line ===== */
+  zenkit:  { id:'zenkit', name:'Zenkit', types:['Mind'], base:{hp:42,atk:40,def:45,spatk:70,spdef:65,spe:55},
+    evolves:{to:'zenlynx', level:24}, moves:[[1,'tackle'],[6,'mindpulse'],[12,'calm'],[18,'focusbeam']],
+    palette:['#3a2050','#9d6fd6','#e3c6ff','#1f0f2e'], desc:'Its eyes glow faintly when it senses another mind nearby.' },
+  zenlynx: { id:'zenlynx', name:'Zenlynx', types:['Mind'], base:{hp:64,atk:58,def:62,spatk:100,spdef:90,spe:78},
+    moves:[[24,'focusbeam'],[30,'calm'],[36,'psychcrush'],[42,'mindpulse']],
+    palette:['#2a1740','#8a5cc9','#f0dcff','#160a24'], desc:'Can read the intent behind an opponent\'s very next move.' },
+  puzzlemoth:{id:'puzzlemoth', name:'Puzzlemoth', types:['Mind','Sky'], base:{hp:50,atk:44,def:48,spatk:78,spdef:60,spe:68},
+    moves:[[1,'gust'],[6,'mindpulse'],[12,'confuseray'],[20,'focusbeam']],
+    palette:['#2c2440','#7a5cc0','#d8c8ff','#160f24'], desc:'Wing patterns swirl into shapes that make onlookers dizzy.' },
+
+  /* ===== Aqua wild line ===== */
+  fintail: { id:'fintail', name:'Fintail', types:['Aqua'], base:{hp:46,atk:58,def:46,spatk:44,spdef:46,spe:62},
+    evolves:{to:'finshark', level:24}, moves:[[1,'tackle'],[6,'splash'],[12,'finslash'],[18,'bubblebeam']],
+    palette:['#0e3450','#2894c4','#a0e8ff','#082238'], desc:'A quick, silvery swimmer found in nearly every river.' },
+  finshark:{ id:'finshark', name:'Finshark', types:['Aqua'], base:{hp:70,atk:92,def:65,spatk:60,spdef:60,spe:88},
+    moves:[[24,'finslash'],[30,'aquawhirl'],[36,'tidalcrash'],[42,'roar']],
+    palette:['#082840','#1c74a8','#7fd4f4','#04182a'], desc:'A sleek open-water hunter that clears entire river bends.' },
+  crawdon: { id:'crawdon', name:'Crawdon', types:['Aqua','Terra'], base:{hp:58,atk:70,def:78,spatk:35,spdef:55,spe:38},
+    moves:[[1,'tackle'],[6,'splash'],[12,'rockthrow'],[20,'mudslam']],
+    palette:['#3a2418','#8a5a3a','#c9986a','#1e120c'], desc:'Burrows into riverbanks, pincers ready for anything that passes.' },
+
+  /* ===== Ember wild line ===== */
+  emberpup:{ id:'emberpup', name:'Emberpup', types:['Ember'], base:{hp:44,atk:60,def:42,spatk:48,spdef:42,spe:64},
+    evolves:{to:'embermane', level:24}, moves:[[1,'tackle'],[6,'ember'],[12,'pyrostomp'],[18,'quickstep']],
+    palette:['#2a1408','#d9541f','#ffb066','#5c2810'], desc:'Its bark comes out as a small puff of smoke when startled.' },
+  embermane:{id:'embermane', name:'Embermane', types:['Ember'], base:{hp:68,atk:98,def:60,spatk:70,spdef:58,spe:92},
+    moves:[[24,'pyrostomp'],[30,'cinderclaw'],[36,'flamewhip'],[42,'focus']],
+    palette:['#1e0e06','#e8501a','#ffcf5c','#7a3010'], desc:'A blazing mane roars to life the instant it starts to run.' },
+
+  /* ===== Basic / neutral wild line ===== */
+  critterling:{id:'critterling', name:'Critterling', types:['Basic'], base:{hp:50,atk:50,def:48,spatk:42,spdef:44,spe:52},
+    evolves:{to:'critterbeast', level:20}, moves:[[1,'tackle'],[1,'guard'],[8,'bodyslam'],[15,'roar']],
+    palette:['#3a3228','#8a7a5c','#d9cba0','#1e1a14'], desc:'Found nearly everywhere; adaptable and endlessly curious.' },
+  critterbeast:{id:'critterbeast', name:'Critterbeast', types:['Basic'], base:{hp:78,atk:82,def:75,spatk:55,spdef:68,spe:64},
+    moves:[[20,'bodyslam'],[26,'focus'],[32,'roar'],[38,'rest']],
+    palette:['#2c261e','#6a5c42','#b8a878','#141210'], desc:'A dependable partner that grows steady and strong with training.' },
+
+  leafling: { id:'leafling', name:'Leafling', types:['Verdant'], base:{hp:50,atk:52,def:58,spatk:52,spdef:58,spe:48},
+    moves:[[1,'tackle'],[6,'vinewhip'],[12,'guard'],[18,'leafgust']],
+    palette:['#1f4a1a','#4f9a34','#bde872','#0c2408'], desc:'Curls into a leafy ball when startled, unrolling once it feels safe.' },
+
+  /* ===== Secret legendary ===== */
+  duskryn: { id:'duskryn', name:'Duskryn', types:['Shade','Mind'], legendary:true, base:{hp:100,atk:95,def:90,spatk:120,spdef:110,spe:95},
+    moves:[[1,'nightmare'],[1,'psychcrush'],[1,'spookyglare'],[1,'calm']],
+    palette:['#0a0616','#3d1f66','#b98cff','#1a0c2e'], desc:'A creature spoken of only in Willowbrook\'s oldest stories.' }
+};
+
+/* base XP curve constant per species tier (starters/legendary slower) */
+G.XP_GROUP = { slow:1.25, medium:1.0, fast:0.8 };
+const MEDIUM_GROUP = ['cindle','ripplet','sproutle','cindral','ripplash','thornbud','cindrake','ripplord','florabeast'];
+for (const k in G.SPECIES) {
+  const s = G.SPECIES[k];
+  s.growth = s.legendary ? 'slow' : (MEDIUM_GROUP.includes(k) ? 'medium' : 'fast');
+}
+/* p2: items, trainers, world maps, dialogue */
+'use strict';
+const G2 = window.G;
+
+/* ---------- Items ---------- */
+G2.ITEMS = {
+  snareball:  { name:'Snare Ball',  kind:'ball', catchMod:1.0,  price:200,  desc:'A basic tool for catching wild creatures.' },
+  greatsnare: { name:'Great Snare', kind:'ball', catchMod:1.6,  price:600,  desc:'An improved snare with a higher catch rate.' },
+  ultrasnare: { name:'Ultra Snare', kind:'ball', catchMod:2.4,  price:1500, desc:'A high-performance snare for tough wildkin.' },
+  potion:     { name:'Potion',      kind:'heal', amount:20,     price:150,  desc:'Restores 20 HP to a wildkin.' },
+  superpotion:{ name:'Super Potion',kind:'heal', amount:50,     price:400,  desc:'Restores 50 HP to a wildkin.' },
+  elixir:     { name:'Elixir',      kind:'heal', amount:9999,   price:1200, desc:'Fully restores a wildkin\'s HP.' },
+  revive:     { name:'Revive',      kind:'revive', amount:0.5,  price:500,  desc:'Revives a fainted wildkin with half HP.' },
+  antidote:   { name:'Antidote',    kind:'cure', cures:['poison'], price:100, desc:'Cures poison.' },
+  awakener:   { name:'Awakener',    kind:'cure', cures:['sleep'], price:100, desc:'Wakes a sleeping wildkin.' },
+  paralyzeheal:{name:'Nerve Tonic', kind:'cure', cures:['para'], price:100, desc:'Cures paralysis.' },
+  burnheal:   { name:'Burn Salve',  kind:'cure', cures:['burn'], price:100, desc:'Cures a burn.' },
+  cuttertool: { name:'Cutter Tool', kind:'tool', field:'cut',   price:0,    desc:'A field tool that clears thick bushes.' },
+  wavetool:   { name:'Wave Tool',   kind:'tool', field:'wave',  price:0,    desc:'A field tool that lets you cross open water.' },
+  climbtool:  { name:'Climb Tool',  kind:'tool', field:'climb', price:0,    desc:'A field tool that lets you scale rocky ledges.' },
+  glowtool:   { name:'Glow Tool',   kind:'tool', field:'glow',  price:0,    desc:'A field tool that lights the deepest dark.' },
+  radiantshard:{name:'Radiant Shard',kind:'key', price:0,       desc:'A shard warm to the touch. Someone in Willowbrook might know what it is.' }
+};
+
+function mkMon(species, level){ return { species, level }; }
+G2.mkMon = mkMon;
+
+/* ---------- Regular trainers ---------- */
+G2.TRAINERS = {
+  t_route1_a: { name:'Bug Fan Nell', kind:'Bug Fan', reward:180,
+    team:[mkMon('chirpling',6), mkMon('sparkit',7)],
+    pre:'Whoa, a challenger! My wildkin have been itching for a scrap!', post:'Aw, beaten already?' },
+  t_route1_b: { name:'Hiker Tom', kind:'Hiker', reward:220,
+    team:[mkMon('pebblit',9)],
+    pre:'You look green. Let\'s see what you\'ve got, rookie.', post:'Solid rock... cracked anyway.' },
+  t_route2_a: { name:'Camper Riya', kind:'Camper', reward:260,
+    team:[mkMon('zenkit',12), mkMon('leafling',13)],
+    pre:'Camping trip, battle included. Let\'s go!', post:'Guess I pitched my tent too soon.' },
+  t_route2_b: { name:'Racer Milo', kind:'Racer', reward:260,
+    team:[mkMon('buzzfly',13), mkMon('sparkit',13)],
+    pre:'Speed\'s my whole thing. Let\'s see if you can keep up!', post:'Outpaced for once...' },
+  t_mist_a:  { name:'Engineer Voss', kind:'Engineer', reward:300,
+    team:[mkMon('grubrock',15), mkMon('buzzfly',16)],
+    pre:'I tune machines and wildkin alike. Let\'s test my work!', post:'Back to the workshop, I guess.' },
+  t_route2b_a:{ name:'Fisher Dale', kind:'Fisher', reward:300,
+    team:[mkMon('fintail',16), mkMon('fintail',17)],
+    pre:'Caught two Fintails this morning. Let\'s see if I caught a winner!', post:'Reeled in a loss...' },
+  t_route3_a: { name:'Sailor Enzo', kind:'Sailor', reward:340,
+    team:[mkMon('crawdon',19), mkMon('voltking',19)],
+    pre:'Rough seas make tough trainers. Ready?', post:'Ah well. Fair winds to you.' },
+  t_route3_b: { name:'Ranger Suki', kind:'Ranger', reward:340,
+    team:[mkMon('mossbat',19), mkMon('duskmoth',19)],
+    pre:'I patrol this route daily. Show me your strength.', post:'You\'ve earned safe passage.' },
+  t_route4_a: { name:'Miner Pell', kind:'Miner', reward:400,
+    team:[mkMon('golemite',24), mkMon('rockram',24), mkMon('zenlynx',23)],
+    pre:'Dug up some strong wildkin down in the mines!', post:'Back to digging, I suppose.' },
+  t_route4_b: { name:'Scholar Amit', kind:'Scholar', reward:400,
+    team:[mkMon('zenlynx',25), mkMon('puzzlemoth',25)],
+    pre:'Knowledge is power, but so is a good battle team.', post:'A fascinating result. You win.' },
+  t_route5_a: { name:'Ash Warden Ozzy', kind:'Warden', reward:440,
+    team:[mkMon('embermane',29), mkMon('gravepup',29), mkMon('emberpup',28)],
+    pre:'The peak forges strong wildkin. Let\'s see if you can handle the heat.', post:'Cooled off, huh? Fair enough.' },
+  t_route5_b: { name:'Collector Ines', kind:'Collector', reward:440,
+    team:[mkMon('critterbeast',30), mkMon('finshark',29)],
+    pre:'I\'ve got one of everything. Let\'s see how they stack up.', post:'Adding this loss to my collection, I guess.' },
+  t_proroad_a:{ name:'Veteran Coz', kind:'Veteran', reward:550,
+    team:[mkMon('voltking',34), mkMon('gravehound',34), mkMon('duskmoth',34)],
+    pre:'Only the toughest walk this road. Prove you belong.', post:'Not bad. Not bad at all.' },
+  t_proroad_b:{ name:'Champion Hopeful Dex', kind:'Trainer', reward:550,
+    team:[mkMon('embermane',35), mkMon('finshark',35), mkMon('skylark',35)],
+    pre:'I\'m aiming for Carmela\'s title too. You\'re just practice.', post:'...maybe you\'re not just practice.' }
+};
+
+/* Rival Nayah battles - species assigned at runtime based on type-triangle counter to player's starter */
+G2.RIVAL_COUNTER = { cindle:'ripplet', ripplet:'sproutle', sproutle:'cindle' };
+G2.RIVAL_STAGE2  = { cindle:'ripplash', ripplet:'thornbud', sproutle:'cindral' };
+G2.RIVAL_STAGE3  = { cindle:'ripplord', ripplet:'florabeast', sproutle:'cindrake' };
+
+G2.RIVAL_BATTLES = [
+  { id:'rival1', where:'willowbrook', levelBase:5, extra:[], pre:'Nayah: Hah, you picked that one? Fine - let\'s see who really has what it takes!', post:'Nayah: Ngh... okay, you\'re better than I thought. This isn\'t over!' },
+  { id:'rival2', where:'route2', levelBase:14, extra:[['sparkit',13]], pre:'Nayah: Been training hard since Willowbrook. Ready for round two?', post:'Nayah: Argh! Fine, fine. I\'ll catch up eventually!' },
+  { id:'rival3', where:'route3', levelBase:21, extra:[['buzzfly',20]], pre:'Nayah: Two badges down, and I\'m still on your heels. Let\'s go!', post:'Nayah: Getting closer every time. You\'ll see!' },
+  { id:'rival4', where:'route4', levelBase:27, extra:[['gloomoth',26],['pebblit',26]], pre:'Nayah: Four badges in and you\'re still ahead of me. Not for long!', post:'Nayah: You\'re really something, Jasz. I mean it.' },
+  { id:'rival5', where:'route5', levelBase:32, extra:[['gravepup',31],['zenkit',31]], pre:'Nayah: Emberpeak\'s tough, but so am I. Let\'s heat things up!', post:'Nayah: Hah! Should\'ve seen that coming.' },
+  { id:'rival6', where:'proroad', levelBase:40, extra:[['duskmoth',38],['voltking',38],['finshark',38]], pre:'Nayah: Last stop before the Pro League. Give me everything you\'ve got!', post:'Nayah: Ha! Knew you\'d get this far. Go show Carmela what Willowbrook\'s made of.' }
+];
+
+/* ---------- Head Masters & Champion ---------- */
+G2.MASTERS = {
+  bram: { name:'Bram', city:'cedarcity', type:'Verdant', sigil:'Leaf Sigil', tool:'cuttertool', order:1,
+    team:[mkMon('sproutle',12), mkMon('sproutle',14), mkMon('thornbud',16)],
+    pre:'Bram: Willowbrook\'s newest trainer, hm? Let\'s see if you\'ve got roots or just leaves.',
+    post:'Bram: Ha! Strong stuff. Take the Leaf Sigil - and this Cutter Tool, you\'ll need it out there.' },
+  oren: { name:'Oren', city:'mistvalecity', type:'Volt', sigil:'Storm Sigil', tool:null, order:2,
+    team:[mkMon('sparkit',18), mkMon('buzzfly',19), mkMon('voltking',21)],
+    pre:'Oren: Mistvale runs on lightning-quick reflexes. Try to keep up!',
+    post:'Oren: Shocking! In a good way. Here\'s the Storm Sigil - well earned.' },
+  talon: { name:'Talon', city:'ashportcity', type:'Aqua', sigil:'Tide Sigil', tool:'wavetool', order:3,
+    team:[mkMon('ripplet',22), mkMon('fintail',22), mkMon('ripplash',24)],
+    pre:'Talon: The tide waits for no one. Let\'s see if you can keep pace!',
+    post:'Talon: You ride the current well. The Tide Sigil is yours - and the Wave Tool too.' },
+  grix: { name:'Grix', city:'stonemerecity', type:'Terra', sigil:'Stone Sigil', tool:'climbtool', order:4,
+    team:[mkMon('rockram',27), mkMon('pebblit',27), mkMon('grubrock',28), mkMon('florabeast',29)],
+    pre:'Grix: Mountains don\'t move for anyone. Let\'s see if you can.',
+    post:'Grix: Unshakeable. Take the Stone Sigil, and the Climb Tool - the peaks are yours now.' },
+  ilan: { name:'Ilan', city:'emberpeakcity', type:'Ember', sigil:'Ember Sigil', tool:null, order:5,
+    team:[mkMon('emberpup',31), mkMon('embermane',32), mkMon('embermane',33)],
+    pre:'Ilan: Come to test the forge, have you? Let\'s see if you melt or temper.',
+    post:'Ilan: Tempered, not melted. The Ember Sigil is well earned.' },
+  vesper: { name:'Vesper', city:'duskhollowcity', type:'Shade', sigil:'Shade Sigil', tool:'glowtool', order:6,
+    team:[mkMon('gravepup',35), mkMon('zenlynx',36), mkMon('duskmoth',37), mkMon('gravehound',38)],
+    pre:'Vesper: Darkness reveals what light cannot. Let\'s begin.',
+    post:'Vesper: A light in the dark, you are. The Shade Sigil - and a Glow Tool for the road ahead.' }
+};
+G2.MASTER_ORDER = ['bram','oren','talon','grix','ilan','vesper'];
+
+G2.CHAMPION = { name:'Carmela', city:'proleague', type:null,
+  team:[mkMon('cindrake',44), mkMon('ripplord',44), mkMon('florabeast',45), mkMon('voltking',43), mkMon('zenlynx',43), mkMon('duskmoth',46)],
+  pre:'Carmela: So you\'re the one Naomi keeps writing to me about. I\'m Carmela, reigning Pro League Champion. Let\'s find out if the letters were right.',
+  post:'Carmela: ...I haven\'t lost a title match in three years. Congratulations, Champion. Willowbrook chose well.' };
+
+G2.PROTRAINERS = [
+  { name:'Pro Idris', team:[mkMon('golemite',40), mkMon('voltking',40), mkMon('zenlynx',41)], reward:650, pre:'Pro Idris: The gauntlet starts here. Don\'t disappoint me.' },
+  { name:'Pro Wren',  team:[mkMon('duskmoth',41), mkMon('ripplash',41), mkMon('gravehound',42)], reward:700, pre:'Pro Wren: Halfway to Carmela. Most don\'t make it further.' },
+  { name:'Pro Osei',  team:[mkMon('embermane',42), mkMon('florabeast',42), mkMon('skylark',43)], reward:750, pre:'Pro Osei: I am the last wall before the Champion. Climb it, if you can.' }
+];
+
+/* ---------- Story dialogue ---------- */
+G2.DIALOGUE = {
+  intro1: 'Welcome to the world of Wyldkin - creatures of ember, tide, leaf, storm, stone, sky, shadow and mind, living alongside people in every city and route.',
+  intro2: 'Our story begins in the quiet town of Willowbrook, where a young trainer named Jasz is about to receive their very first wildkin partner...',
+  labIntro: 'Naomi: There you are, Jasz! And Nayah too. I\'ve been expecting you both. Today you each choose a partner to begin your journey.',
+  labChoose: 'Naomi: Take your time. This choice will shape your whole adventure. Which wildkin calls to you?',
+  labAfter: 'Naomi: A fine choice! Treat your wildkin well, and it will carry you further than you can imagine. Your journey starts now - six Head Masters await across six cities, and beyond them, the Pro League itself. Go show the world what Willowbrook\'s made of!',
+  naomiHouseSign: 'Naomi\'s Wildkin Lab',
+  playerHouseSign: 'Jasz\'s House',
+  nayahHouseSign: 'Nayah\'s House',
+  centerSign: 'Wyldkin Center - heal your team for free',
+  shopSign: 'Supply Shop',
+  cedarSign: 'Cedar City - Home of Head Master Bram',
+  mistvaleSign: 'Mistvale City - Home of Head Master Oren',
+  ashportSign: 'Ashport City - Home of Head Master Talon',
+  stonemereSign: 'Stonemere City - Home of Head Master Grix',
+  emberpeakSign: 'Emberpeak City - Home of Head Master Ilan',
+  duskhollowSign: 'Duskhollow City - Home of Head Master Vesper',
+  proLeagueSign: 'Pro League Hall',
+  bushBlocked: 'Thick bushes block the way. You\'d need a Cutter Tool to get through.',
+  waterBlocked: 'The water is too deep to cross without a Wave Tool.',
+  ledgeBlocked: 'The ledge is too steep to climb without a Climb Tool.',
+  darkBlocked: 'It\'s pitch black ahead. You\'d need a Glow Tool to see anything.',
+  secretCaveHint: 'An old carving reads: "Where leaf, tide, stone and shadow meet as one, the sleeper wakes."',
+  secretCaveEnter: 'You\'ve gathered every field tool. The old seal finally gives way...',
+  duskrynEncounter: 'Duskryn stirs from a sleep centuries deep, eyes opening like twin violet stars.',
+  gateNoBadges: (n)=>`A staff member blocks the door. "You need ${n} Sigil${n===1?'':'s'} to challenge the Pro League. Come back when you\'re ready."`,
+  proGateOk: 'The staff member checks your badge case and nods. "All six Sigils, huh? Good luck in there."',
+  champDefeated: 'You have defeated the Champion! Wyldkin League records now list JASZ as the new Pro League Champion of the region.',
+  radiantShardHint: 'Naomi: A Radiant Shard, huh? I\'ve read about these in old Willowbrook records - they say a slumbering wildkin waits somewhere near the Pro League road for someone with every field tool.'
+};
+
+/* ---------- World Maps ---------- */
+/* legend: # wall/tree, B building, . path, " grass, , tall grass(encounter), ~ water, ^ ledge, b bush, d dark, S sign */
+G2.MAPS = {
+  willowbrook: { name:'Willowbrook', outdoor:true, bg:'#8fd06a',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..BBB......BBB......#',
+      '#..BBB......BBB......#',
+      '#..BBB......BBB......#',
+      '#....S........S......#',
+      '#.....................',
+      '#....BBB.............#',
+      '#....BBB.............#',
+      '#....BBB.............#',
+      '#.....S...............',
+      '#.....................',
+      '#..,,,,,,....,,,,,,..#',
+      '#..,,,,,,....,,,,,,..#',
+      '######.###########.###'
+    ],
+    npcSigns:{ '5,6':'naomiHouseSign', '5,10':'playerHouseSign', '14,5':'nayahHouseSign' },
+    warps:[ {x:6,y:14,to:'route1',tx:6,ty:1} ],
+    npcs:[ {id:'naomi', x:6, y:4, name:'Naomi', sprite:'naomi', dir:'down', role:'lab'} ],
+    encounters:[] },
+
+  route1: { name:'Route 1', outdoor:true, bg:'#79c25a',
+    rows:[
+      '#####.###############',
+      '#....................#',
+      '#..,,,,,,..bb#########',
+      '#..,,,,,,..bb.hidden.#',
+      '#..,,,,,,..bb.grove..#',
+      '#....................#',
+      '#....#####...........#',
+      '#....#####...........#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#....................#',
+      '#####.###########.####'
+    ],
+    warps:[ {x:5,y:0,to:'willowbrook',tx:6,ty:13}, {x:5,y:11,to:'cedarcity',tx:6,ty:13}, {x:13,y:3,to:'hiddengrove',tx:3,ty:6} ],
+    trainers:[ {id:'t_route1_a', x:15, y:9, dir:'left'}, {id:'t_route1_b', x:4, y:9, dir:'right'} ],
+    rivalSpot:{x:10,y:5},
+    encounters:[ {species:'sparkit',min:3,max:5,w:20}, {species:'gloomoth',min:2,max:4,w:20}, {species:'chirpling',min:2,max:4,w:20}, {species:'pebblit',min:3,max:5,w:20}, {species:'critterling',min:2,max:4,w:20} ] },
+
+  hiddengrove: { name:'Hidden Grove', outdoor:true, bg:'#5fae3d', secret:true,
+    rows:[
+      '########',
+      '#......#',
+      '#.,,,,.#',
+      '#.,,,,.#',
+      '#..**..#',
+      '#......#',
+      '#......#',
+      '########'
+    ],
+    warps:[ {x:3,y:6,to:'route1',tx:13,ty:4} ],
+    items:[ {x:4,y:4,item:'ultrasnare',id:'grove_item1'} ],
+    encounters:[ {species:'zenkit',min:6,max:8,w:35}, {species:'duskmoth',min:6,max:9,w:20}, {species:'voltking',min:7,max:9,w:15}, {species:'leafling',min:6,max:9,w:30} ] },
+
+  cedarcity: { name:'Cedar City', outdoor:true, bg:'#8fd06a',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..BBB......BBB......#',
+      '#..BBB.GYM..BBB.SHOP.#',
+      '#..BBB......BBB......#',
+      '#.....S.......S......#',
+      '#....................#',
+      '#....................#',
+      '#..BBB...............#',
+      '#..BBB....CTR........#',
+      '#..BBB......S........#',
+      '#....................#',
+      '#....................#',
+      '######.####.##########',
+      '#####.###############.'
+    ],
+    warps:[ {x:6,y:13,to:'route1',tx:5,ty:10}, {x:11,y:14,to:'route2',tx:6,ty:1} ],
+    npcs:[ {id:'bram', x:6, y:3, name:'Bram', sprite:'bram', dir:'down', role:'master', masterId:'bram'} ],
+    center:{x:10,y:9}, shop:{x:17,y:3},
+    encounters:[] },
+
+  route2: { name:'Route 2', outdoor:true, bg:'#79c25a',
+    rows:[
+      '######.##############',
+      '#....................#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#....................#',
+      '#####.################'
+    ],
+    warps:[ {x:6,y:0,to:'cedarcity',tx:11,ty:13}, {x:5,y:11,to:'mistvalecity',tx:6,ty:13} ],
+    trainers:[ {id:'t_route2_a', x:4, y:9, dir:'right'}, {id:'t_route2_b', x:16, y:3, dir:'left'} ],
+    rivalSpot:{x:11,y:6},
+    encounters:[ {species:'zenkit',min:9,max:12,w:20}, {species:'sparkit',min:9,max:12,w:20}, {species:'gloomoth',min:9,max:12,w:20}, {species:'rockram',min:9,max:12,w:20}, {species:'critterling',min:9,max:12,w:20} ] },
+
+  mistvalecity: { name:'Mistvale City', outdoor:true, bg:'#a8c6d6',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..BBB......BBB......#',
+      '#..BBB.GYM..BBB.SHOP.#',
+      '#..BBB......BBB......#',
+      '#.....S.......S......#',
+      '#....................#',
+      '#....BBB.............#',
+      '#....BBB....CTR......#',
+      '#....BBB......S......#',
+      '#....................#',
+      '######.###########.###'
+    ],
+    warps:[ {x:6,y:11,to:'route2',tx:5,ty:0}, {x:19,y:11,to:'route2b',tx:1,ty:1} ],
+    npcs:[ {id:'oren', x:6, y:3, name:'Oren', sprite:'oren', dir:'down', role:'master', masterId:'oren'} ],
+    center:{x:12,y:8}, shop:{x:17,y:3},
+    encounters:[] },
+
+  route2b: { name:'Route 2B', outdoor:true, bg:'#79c8d0',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..,,,,,..~~~~~......#',
+      '#..,,,,,..~~~~~......#',
+      '#....................#',
+      '#....................#',
+      '#..,,,,,..~~~~~......#',
+      '#..,,,,,..~~~~~......#',
+      '#....................#',
+      '#####.###############'
+    ],
+    warps:[ {x:6,y:0,to:'mistvalecity',tx:19,ty:11}, {x:5,y:8,to:'ashportcity',tx:6,ty:13} ],
+    trainers:[ {id:'t_route2b_a', x:16, y:3, dir:'left'} ],
+    encounters:[ {species:'fintail',min:13,max:16,w:35}, {species:'buzzfly',min:13,max:16,w:25}, {species:'zenkit',min:13,max:16,w:20}, {species:'leafling',min:13,max:16,w:20} ] },
+
+  ashportcity: { name:'Ashport City', outdoor:true, bg:'#79c8d0',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..BBB......BBB......#',
+      '#..BBB.GYM..BBB.SHOP.#',
+      '#..BBB......BBB......#',
+      '#.....S.......S......#',
+      '#....................#',
+      '#....BBB.............#',
+      '#....BBB....CTR......#',
+      '#....BBB......S......#',
+      '#....................#',
+      '#~~~~~~~~~~~~~~~~~~~~#',
+      '######.###############'
+    ],
+    warps:[ {x:6,y:12,to:'route2b',tx:5,ty:0}, {x:20,y:11,to:'route3',tx:1,ty:6} ],
+    npcs:[ {id:'talon', x:6, y:3, name:'Talon', sprite:'talon', dir:'down', role:'master', masterId:'talon'} ],
+    center:{x:12,y:8}, shop:{x:17,y:3},
+    encounters:[] },
+
+  route3: { name:'Route 3', outdoor:true, bg:'#79c8d0',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..,,,,,..~~~~~~~~~..#',
+      '#..,,,,,..~~~~~~~~~..#',
+      '#..,,,,,..~~~~~~~~~..#',
+      '#..,,,,,..~~~~~~~~~..#',
+      '.....................#',
+      '#..,,,,,..~~~~~~~~~..#',
+      '#..,,,,,..~~~~~~~~~..#',
+      '#....................#',
+      '#####.###############'
+    ],
+    warps:[ {x:0,y:6,to:'ashportcity',tx:20,ty:11}, {x:5,y:10,to:'stonemerecity',tx:6,ty:13} ],
+    trainers:[ {id:'t_route3_a', x:16, y:2, dir:'down'}, {id:'t_route3_b', x:4, y:8, dir:'up'} ],
+    rivalSpot:{x:11,y:1},
+    encounters:[ {species:'voltking',min:18,max:21,w:15}, {species:'ripplash',min:18,max:21,w:20}, {species:'crawdon',min:17,max:20,w:20}, {species:'mossbat',min:17,max:20,w:20}, {species:'duskmoth',min:18,max:21,w:15}, {species:'fintail',min:17,max:20,w:10} ] },
+
+  stonemerecity: { name:'Stonemere City', outdoor:true, bg:'#b3a184',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..BBB......BBB......#',
+      '#..BBB.GYM..BBB.SHOP.#',
+      '#..BBB......BBB......#',
+      '#.....S.......S......#',
+      '#....................#',
+      '#....BBB.............#',
+      '#....BBB....CTR......#',
+      '#....BBB......S......#',
+      '#....................#',
+      '######.###########.###'
+    ],
+    warps:[ {x:6,y:11,to:'route3',tx:5,ty:9}, {x:19,y:11,to:'route4',tx:1,ty:1} ],
+    npcs:[ {id:'grix', x:6, y:3, name:'Grix', sprite:'grix', dir:'down', role:'master', masterId:'grix'} ],
+    center:{x:12,y:8}, shop:{x:17,y:3},
+    encounters:[] },
+
+  route4: { name:'Route 4', outdoor:true, bg:'#b3a184',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..^^^^^^^^^^^^^^^^..#',
+      '#....................#',
+      '#....................#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#....................#',
+      '######.###########.###'
+    ],
+    warps:[ {x:6,y:0,to:'stonemerecity',tx:19,ty:11}, {x:6,y:9,to:'emberpeakcity',tx:6,ty:13} ],
+    trainers:[ {id:'t_route4_a', x:4, y:7, dir:'right'}, {id:'t_route4_b', x:16, y:7, dir:'left'} ],
+    rivalSpot:{x:10,y:6},
+    encounters:[ {species:'rockram',min:22,max:25,w:16}, {species:'grubrock',min:22,max:25,w:16}, {species:'duskmoth',min:22,max:25,w:17}, {species:'zenlynx',min:22,max:25,w:17}, {species:'voltking',min:22,max:25,w:17}, {species:'pebblit',min:22,max:25,w:17} ] },
+
+  emberpeakcity: { name:'Emberpeak City', outdoor:true, bg:'#d6a374',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..BBB......BBB......#',
+      '#..BBB.GYM..BBB.SHOP.#',
+      '#..BBB......BBB......#',
+      '#.....S.......S......#',
+      '#....................#',
+      '#....BBB.............#',
+      '#....BBB....CTR......#',
+      '#....BBB......S......#',
+      '#....................#',
+      '######.###########.###'
+    ],
+    warps:[ {x:6,y:11,to:'route4',tx:6,ty:8}, {x:19,y:11,to:'route5',tx:1,ty:1} ],
+    npcs:[ {id:'ilan', x:6, y:3, name:'Ilan', sprite:'ilan', dir:'down', role:'master', masterId:'ilan'} ],
+    center:{x:12,y:8}, shop:{x:17,y:3},
+    encounters:[] },
+
+  route5: { name:'Route 5', outdoor:true, bg:'#c98f5a',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#....bb..............#',
+      '#....bb..............#',
+      '#....................#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#....................#',
+      '######.###########.###'
+    ],
+    warps:[ {x:6,y:0,to:'emberpeakcity',tx:19,ty:11}, {x:6,y:9,to:'duskhollowcity',tx:6,ty:1} ],
+    trainers:[ {id:'t_route5_a', x:4, y:6, dir:'right'}, {id:'t_route5_b', x:16, y:6, dir:'left'} ],
+    rivalSpot:{x:10,y:2},
+    encounters:[ {species:'embermane',min:28,max:31,w:16}, {species:'gravepup',min:28,max:31,w:20}, {species:'emberpup',min:27,max:30,w:16}, {species:'critterbeast',min:28,max:31,w:16}, {species:'finshark',min:27,max:30,w:16}, {species:'puzzlemoth',min:27,max:30,w:16} ] },
+
+  duskhollowcity: { name:'Duskhollow City', outdoor:true, bg:'#4a3f66',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..BBB......BBB......#',
+      '#..BBB.GYM..BBB.SHOP.#',
+      '#..BBB......BBB......#',
+      '#.....S.......S......#',
+      '#....................#',
+      '#....BBB.............#',
+      '#....BBB....CTR......#',
+      '#....BBB......S......#',
+      '#....................#',
+      '######.###########.###'
+    ],
+    warps:[ {x:6,y:11,to:'route5',tx:6,ty:8}, {x:19,y:11,to:'proroad',tx:1,ty:1} ],
+    npcs:[ {id:'vesper', x:6, y:3, name:'Vesper', sprite:'vesper', dir:'down', role:'master', masterId:'vesper'} ],
+    center:{x:12,y:8}, shop:{x:17,y:3},
+    encounters:[] },
+
+  proroad: { name:'Pro League Road', outdoor:true, bg:'#5a5470',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#....................#',
+      '#....................#',
+      '#.......bb...........#',
+      '#.......bb..secret...#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#..,,,,,,,,,,,,,,,,..#',
+      '#....................#',
+      '#####.###########.####'
+    ],
+    warps:[ {x:6,y:0,to:'duskhollowcity',tx:19,ty:11}, {x:5,y:10,to:'proleague',tx:6,ty:11}, {x:13,y:7,to:'duskryncave',tx:4,ty:8} ],
+    trainers:[ {id:'t_proroad_a', x:14, y:4, dir:'left'}, {id:'t_proroad_b', x:4, y:4, dir:'right'} ],
+    rivalSpot:{x:10,y:9},
+    secretGate:{x:13,y:7, needs:['cuttertool','wavetool','climbtool']},
+    encounters:[ {species:'zenlynx',min:33,max:37,w:20}, {species:'voltking',min:33,max:37,w:20}, {species:'duskmoth',min:33,max:37,w:20}, {species:'gravehound',min:33,max:37,w:20}, {species:'florabeast',min:33,max:37,w:20} ] },
+
+  duskryncave: { name:'The Sleeper\'s Hollow', outdoor:false, bg:'#140c22', dark:true, secret:true,
+    rows:[
+      '########',
+      '#dddddd#',
+      '#dddddd#',
+      '#dd**dd#',
+      '#dddddd#',
+      '#dddddd#',
+      '#dddddd#',
+      '########'
+    ],
+    warps:[ {x:4,y:8,to:'proroad',tx:13,ty:8} ],
+    legendary:{x:4,y:3,species:'duskryn',level:42},
+    encounters:[] },
+
+  proleague: { name:'Pro League Hall', outdoor:false, bg:'#2c2440',
+    rows:[
+      '#####################',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '#....................#',
+      '######.###########.###'
+    ],
+    warps:[ {x:6,y:11,to:'proroad',tx:5,ty:9} ],
+    proGauntlet:[ {x:6,y:8},{x:10,y:5},{x:14,y:2} ],
+    champion:{x:10,y:1},
+    encounters:[] }
+};
+/* p3: engine - canvas, input, procedural pixel-art sprites, camera */
+'use strict';
+const G3 = window.G;
+
+/* ================= Canvas & viewport ================= */
+G3.canvas = null; G3.ctx = null;
+G3.viewW = 800; G3.viewH = 600; G3.TILE = 32;
+
+function initCanvas(){
+  G3.canvas = document.getElementById('gameCanvas');
+  G3.ctx = G3.canvas.getContext('2d');
+  G3.ctx.imageSmoothingEnabled = false;
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('orientationchange', ()=>setTimeout(resizeCanvas,50));
+}
+function resizeCanvas(){
+  const wrap = document.getElementById('canvasWrap');
+  const rect = wrap.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  G3.viewW = Math.max(240, Math.floor(rect.width));
+  G3.viewH = Math.max(180, Math.floor(rect.height));
+  G3.canvas.width = Math.floor(G3.viewW*dpr);
+  G3.canvas.height = Math.floor(G3.viewH*dpr);
+  G3.canvas.style.width = G3.viewW+'px';
+  G3.canvas.style.height = G3.viewH+'px';
+  G3.ctx.setTransform(dpr,0,0,dpr,0,0);
+  G3.ctx.imageSmoothingEnabled = false;
+  /* choose tile size so ~9 tiles are visible across the narrower dimension */
+  const targetTiles = 9;
+  G3.TILE = Math.max(18, Math.min(48, Math.floor(Math.min(G3.viewW,G3.viewH)/targetTiles)));
+}
+G3.initCanvas = initCanvas;
+G3.resizeCanvas = resizeCanvas;
+
+/* ================= Input ================= */
+G3.keys = {};
+G3.touchDir = null; /* 'up'|'down'|'left'|'right'|null */
+G3.justPressed = {};
+function initInput(){
+  window.addEventListener('keydown', e=>{
+    const k = e.key.toLowerCase();
+    if (['arrowup','arrowdown','arrowleft','arrowright',' ','enter','escape','w','a','s','d'].includes(k)) e.preventDefault();
+    if (!G3.keys[k]) G3.justPressed[k]=true;
+    G3.keys[k]=true;
+  }, {passive:false});
+  window.addEventListener('keyup', e=>{ G3.keys[e.key.toLowerCase()]=false; });
+}
+G3.initInput = initInput;
+function consumeJustPressed(k){ if (G3.justPressed[k]){ G3.justPressed[k]=false; return true; } return false; }
+G3.consumeJustPressed = consumeJustPressed;
+G3.wantInteract = ()=> consumeJustPressed('enter') || consumeJustPressed(' ');
+G3.wantCancel = ()=> consumeJustPressed('escape');
+G3.moveDir = function(){
+  if (G3.keys['arrowup']||G3.keys['w']) return 'up';
+  if (G3.keys['arrowdown']||G3.keys['s']) return 'down';
+  if (G3.keys['arrowleft']||G3.keys['a']) return 'left';
+  if (G3.keys['arrowright']||G3.keys['d']) return 'right';
+  if (G3.touchDir) return G3.touchDir;
+  return null;
+};
+
+/* ================= Procedural pixel-art sprites ================= */
+const GRID = 22;
+function newGrid(){ return new Array(GRID*GRID).fill(-1); }
+function idx(x,y){ return y*GRID+x; }
+function setPx(g,x,y,c){ x=Math.round(x); y=Math.round(y); if (x>=0&&y>=0&&x<GRID&&y<GRID) g[idx(x,y)]=c; }
+function fillEllipse(g,cx,cy,rx,ry,c){
+  for (let y=Math.floor(cy-ry-1); y<=Math.ceil(cy+ry+1); y++)
+    for (let x=Math.floor(cx-rx-1); x<=Math.ceil(cx+rx+1); x++){
+      const dx=(x-cx)/rx, dy=(y-cy)/ry;
+      if (dx*dx+dy*dy<=1) setPx(g,x,y,c);
+    }
+}
+function fillRect(g,x0,y0,x1,y1,c){ for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) setPx(g,x,y,c); }
+function mirrorLeft(g){
+  const cx = GRID/2;
+  for (let y=0;y<GRID;y++) for (let x=0;x<Math.floor(cx);x++){
+    const v = g[idx(x,y)];
+    if (v>=0) setPx(g,GRID-1-x,y,v);
+  }
+}
+
+function buildForm(form){
+  const g = newGrid();
+  const cx = GRID/2, cy = GRID/2;
+  if (form==='blob'){
+    fillEllipse(g,cx,cy+1,7.5,6.5,0);
+    fillEllipse(g,cx,cy+1,6.5,5.5,1);
+    fillEllipse(g,cx-2,cy-2,2.6,1.8,2);
+    fillRect(g,cx-1,cy+6,cx+1,cy+7,1);
+    setPx(g,cx-2.5,cy-0.5,0); setPx(g,cx-2.5,cy+0.5,3);
+  } else if (form==='quad'){
+    fillEllipse(g,cx,cy+2,7,4.6,0);
+    fillEllipse(g,cx,cy+2,6,3.7,1);
+    fillEllipse(g,cx-4.5,cy-3,4,3.6,0);
+    fillEllipse(g,cx-4.5,cy-3,3.2,2.9,1);
+    fillEllipse(g,cx-5.5,cy-4.5,1.6,1.2,2);
+    fillRect(g,cx-6,cy+5,cx-4,cy+8,0); fillRect(g,cx-5.6,cy+5,cx-4.4,cy+7.6,1);
+    fillRect(g,cx+3,cy+5,cx+5,cy+8,0); fillRect(g,cx+3.4,cy+5,cx+4.6,cy+7.6,1);
+    fillRect(g,cx+5.5,cy-1,cx+8,cy+0.6,0); fillRect(g,cx+5.8,cy-0.7,cx+7.6,cy+0.2,3);
+    setPx(g,cx-6,cy-4,0); setPx(g,cx-5,cy-5.5,3); /* ear */
+    setPx(g,cx-6.2,cy-3.2,0); setPx(g,cx-6.2,cy-2.8,0);
+  } else if (form==='bird'){
+    fillEllipse(g,cx,cy+1.5,5.5,5.5,0);
+    fillEllipse(g,cx,cy+1.5,4.6,4.6,1);
+    fillEllipse(g,cx-1,cy-5,3.6,3.4,0);
+    fillEllipse(g,cx-1,cy-5,2.9,2.7,1);
+    fillRect(g,cx-4.5,cy-6,cx-2.5,cy-4.8,3);
+    fillEllipse(g,cx+5,cy+1,3.2,5,0);
+    fillEllipse(g,cx+4.6,cy+1,2.4,4.2,3);
+    fillRect(g,cx-1,cy+6,cx+1,cy+8,0); fillRect(g,cx-0.6,cy+6,cx+0.6,cy+7.6,2);
+  } else if (form==='fish'){
+    fillEllipse(g,cx-1,cy,7,4.3,0);
+    fillEllipse(g,cx-1,cy,6,3.5,1);
+    fillRect(g,cx+5,cy-3.5,cx+9,cy+3.5,0);
+    fillRect(g,cx+5.6,cy-2.6,cx+8.2,cy+2.6,3);
+    fillEllipse(g,cx-1,cy-4,3,1.6,2);
+    fillRect(g,cx-3,cy+3.8,cx+1,cy+5.4,3);
+  } else if (form==='insect'){
+    fillEllipse(g,cx,cy+2,5.4,5.6,0);
+    fillEllipse(g,cx,cy+2,4.5,4.7,1);
+    fillEllipse(g,cx,cy-4,3,2.8,0);
+    fillEllipse(g,cx,cy-4,2.3,2.1,1);
+    fillEllipse(g,cx-6.5,cy-1,3.6,2.2,3);
+    fillEllipse(g,cx+6.5,cy-1,3.6,2.2,3);
+    for (let i=0;i<4;i++){ setPx(g,cx-4+i*0.2,cy+6+i*0.6,0); setPx(g,cx+4-i*0.2,cy+6+i*0.6,0); }
+    setPx(g,cx-2,cy-7,0); setPx(g,cx-3,cy-9,0);
+    setPx(g,cx+2,cy-7,0); setPx(g,cx+3,cy-9,0);
+  } else if (form==='dragon'){
+    fillEllipse(g,cx,cy+2,7.6,5.4,0);
+    fillEllipse(g,cx,cy+2,6.6,4.5,1);
+    fillEllipse(g,cx-5,cy-3.5,3.8,3.6,0);
+    fillEllipse(g,cx-5,cy-3.5,3,2.8,1);
+    fillRect(g,cx-7,cy-7,cx-5.6,cy-5,0); fillRect(g,cx-4.4,cy-7,cx-3,cy-5,0);
+    fillEllipse(g,cx+3,cy-6,5.5,4,0);
+    fillEllipse(g,cx+3.3,cy-5.6,4.5,3.2,2);
+    fillRect(g,cx-6,cy+5,cx-4,cy+8,0); fillRect(g,cx+3,cy+5,cx+5,cy+8,0);
+    fillRect(g,cx+7,cy+1,cx+10,cy+2.4,0); fillRect(g,cx+7.4,cy+1.2,cx+9.4,cy+2,3);
+    setPx(g,cx-6,cy-4.5,3); setPx(g,cx-4,cy-4.5,3);
+  }
+  /* eyes */
+  const ex = form==='quad'?cx-5.5:(form==='bird'?cx-1:(form==='fish'?cx-3:(form==='insect'?cx-1.6:(form==='dragon'?cx-5.5:cx-2.2))));
+  const ey = form==='quad'?cy-3.4:(form==='bird'?cy-5.2:(form==='fish'?cy-0.6:(form==='insect'?cy-4.2:(form==='dragon'?cy-3.7:cy-1.4))));
+  setPx(g,ex,ey,0); setPx(g,ex+ (form==='quad'||form==='dragon'?2.4:1.6), ey, 0);
+  mirrorLeftOff(); /* noop placeholder to keep structure clear */
+  return g;
+  function mirrorLeftOff(){}
+}
+G.SPECIES_FORM = {
+  cindle:'quad', cindral:'quad', cindrake:'dragon',
+  ripplet:'blob', ripplash:'blob', ripplord:'dragon',
+  sproutle:'blob', thornbud:'blob', florabeast:'dragon',
+  sparkit:'quad', voltking:'quad', buzzfly:'insect',
+  pebblit:'blob', rockram:'quad', grubrock:'blob', golemite:'quad',
+  gloomoth:'insect', duskmoth:'insect',
+  gravepup:'quad', gravehound:'quad',
+  chirpling:'bird', skylark:'bird', mossbat:'bird',
+  zenkit:'quad', zenlynx:'quad', puzzlemoth:'insect',
+  fintail:'fish', finshark:'fish', crawdon:'insect',
+  emberpup:'quad', embermane:'quad',
+  critterling:'quad', critterbeast:'quad',
+  leafling:'blob', duskryn:'dragon'
+};
+
+const spriteCache = {};
+function getSpriteCanvas(speciesId, size){
+  const key = speciesId+'_'+size;
+  if (spriteCache[key]) return spriteCache[key];
+  const sp = G.SPECIES[speciesId]; if (!sp) return null;
+  const form = G.SPECIES_FORM[speciesId] || 'blob';
+  const grid = buildForm(form);
+  const off = document.createElement('canvas');
+  off.width = size; off.height = size;
+  const octx = off.getContext('2d');
+  octx.imageSmoothingEnabled = false;
+  const px = size/GRID;
+  const pal = sp.palette;
+  for (let y=0;y<GRID;y++) for (let x=0;x<GRID;x++){
+    const v = grid[idx(x,y)];
+    if (v<0) continue;
+    octx.fillStyle = pal[v] || pal[1];
+    octx.fillRect(Math.floor(x*px), Math.floor(y*px), Math.ceil(px)+1, Math.ceil(px)+1);
+  }
+  if (sp.legendary){
+    octx.globalAlpha = 0.35; octx.fillStyle = '#fff';
+    octx.beginPath(); octx.arc(size*0.5,size*0.4,size*0.42,0,7); octx.fill();
+    octx.globalAlpha = 1;
+  }
+  spriteCache[key] = off;
+  return off;
+}
+G3.getSpriteCanvas = getSpriteCanvas;
+G3.drawCreature = function(ctx, speciesId, x, y, size, flip){
+  const c = getSpriteCanvas(speciesId, Math.round(size));
+  if (!c) return;
+  ctx.save();
+  if (flip){ ctx.translate(x+size, y); ctx.scale(-1,1); ctx.drawImage(c,0,0,size,size); }
+  else ctx.drawImage(c, x, y, size, size);
+  ctx.restore();
+};
+
+/* simple human sprite (player / NPCs) */
+const humanCache = {};
+G3.drawPerson = function(ctx, key, palette, x, y, size, dir, walkFrame){
+  const ck = key+'_'+size+'_'+dir+'_'+walkFrame;
+  let c = humanCache[ck];
+  if (!c){
+    c = document.createElement('canvas'); c.width=size; c.height=size;
+    const octx = c.getContext('2d'); octx.imageSmoothingEnabled=false;
+    const g = newGrid();
+    const cx=GRID/2, cy=GRID/2;
+    /* head */
+    fillEllipse(g,cx,cy-6,3.6,3.4,0); fillEllipse(g,cx,cy-6,2.9,2.7,2);
+    /* body */
+    fillRect(g,cx-3,cy-3,cx+3,cy+4,0); fillRect(g,cx-2.6,cy-2.6,cx+2.6,cy+3.6,1);
+    /* legs (offset by walkFrame) */
+    const off = walkFrame? 1.4:0;
+    fillRect(g,cx-2.4,cy+4,cx-0.4,cy+7+off,0); fillRect(g,cx-2.1,cy+4,cx-0.7,cy+6.6+off,3);
+    fillRect(g,cx+0.4,cy+4,cx+2.4,cy+7-off,0); fillRect(g,cx+0.7,cy+4,cx+2.1,cy+6.6-off,3);
+    /* arms */
+    fillRect(g,cx-4.6,cy-2,cx-3,cy+2,0); fillRect(g,cx+3,cy-2,cx+4.6,cy+2,0);
+    /* face direction dot */
+    if (dir==='down'){ setPx(g,cx-1.2,cy-6.2,0); setPx(g,cx+1.2,cy-6.2,0); }
+    else if (dir==='up'){ /* back of head, no eyes */ }
+    else if (dir==='left'){ setPx(g,cx-1.6,cy-6.2,0); }
+    else { setPx(g,cx+1.6,cy-6.2,0); }
+    const px = size/GRID;
+    for (let y=0;y<GRID;y++) for (let x=0;x<GRID;x++){
+      const v = g[idx(x,y)]; if (v<0) continue;
+      octx.fillStyle = palette[v]||palette[1];
+      octx.fillRect(Math.floor(x*px), Math.floor(y*px), Math.ceil(px)+1, Math.ceil(px)+1);
+    }
+    humanCache[ck]=c;
+  }
+  ctx.drawImage(c,x,y,size,size);
+};
+
+/* ================= tile colors ================= */
+G3.TILE_COLORS = {
+  '.': null, /* uses map bg */
+  '"': null,
+  ',': '#4f9a34',
+  '#': '#2f5a20',
+  '~': '#2f8fd6',
+  '^': '#8a7360',
+  'b': '#3f7a2b',
+  'd': '#0a0614',
+  'B': '#8a6a52',
+  'S': '#c9b89a',
+  ' ': '#101010'
+};
+/* p4: overworld - movement, camera, collision, encounters, interactions */
+'use strict';
+const G4 = window.G;
+
+G4.player = { map:'willowbrook', x:6, y:12, dir:'down', moving:false, t:0, dur:150, fromX:6, fromY:12, walkFrame:0, name:'Jasz' };
+G4.camera = { x:0, y:0 };
+G4.stepsSinceEncounter = 0;
+
+function getTile(mapId,x,y){
+  const m = G.MAPS[mapId]; if (!m) return '#';
+  const row = m.rows[y]; if (!row) return '#';
+  const ch = row[x]; return ch===undefined?'#':ch;
+}
+G4.getTile = getTile;
+
+function hasTool(field){
+  return G.state.inventory.some(it=>{
+    const def = G.ITEMS[it.id];
+    return def && def.kind==='tool' && def.field===field;
+  });
+}
+G4.hasTool = hasTool;
+
+function tileBlocked(mapId,x,y){
+  const m = G.MAPS[mapId];
+  if (!m) return true;
+  if (y<0||y>=m.rows.length) return true;
+  const ch = getTile(mapId,x,y);
+  if (ch==='#'||ch==='B'||ch==='S'||ch===' ') return true;
+  if (ch==='~') return !hasTool('wave');
+  if (ch==='^') return !hasTool('climb');
+  if (ch==='b') return !hasTool('cut');
+  /* npcs / trainers occupy tiles */
+  if (m.npcs && m.npcs.some(n=>n.x===x&&n.y===y)) return true;
+  if (m.trainers && m.trainers.some(t=>{
+    const td = G.TRAINERS[t.id];
+    return t.x===x && t.y===y;
+  })) return true;
+  return false;
+}
+G4.tileBlocked = tileBlocked;
+
+function blockedMessage(mapId,x,y){
+  const ch = getTile(mapId,x,y);
+  if (ch==='~') return G.DIALOGUE.waterBlocked;
+  if (ch==='^') return G.DIALOGUE.ledgeBlocked;
+  if (ch==='b') return G.DIALOGUE.bushBlocked;
+  return null;
+}
+
+function dirDelta(dir){
+  if (dir==='up') return [0,-1]; if (dir==='down') return [0,1];
+  if (dir==='left') return [-1,0]; return [1,0];
+}
+
+function findWarp(mapId,x,y){
+  const m = G.MAPS[mapId]; if (!m||!m.warps) return null;
+  return m.warps.find(w=>w.x===x&&w.y===y) || null;
+}
+
+function currentMap(){ return G.MAPS[G4.player.map]; }
+G4.currentMap = currentMap;
+
+function tryMove(dir){
+  const p = G4.player;
+  p.dir = dir;
+  if (p.moving) return;
+  const [dx,dy] = dirDelta(dir);
+  const nx = p.x+dx, ny = p.y+dy;
+  if (tileBlocked(p.map,nx,ny)){
+    const msg = blockedMessage(p.map,nx,ny);
+    if (msg && G.wantInteract()) {} /* no-op, message shown on bump below */
+    if (msg) G.showToast(msg);
+    return;
+  }
+  p.fromX = p.x; p.fromY = p.y;
+  p.x = nx; p.y = ny;
+  p.moving = true; p.t = 0; p.walkFrame = 1-p.walkFrame;
+}
+
+function onStepComplete(){
+  const p = G4.player;
+  const warp = findWarp(p.map,p.x,p.y);
+  if (warp){ doWarp(warp); return; }
+  const m = currentMap();
+  const ch = getTile(p.map,p.x,p.y);
+  if (ch===','){
+    G4.stepsSinceEncounter++;
+    if (G4.stepsSinceEncounter>=3 && Math.random() < 0.13){
+      G4.stepsSinceEncounter = 0;
+      startWildEncounter(m);
+    }
+  }
+  /* trainer sight check */
+  checkTrainerSight();
+  checkRivalSpot();
+  checkSecretGate();
+  checkProGauntlet();
+  if (G.tryAutoStationHere) G.tryAutoStationHere();
+}
+G4.onStepComplete = onStepComplete;
+
+function doWarp(w){
+  if (w.to==='proleague' && G.tryEnterProLeague && !G.tryEnterProLeague()) return;
+  const p = G4.player;
+  G.fadeTransition(()=>{
+    p.map = w.to; p.x = w.tx; p.y = w.ty; p.moving=false;
+  });
+}
+
+function weightedPick(list){
+  const total = list.reduce((s,e)=>s+e.w,0);
+  let r = Math.random()*total;
+  for (const e of list){ if (r<e.w) return e; r-=e.w; }
+  return list[list.length-1];
+}
+function startWildEncounter(m){
+  if (!m.encounters || !m.encounters.length) return;
+  const pick = weightedPick(m.encounters);
+  const level = pick.min + Math.floor(Math.random()*(pick.max-pick.min+1));
+  G.beginBattle({ kind:'wild', mon:G.makeMon(pick.species, level) });
+}
+
+function checkTrainerSight(){
+  const m = currentMap(); if (!m || !m.trainers) return;
+  const p = G4.player;
+  for (const t of m.trainers){
+    if (G.state.defeatedTrainers.includes(t.id)) continue;
+    if (t.x===p.x || t.y===p.y){
+      const [dx,dy] = dirDelta(t.dir);
+      let cx=t.x, cy=t.y, dist=0, hit=false;
+      for (let i=1;i<=5;i++){
+        cx=t.x+dx*i; cy=t.y+dy*i;
+        if (cx===p.x && cy===p.y){ hit=true; dist=i; break; }
+        if (tileBlocked(m===undefined?null:G4.player.map,cx,cy) && getTile(G4.player.map,cx,cy)!==',') break;
+      }
+      if (hit){ startTrainerBattle(t.id); return; }
+    }
+  }
+}
+function startTrainerBattle(tid){
+  const def = G.TRAINERS[tid];
+  G.state.currentTrainerId = tid;
+  G.beginBattle({ kind:'trainer', trainer:def, id:tid });
+}
+G4.startTrainerBattle = startTrainerBattle;
+
+function checkRivalSpot(){
+  const m = currentMap(); if (!m || !m.rivalSpot) return;
+  const battle = G.RIVAL_BATTLES.find(b=>b.where===G4.player.map);
+  if (!battle) return;
+  if (G.state.defeatedRivals.includes(battle.id)) return;
+  const p = G4.player;
+  if (Math.abs(p.x-m.rivalSpot.x)<=0 && Math.abs(p.y-m.rivalSpot.y)<=0){
+    G.beginRivalBattle(battle);
+  }
+}
+
+function checkProGauntlet(){
+  const m = currentMap(); if (!m || !m.proGauntlet) return;
+  const p = G4.player;
+  G.state.flags.proIdx = G.state.flags.proIdx||0;
+  for (let i=0;i<m.proGauntlet.length;i++){
+    const spot = m.proGauntlet[i];
+    if (spot.x===p.x && spot.y===p.y && i===G.state.flags.proIdx && !G.state.flags['proDone'+i]){
+      const def = G.PROTRAINERS[i];
+      G.beginBattle({kind:'pro', proIdx:i, team:def.team.map(t=>G.makeMon(t.species,t.level)), reward:def.reward, name:def.name});
+      return;
+    }
+  }
+  if (m.champion && m.champion.x===p.x && m.champion.y===p.y && G.state.flags.proIdx>=m.proGauntlet.length && !G.state.championDefeated){
+    G.beginBattle({kind:'champion', team:G.CHAMPION.team.map(t=>G.makeMon(t.species,t.level))});
+  } else if (m.champion && m.champion.x===p.x && m.champion.y===p.y && G.state.championDefeated){
+    G.showDialogue(['Carmela: Rest up, Champion. The region is yours to explore now.']);
+  }
+}
+
+function checkSecretGate(){
+  const m = currentMap(); if (!m || !m.secretGate) return;
+  const p = G4.player;
+  if (p.x===m.secretGate.x && p.y===m.secretGate.y){
+    const ok = m.secretGate.needs.every(f=>{
+      const field = G.ITEMS[f].field;
+      return hasTool(field);
+    });
+    if (ok && !G.state.flags.secretCaveMsgShown){
+      G.state.flags.secretCaveMsgShown = true;
+      G.showDialogue([G.DIALOGUE.secretCaveHint, G.DIALOGUE.secretCaveEnter]);
+    }
+  }
+}
+
+/* interact: talk to NPC/trainer facing player, read sign, pick up item */
+function interact(){
+  const p = G4.player;
+  const [dx,dy] = dirDelta(p.dir);
+  const fx = p.x+dx, fy = p.y+dy;
+  const m = currentMap();
+  /* sign */
+  if (m.npcSigns){
+    const key = fx+','+fy;
+    if (m.npcSigns[key]){ G.showDialogue([G.DIALOGUE[m.npcSigns[key]]]); return; }
+  }
+  const ch = getTile(p.map,fx,fy);
+  if (ch==='S'){
+    if (m.id==='cedarcity'||p.map==='cedarcity') {}
+    const signMap = { cedarcity:'cedarSign', mistvalecity:'mistvaleSign', ashportcity:'ashportSign', stonemerecity:'stonemereSign', emberpeakcity:'emberpeakSign', duskhollowcity:'duskhollowSign', proleague:'proLeagueSign' };
+    const key2 = signMap[p.map];
+    if (key2) { G.showDialogue([G.DIALOGUE[key2]]); return; }
+    G.showDialogue(['A signpost.']); return;
+  }
+  /* NPC */
+  if (m.npcs){
+    const npc = m.npcs.find(n=>n.x===fx&&n.y===fy);
+    if (npc){ G.talkToNPC(npc); return; }
+  }
+  /* trainer already-defeated flavor */
+  if (m.trainers){
+    const tr = m.trainers.find(t=>t.x===fx&&t.y===fy);
+    if (tr){
+      const def = G.TRAINERS[tr.id];
+      if (G.state.defeatedTrainers.includes(tr.id)) G.showDialogue([def.name+': '+def.post]);
+      else startTrainerBattle(tr.id);
+      return;
+    }
+  }
+  /* item pickup */
+  if (m.items){
+    const it = m.items.find(i=>i.x===fx&&i.y===fy);
+    if (it && !G.state.flags.collected[it.id]){
+      G.state.flags.collected[it.id] = true;
+      G.addItem(it.item,1);
+      G.showDialogue(['You found a '+G.ITEMS[it.item].name+'!']);
+      return;
+    }
+  }
+  /* legendary encounter */
+  if (m.legendary && fx===m.legendary.x && fy===m.legendary.y && !G.state.flags.legendaryCaught && !G.state.flags.legendaryFled){
+    G.showDialogue([G.DIALOGUE.duskrynEncounter], ()=>{
+      G.beginBattle({ kind:'legendary', mon:G.makeMon(m.legendary.species, m.legendary.level) });
+    });
+    return;
+  }
+  G.showToast('There\'s nothing there.');
+}
+G4.interact = interact;
+
+/* ================= Update & render ================= */
+function updateOverworld(dtMs){
+  const p = G4.player;
+  if (p.moving){
+    p.t += dtMs;
+    if (p.t>=p.dur){ p.moving=false; p.t=0; onStepComplete(); }
+  } else {
+    if (G.wantInteract()){ interact(); return; }
+    const dir = G.moveDir();
+    if (dir) tryMove(dir);
+  }
+}
+G4.updateOverworld = updateOverworld;
+
+function drawOverworld(){
+  const ctx = G3.ctx; const T = G3.TILE; const p = G4.player;
+  const m = currentMap();
+  ctx.fillStyle = m.bg || '#333';
+  ctx.fillRect(0,0,G3.viewW,G3.viewH);
+  let px = p.x, py = p.y;
+  if (p.moving){
+    const f = p.t/p.dur;
+    px = p.fromX + (p.x-p.fromX)*f;
+    py = p.fromY + (p.y-p.fromY)*f;
+  }
+  const camX = px*T - G3.viewW/2 + T/2;
+  const camY = py*T - G3.viewH/2 + T/2;
+  const cols = Math.ceil(G3.viewW/T)+2, rows = Math.ceil(G3.viewH/T)+2;
+  const startCol = Math.floor(camX/T)-1, startRow = Math.floor(camY/T)-1;
+  for (let ry=0; ry<rows; ry++){
+    for (let rx=0; rx<cols; rx++){
+      const tx = startCol+rx, ty = startRow+ry;
+      const ch = getTile(p.map,tx,ty);
+      const sx = Math.round(tx*T-camX), sy = Math.round(ty*T-camY);
+      drawTile(ctx,ch,sx,sy,T,m,tx,ty);
+    }
+  }
+  /* npc signs render as small post even without explicit sign tile handled by 'S' */
+  /* items on ground */
+  if (m.items){
+    for (const it of m.items){
+      if (G.state.flags.collected[it.id]) continue;
+      const sx = Math.round(it.x*T-camX), sy = Math.round(it.y*T-camY);
+      ctx.fillStyle='#ffe27a'; ctx.beginPath(); ctx.arc(sx+T/2,sy+T/2,T*0.22,0,7); ctx.fill();
+      ctx.strokeStyle='#8a6a1a'; ctx.lineWidth=2; ctx.stroke();
+    }
+  }
+  /* npcs */
+  if (m.npcs){
+    for (const n of m.npcs){
+      const sx = Math.round(n.x*T-camX), sy = Math.round(n.y*T-camY);
+      G3.drawPerson(ctx, n.sprite, npcPalette(n.sprite), sx, sy, T, n.dir, 0);
+    }
+  }
+  if (m.trainers){
+    for (const t of m.trainers){
+      if (G.state.defeatedTrainers.includes(t.id)) continue;
+      const sx = Math.round(t.x*T-camX), sy = Math.round(t.y*T-camY);
+      G3.drawPerson(ctx, 'trainer_'+t.id, trainerPalette(t.id), sx, sy, T, t.dir, 0);
+    }
+  }
+  if (m.legendary && !G.state.flags.legendaryCaught){
+    const sx = Math.round(m.legendary.x*T-camX), sy = Math.round(m.legendary.y*T-camY);
+    G3.drawCreature(ctx, m.legendary.species, sx, sy, T, false);
+  }
+  /* rival spot marker (invisible trigger, sometimes show Nayah sprite if not yet fought and story appropriate) */
+  if (m.rivalSpot){
+    const battle = G.RIVAL_BATTLES.find(b=>b.where===p.map);
+    if (battle && !G.state.defeatedRivals.includes(battle.id)){
+      const sx = Math.round(m.rivalSpot.x*T-camX), sy = Math.round(m.rivalSpot.y*T-camY);
+      G3.drawPerson(ctx, 'nayah', PAL_NAYAH, sx, sy, T, 'down', 0);
+    }
+  }
+  /* player */
+  {
+    const sx = Math.round(px*T-camX), sy = Math.round(py*T-camY);
+    G3.drawPerson(ctx, 'player', PAL_PLAYER, sx, sy, T, p.dir, p.moving?p.walkFrame:0);
+  }
+}
+G4.drawOverworld = drawOverworld;
+
+const PAL_PLAYER = ['#241a12','#3f6fd6','#ffd6a8','#e0483c'];
+const PAL_NAYAH = ['#241220','#d63f8f','#ffd6a8','#f4c430'];
+function npcPalette(sprite){
+  const map = {
+    naomi:['#1a1a24','#4fae7a','#ffd6a8','#e8e8e8'],
+    bram:['#1a2410','#3f8a2b','#e8c39a','#a8e063'],
+    oren:['#241f10','#d6b022','#e8c39a','#fff4b0'],
+    talon:['#0c2030','#2680c2','#e8c39a','#8fd8ff'],
+    grix:['#241a10','#8a6a4a','#e8c39a','#d9c19a'],
+    ilan:['#240f08','#d9541f','#e8c39a','#ffb066'],
+    vesper:['#180f24','#5b4a8a','#e8c39a','#c0b0f0']
+  };
+  return map[sprite] || PAL_NAYAH;
+}
+function trainerPalette(id){
+  const hash = [...id].reduce((s,c)=>s+c.charCodeAt(0),0);
+  const hues = [['#1a1a10','#8a7a3a','#e8c39a','#e0d090'],['#101a24','#3a6a8a','#e8c39a','#90d0e0'],['#1a1020','#7a3a7a','#e8c39a','#d090d0'],['#201a10','#8a5a2a','#e8c39a','#e0b070']];
+  return hues[hash%hues.length];
+}
+
+function drawTile(ctx,ch,sx,sy,T,m,tx,ty){
+  let color = G3.TILE_COLORS[ch];
+  if (m.dark && ch==='d' && !hasTool('glow')) color = '#050308';
+  if (color) { ctx.fillStyle = color; ctx.fillRect(sx,sy,T,T); }
+  if (ch==='#'){
+    ctx.fillStyle='#3a2a18'; ctx.fillRect(sx+T*0.35,sy+T*0.5,T*0.3,T*0.5);
+    ctx.fillStyle='#255a1c'; ctx.beginPath(); ctx.arc(sx+T/2,sy+T*0.4,T*0.42,0,7); ctx.fill();
+  } else if (ch==='B'){
+    ctx.fillStyle='#c9b89a'; ctx.fillRect(sx+T*0.08,sy+T*0.15,T*0.84,T*0.75);
+    ctx.fillStyle='#8a5a3a'; ctx.fillRect(sx+T*0.05,sy,T*0.9,T*0.25);
+  } else if (ch==='~'){
+    ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.fillRect(sx,sy+T*0.4,T,2);
+  } else if (ch==='^'){
+    ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(sx,sy+T*0.5); ctx.lineTo(sx+T,sy+T*0.5); ctx.stroke();
+  } else if (ch==='b'){
+    ctx.fillStyle='#2a5a1c'; ctx.beginPath(); ctx.arc(sx+T*0.3,sy+T*0.6,T*0.28,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx+T*0.7,sy+T*0.55,T*0.28,0,7); ctx.fill();
+  } else if (ch==='S'){
+    ctx.fillStyle='#7a5a3a'; ctx.fillRect(sx+T*0.42,sy+T*0.3,T*0.16,T*0.6);
+    ctx.fillStyle='#d9c19a'; ctx.fillRect(sx+T*0.2,sy+T*0.15,T*0.6,T*0.32);
+  } else if (ch==='GYM'){
+  }
+  /* GYM / SHOP / CTR word markers are embedded as multi-char in row strings; handled by scanning below */
+}
+
+/* map rows may contain multi-letter landmark words like GYM, SHOP, CTR - render as labeled plates on the '.' tiles they occupy */
+function scanLandmarks(m){
+  if (m._landmarks) return m._landmarks;
+  const found = [];
+  const words = ['GYM','SHOP','CTR'];
+  for (let y=0;y<m.rows.length;y++){
+    const row = m.rows[y];
+    for (const w of words){
+      let i = row.indexOf(w);
+      while (i>=0){ found.push({x:i,y,w}); i = row.indexOf(w,i+1); }
+    }
+  }
+  m._landmarks = found;
+  return found;
+}
+const _origDrawOverworld = drawOverworld;
+G4.drawOverworld = function(){
+  _origDrawOverworld();
+  const ctx = G3.ctx, T = G3.TILE; const p = G4.player; const m = currentMap();
+  let px=p.x, py=p.y;
+  if (p.moving){ const f=p.t/p.dur; px=p.fromX+(p.x-p.fromX)*f; py=p.fromY+(p.y-p.fromY)*f; }
+  const camX = px*T - G3.viewW/2 + T/2, camY = py*T - G3.viewH/2 + T/2;
+  for (const lm of scanLandmarks(m)){
+    const sx = Math.round(lm.x*T-camX), sy = Math.round(lm.y*T-camY);
+    ctx.fillStyle = lm.w==='GYM'?'#d64a3c':(lm.w==='SHOP'?'#3c8ad6':'#3cd68a');
+    ctx.fillRect(sx-T*1.4, sy, T*3*(lm.w.length/3), T*0.9);
+    ctx.fillStyle='#fff'; ctx.font=Math.round(T*0.32)+'px monospace'; ctx.textAlign='center';
+    ctx.fillText(lm.w, sx+T*0.5, sy+T*0.6);
+  }
+};
+/* p5: battle system - damage, catching, xp, evolution, AI */
+'use strict';
+const G5 = window.G;
+
+function baseStat(base, level, isHp){
+  if (isHp) return Math.floor(base*2*level/100) + level + 10;
+  return Math.floor(base*2*level/100) + 5;
+}
+function xpNeeded(level, growth){
+  const f = G.XP_GROUP[growth]||1;
+  return Math.floor(f * Math.pow(level,3));
+}
+function makeMon(speciesId, level, opts){
+  const sp = G.SPECIES[speciesId];
+  const stats = {
+    hp: baseStat(sp.base.hp, level, true),
+    atk: baseStat(sp.base.atk, level, false),
+    def: baseStat(sp.base.def, level, false),
+    spatk: baseStat(sp.base.spatk, level, false),
+    spdef: baseStat(sp.base.spdef, level, false),
+    spe: baseStat(sp.base.spe, level, false)
+  };
+  const known = sp.moves.filter(m=>m[0]<=level).slice(-4).map(m=>m[1]);
+  if (known.length===0) known.push('tackle');
+  const mon = {
+    uid: 'm'+Math.random().toString(36).slice(2,10),
+    species: speciesId, level, xp: 0, nextXp: xpNeeded(level+1, sp.growth),
+    stats, curHp: stats.hp, status:null, statusCounter:0,
+    moves: known.map(id=>({id, pp:G.MOVES[id].pp, maxPp:G.MOVES[id].pp})),
+    stages: {atk:0,def:0,spatk:0,spdef:0,spe:0},
+    nickname: opts&&opts.nickname || sp.name,
+    caughtLevel: level
+  };
+  return mon;
+}
+G5.makeMon = makeMon; G.makeMon = makeMon;
+
+function statWithStage(mon, key){
+  const base = mon.stats[key];
+  const stage = mon.stages[key]||0;
+  const mult = stage>=0 ? (2+stage)/2 : 2/(2-stage);
+  return Math.max(1, Math.floor(base*mult));
+}
+
+function effSpecies(mon){ return G.SPECIES[mon.species]; }
+
+function damageRoll(atkMon, defMon, moveId, isPlayerSide){
+  const move = G.MOVES[moveId];
+  if (move.power<=0) return {dmg:0, eff:1, crit:false};
+  const atkStat = move.kind==='phys' ? statWithStage(atkMon,'atk') : statWithStage(atkMon,'spatk');
+  const defStat = move.kind==='phys' ? statWithStage(defMon,'def') : statWithStage(defMon,'spdef');
+  const level = atkMon.level;
+  let dmg = Math.floor(((2*level/5+2)*move.power*atkStat/Math.max(1,defStat))/50)+2;
+  const stab = effSpecies(atkMon).types.includes(move.type) ? 1.5 : 1;
+  const eff = G.typeMult(move.type, effSpecies(defMon).types);
+  const crit = Math.random()<0.0625;
+  const rand = 0.85+Math.random()*0.15;
+  dmg = Math.floor(dmg*stab*eff*(crit?1.5:1)*rand);
+  if (eff===0) dmg = 0;
+  return {dmg:Math.max(eff===0?0:1,dmg), eff, crit};
+}
+G5.damageRoll = damageRoll;
+
+function applyStatChange(mon, sc, log){
+  if (!sc) return;
+  const cur = mon.stages[sc.stat]||0;
+  const next = Math.max(-6, Math.min(6, cur+sc.stages));
+  mon.stages[sc.stat] = next;
+  const dir = sc.stages>0?'rose':'fell';
+  log.push(`${mon.nickname}'s ${statName(sc.stat)} ${dir}${Math.abs(sc.stages)>1?' sharply':''}!`);
+}
+function statName(k){ return {atk:'Attack',def:'Defense',spatk:'Sp. Atk',spdef:'Sp. Def',spe:'Speed'}[k]||k; }
+
+function tryStatus(mon, status, chance, log){
+  if (mon.status) return;
+  if (Math.random()*100 < chance){
+    mon.status = status; mon.statusCounter = status==='sleep' ? 1+Math.floor(Math.random()*3) : 0;
+    const names = {burn:'burned',para:'paralyzed',sleep:'put to sleep'};
+    log.push(`${mon.nickname} was ${names[status]||status}!`);
+  }
+}
+
+function useMove(user, target, moveId, log){
+  const move = G.MOVES[moveId];
+  const mrec = user.moves.find(m=>m.id===moveId);
+  if (mrec) mrec.pp = Math.max(0,mrec.pp-1);
+  if (Math.random()*100 > move.acc){ log.push(`${user.nickname}'s ${move.name} missed!`); return; }
+  log.push(`${user.nickname} used ${move.name}!`);
+  if (move.power>0){
+    const r = damageRoll(user,target,moveId);
+    target.curHp = Math.max(0, target.curHp - r.dmg);
+    if (r.eff>1) log.push('It\'s super effective!');
+    else if (r.eff<1 && r.eff>0) log.push('It\'s not very effective...');
+    else if (r.eff===0) log.push(`It had no effect on ${target.nickname}!`);
+    if (r.crit) log.push('A critical hit!');
+  }
+  if (move.effect){
+    if (move.effect.heal){ const h = Math.floor(user.stats.hp*move.effect.heal); user.curHp=Math.min(user.stats.hp,user.curHp+h); log.push(`${user.nickname} recovered HP!`); }
+    if (move.effect.status && (!move.effect.chance || Math.random()*100<move.effect.chance)) tryStatus(target, move.effect.status, 100, log);
+    if (move.effect.statChange){
+      const roll = move.effect.chance ? Math.random()*100<move.effect.chance : true;
+      if (roll) applyStatChange(move.effect.statChange.target==='self'?user:target, move.effect.statChange, log);
+    }
+  }
+}
+G5.useMove = useMove;
+
+function statusPreventsMove(mon, log){
+  if (mon.status==='sleep'){
+    mon.statusCounter--;
+    if (mon.statusCounter<=0){ mon.status=null; log.push(`${mon.nickname} woke up!`); return false; }
+    log.push(`${mon.nickname} is fast asleep.`); return true;
+  }
+  if (mon.status==='para' && Math.random()<0.25){ log.push(`${mon.nickname} is paralyzed! It can't move!`); return true; }
+  return false;
+}
+function endTurnStatus(mon, log){
+  if (mon.curHp<=0) return;
+  if (mon.status==='burn'){ const d=Math.max(1,Math.floor(mon.stats.hp/16)); mon.curHp=Math.max(0,mon.curHp-d); log.push(`${mon.nickname} is hurt by its burn!`); }
+}
+G5.endTurnStatus = endTurnStatus;
+G5.statusPreventsMove = statusPreventsMove;
+
+/* ---------- XP & evolution ---------- */
+function xpYield(mon){
+  const sp = effSpecies(mon);
+  const base = sp.legendary?280:(sp.evolves?70:110);
+  return Math.floor(base*mon.level/7)+10;
+}
+function grantXp(mon, foe, log, isTrainer){
+  if (mon.curHp<=0) return [];
+  const events = [];
+  let gained = Math.floor(xpYield(foe)*(isTrainer?1.5:1));
+  mon.xp += gained;
+  log.push(`${mon.nickname} gained ${gained} XP!`);
+  while (mon.xp>=mon.nextXp && mon.level<100){
+    mon.xp -= mon.nextXp;
+    mon.level++;
+    const sp = effSpecies(mon);
+    const newStats = { hp:baseStat(sp.base.hp,mon.level,true), atk:baseStat(sp.base.atk,mon.level,false), def:baseStat(sp.base.def,mon.level,false), spatk:baseStat(sp.base.spatk,mon.level,false), spdef:baseStat(sp.base.spdef,mon.level,false), spe:baseStat(sp.base.spe,mon.level,false) };
+    const hpGain = newStats.hp - mon.stats.hp;
+    mon.stats = newStats; mon.curHp = Math.min(newStats.hp, mon.curHp+hpGain);
+    mon.nextXp = xpNeeded(mon.level+1, sp.growth);
+    log.push(`${mon.nickname} grew to level ${mon.level}!`);
+    events.push({type:'levelup', mon:mon.uid, level:mon.level});
+    const learn = sp.moves.find(m=>m[0]===mon.level);
+    if (learn){
+      if (mon.moves.length<4) mon.moves.push({id:learn[1], pp:G.MOVES[learn[1]].pp, maxPp:G.MOVES[learn[1]].pp});
+      else { mon.moves.shift(); mon.moves.push({id:learn[1], pp:G.MOVES[learn[1]].pp, maxPp:G.MOVES[learn[1]].pp}); }
+      log.push(`${mon.nickname} learned ${G.MOVES[learn[1]].name}!`);
+    }
+    if (sp.evolves && mon.level>=sp.evolves.level){
+      const newSp = G.SPECIES[sp.evolves.to];
+      mon.species = sp.evolves.to;
+      const evStats = { hp:baseStat(newSp.base.hp,mon.level,true), atk:baseStat(newSp.base.atk,mon.level,false), def:baseStat(newSp.base.def,mon.level,false), spatk:baseStat(newSp.base.spatk,mon.level,false), spdef:baseStat(newSp.base.spdef,mon.level,false), spe:baseStat(newSp.base.spe,mon.level,false) };
+      const hpG2 = evStats.hp-mon.stats.hp;
+      mon.stats = evStats; mon.curHp = Math.min(evStats.hp, mon.curHp+hpG2);
+      if (mon.nickname===sp.name) mon.nickname = newSp.name;
+      mon.nextXp = xpNeeded(mon.level+1, newSp.growth);
+      log.push(`${mon.nickname===newSp.name?'':''}Your wildkin is evolving into ${newSp.name}!`);
+      events.push({type:'evolve', mon:mon.uid, to:sp.evolves.to});
+    }
+  }
+  return events;
+}
+G5.grantXp = grantXp;
+
+/* ---------- catching ---------- */
+function catchChance(mon, ballMod){
+  const sp = effSpecies(mon);
+  const baseRate = sp.legendary?0.06:(sp.evolves?0.42:0.62);
+  const hpFactor = (3*mon.stats.hp - 2*mon.curHp)/(3*mon.stats.hp);
+  const statusMod = mon.status ? 1.4 : 1;
+  let chance = baseRate*hpFactor*ballMod*statusMod;
+  return Math.max(0.02, Math.min(0.98, chance));
+}
+G5.catchChance = catchChance;
+
+/* ---------- simple AI ---------- */
+function pickAiMove(mon, foe){
+  const usable = mon.moves.filter(m=>m.pp>0);
+  if (!usable.length) return null;
+  if (Math.random()<0.55){
+    let best=usable[0], bestScore=-1;
+    for (const m of usable){
+      const move = G.MOVES[m.id];
+      const eff = G.typeMult(move.type, effSpecies(foe).types);
+      const score = move.power*eff + (move.effect?15:0);
+      if (score>bestScore){ bestScore=score; best=m; }
+    }
+    return best.id;
+  }
+  return usable[Math.floor(Math.random()*usable.length)].id;
+}
+G5.pickAiMove = pickAiMove;
+/* p6: game flow - NPCs, shops, centers, badges, items, story triggers */
+'use strict';
+const G6 = window.G;
+
+G.newGameState = function(){
+  return {
+    screen:'title',
+    playerName:'Jasz',
+    party: [],
+    box: [],
+    inventory: [ {id:'snareball',qty:5}, {id:'potion',qty:3} ],
+    money: 500,
+    badges: [],
+    defeatedTrainers: [],
+    defeatedRivals: [],
+    starterSpecies: null,
+    rivalSpecies: null,
+    flags: { collected:{}, secretCaveMsgShown:false, legendaryCaught:false, legendaryFled:false, radiantHintShown:false, gotStarter:false, metRivalAfterChampion:false },
+    playtimeSec: 0,
+    battle: null,
+    player: { map:'willowbrook', x:6, y:12, dir:'down' }
+  };
+};
+
+/* ---------- items / inventory ---------- */
+G.addItem = function(id, qty){
+  const inv = G.state.inventory;
+  const rec = inv.find(i=>i.id===id);
+  if (rec) rec.qty += qty; else inv.push({id, qty});
+};
+G.removeItem = function(id, qty){
+  const inv = G.state.inventory;
+  const rec = inv.find(i=>i.id===id);
+  if (!rec) return false;
+  rec.qty -= qty;
+  if (rec.qty<=0) G.state.inventory = inv.filter(i=>i.id!==id);
+  return true;
+};
+G.itemQty = function(id){ const r = G.state.inventory.find(i=>i.id===id); return r?r.qty:0; };
+
+/* ---------- toast / dialogue ---------- */
+G.toastQueue = [];
+G.showToast = function(msg){ G.uiToast(msg); };
+
+G.dialogueLines = []; G.dialogueCb = null;
+G.showDialogue = function(lines, cb){
+  G.dialogueLines = lines.slice();
+  G.dialogueCb = cb||null;
+  G.prevScreen = G.state.screen;
+  G.state.screen = 'dialogue';
+  G.uiRender();
+};
+G.advanceDialogue = function(){
+  G.dialogueLines.shift();
+  if (G.dialogueLines.length===0){
+    G.state.screen = G.prevScreen||'overworld';
+    const cb = G.dialogueCb; G.dialogueCb=null;
+    G.uiRender();
+    if (cb) cb();
+  } else G.uiRender();
+};
+
+G.fadeTransition = function(cb){
+  G.uiFadeOut(()=>{ cb(); G.uiFadeIn(); });
+};
+
+/* ---------- NPC interactions ---------- */
+G.talkToNPC = function(npc){
+  if (npc.role==='lab'){
+    if (!G.state.flags.gotStarter){
+      G.startStarterFlow();
+    } else {
+      G.showDialogue(['Naomi: How\'s the journey going, Jasz? Take care of your team out there.'].concat(
+        G.state.flags.radiantHintShown ? [] : (G.itemQty('radiantshard')>0 ? [G.DIALOGUE.radiantShardHint] : [])
+      ));
+      if (G.itemQty('radiantshard')>0) G.state.flags.radiantHintShown = true;
+    }
+    return;
+  }
+  if (npc.role==='master'){
+    const mid = npc.masterId;
+    const master = G.MASTERS[mid];
+    if (G.state.badges.includes(mid)){
+      G.showDialogue([master.name+': '+master.post]);
+    } else {
+      G.beginBattle({kind:'master', masterId:mid});
+    }
+    return;
+  }
+};
+
+/* ---------- starter selection ---------- */
+G.STARTER_CHOICES = ['cindle','ripplet','sproutle'];
+G.startStarterFlow = function(){
+  G.showDialogue([G.DIALOGUE.labIntro, G.DIALOGUE.labChoose], ()=>{
+    G.state.screen = 'starter';
+    G.uiRender();
+  });
+};
+G.chooseStarter = function(speciesId){
+  G.state.starterSpecies = speciesId;
+  G.state.rivalSpecies = G.RIVAL_COUNTER[speciesId];
+  const mon = G.makeMon(speciesId, 5);
+  G.state.party.push(mon);
+  G.state.flags.gotStarter = true;
+  G.state.screen = 'overworld';
+  G.uiRender();
+  G.showDialogue([G.DIALOGUE.labAfter]);
+};
+
+/* ---------- rival battle ---------- */
+G.beginRivalBattle = function(battleDef){
+  const rSpecies = rivalSpeciesForStage(battleDef.id);
+  const team = [ G.makeMon(rSpecies, battleDef.levelBase) ];
+  for (const ex of battleDef.extra) team.push(G.makeMon(ex[0], ex[1]));
+  G.beginBattle({ kind:'rival', rivalId:battleDef.id, team, pre:battleDef.pre, post:battleDef.post });
+};
+function rivalSpeciesForStage(id){
+  const base = G.state.rivalSpecies;
+  if (id==='rival1'||id==='rival2') return base;
+  if (id==='rival3'||id==='rival4') return G.RIVAL_STAGE2[base];
+  return G.RIVAL_STAGE3[base];
+}
+
+/* ---------- master reward ---------- */
+G.grantMasterReward = function(mid){
+  const master = G.MASTERS[mid];
+  if (!G.state.badges.includes(mid)) G.state.badges.push(mid);
+  if (master.tool) G.addItem(master.tool, 1);
+  const lines = [master.post];
+  return lines;
+};
+
+/* ---------- center / shop ---------- */
+G.tryAutoStationHere = function(){
+  const m = G4.currentMap();
+  const p = G4.player;
+  if (m.center && m.center.x===p.x && m.center.y===p.y){ G.openCenter(); return true; }
+  if (m.shop && m.shop.x===p.x && m.shop.y===p.y){ G.openShop(); return true; }
+  return false;
+};
+G.openCenter = function(){
+  for (const mon of G.state.party){ mon.curHp = mon.stats.hp; mon.status=null; mon.moves.forEach(m=>m.pp=m.maxPp); }
+  G.showDialogue(['Nurse: Welcome to the Wyldkin Center! ...Your team is fully healed. Good luck out there!']);
+};
+G.SHOP_STOCK = ['snareball','greatsnare','ultrasnare','potion','superpotion','elixir','revive','burnheal','paralyzeheal','awakener'];
+G.openShop = function(){
+  G.prevScreen = G.state.screen;
+  G.state.screen = 'shop';
+  G.uiRender();
+};
+
+/* ---------- pro league gate ---------- */
+G.tryEnterProLeague = function(warpFn){
+  const need = 6;
+  if (G.state.badges.length<need){ G.showDialogue([G.DIALOGUE.gateNoBadges(need-G.state.badges.length)]); return false; }
+  return true;
+};
+
+/* ---------- legendary catch resolution hook (called from battle) ---------- */
+G.onLegendaryOutcome = function(caught){
+  if (caught) G.state.flags.legendaryCaught = true;
+  else G.state.flags.legendaryFled = true;
+};
+
+/* ---------- proleague gauntlet progress ---------- */
+G.state_proGauntletIdx = 0;
+/* p7: battle flow controller (state machine, no DOM) */
+'use strict';
+const G7 = window.G;
+
+G.beginBattle = function(opts){
+  if (!G.state.party.some(m=>m.curHp>0)){ G.showToast('Your team has no wildkin able to battle!'); return; }
+  const battle = {
+    kind: opts.kind,
+    playerIdx: G.state.party.findIndex(m=>m.curHp>0),
+    enemy: [],
+    enemyIdx: 0,
+    enemyName: 'Wild',
+    canCatch: false,
+    canRun: true,
+    isWild: false,
+    rewardMoney: 0,
+    pendingMon: null,
+    extra: opts,
+    msgQueue: [],
+    afterMessages: null,
+    playerFled: false,
+    turnBusy: false
+  };
+  if (opts.kind==='wild'){
+    battle.enemy = [opts.mon]; battle.enemyName = 'Wild '+G.SPECIES[opts.mon.species].name; battle.canCatch = true; battle.isWild = true;
+  } else if (opts.kind==='legendary'){
+    battle.enemy = [opts.mon]; battle.enemyName = G.SPECIES[opts.mon.species].name; battle.canCatch = true; battle.isWild = true; battle.canRun = true;
+  } else if (opts.kind==='trainer'){
+    battle.enemy = opts.trainer.team.map(t=>G.makeMon(t.species,t.level));
+    battle.enemyName = opts.trainer.name; battle.canRun = false; battle.rewardMoney = opts.trainer.reward; battle.trainerId = opts.id;
+    battle.preMsg = opts.trainer.name+': '+opts.trainer.pre;
+  } else if (opts.kind==='rival'){
+    battle.enemy = opts.team; battle.enemyName = 'Nayah'; battle.canRun = false; battle.rivalId = opts.rivalId;
+    battle.preMsg = opts.pre;
+  } else if (opts.kind==='master'){
+    const master = G.MASTERS[opts.masterId];
+    battle.enemy = master.team.map(t=>G.makeMon(t.species,t.level));
+    battle.enemyName = master.name; battle.canRun = false; battle.masterId = opts.masterId;
+    battle.preMsg = master.pre;
+  } else if (opts.kind==='pro'){
+    battle.enemy = opts.team; battle.enemyName = opts.name; battle.canRun = false; battle.proIdx = opts.proIdx; battle.rewardMoney = opts.reward;
+    const pdef = G.PROTRAINERS[opts.proIdx]; battle.preMsg = pdef?pdef.pre:null;
+  } else if (opts.kind==='champion'){
+    battle.enemy = opts.team; battle.enemyName = 'Champion Carmela'; battle.canRun = false;
+    battle.preMsg = G.CHAMPION.pre;
+  }
+  if (battle.preMsg) battle.msgQueue.push(battle.preMsg);
+  G.state.battle = battle;
+  G.state.screen = 'battle';
+  G.uiRender();
+};
+
+function battle(){ return G.state.battle; }
+function activePlayerMon(){ return G.state.party[battle().playerIdx]; }
+function activeEnemyMon(){ return battle().enemy[battle().enemyIdx]; }
+G.activePlayerMon = activePlayerMon;
+G.activeEnemyMon = activeEnemyMon;
+
+function pushMsgs(arr){ battle().msgQueue.push(...arr); }
+
+G.battlePlayerChooseMove = function(moveIdx){
+  const b = battle(); if (b.turnBusy) return;
+  const pm = activePlayerMon(); const move = pm.moves[moveIdx];
+  if (!move || move.pp<=0){ G.showToast('No PP left for that move!'); return; }
+  b.turnBusy = true;
+  resolveTurn({type:'move', moveId:move.id});
+};
+
+G.battlePlayerUseItem = function(itemId){
+  const b = battle(); if (b.turnBusy) return;
+  const def = G.ITEMS[itemId];
+  const pm = activePlayerMon();
+  if (def.kind==='ball'){
+    if (!b.canCatch){ G.showToast('You can\'t catch another trainer\'s wildkin!'); return; }
+    b.turnBusy = true;
+    G.removeItem(itemId,1);
+    doCatchAttempt(def.catchMod);
+    return;
+  }
+  if (def.kind==='heal'){
+    if (pm.curHp>=pm.stats.hp){ G.showToast(pm.nickname+' is already at full HP.'); return; }
+    G.removeItem(itemId,1);
+    pm.curHp = Math.min(pm.stats.hp, pm.curHp+def.amount);
+    b.turnBusy = true;
+    const log = [`You used ${def.name} on ${pm.nickname}. HP restored!`];
+    pushMsgs(log);
+    enemyActsThenContinue();
+    return;
+  }
+  if (def.kind==='cure'){
+    if (!pm.status || !def.cures.includes(pm.status)){ G.showToast('It won\'t have any effect.'); return; }
+    G.removeItem(itemId,1);
+    pm.status = null;
+    b.turnBusy = true;
+    pushMsgs([`You used ${def.name} on ${pm.nickname}. It feels better!`]);
+    enemyActsThenContinue();
+    return;
+  }
+  if (def.kind==='revive'){
+    G.showToast('Switch to a fainted wildkin\'s slot from the Party menu instead.'); return;
+  }
+};
+
+G.battlePlayerSwitch = function(partyIdx){
+  const b = battle(); if (b.turnBusy) return;
+  const mon = G.state.party[partyIdx];
+  if (!mon || mon.curHp<=0){ G.showToast('That wildkin has fainted.'); return; }
+  if (partyIdx===b.playerIdx){ G.showToast('Already in battle!'); return; }
+  b.turnBusy = true;
+  b.playerIdx = partyIdx;
+  pushMsgs([`Go, ${mon.nickname}!`]);
+  if (b._forceSwitch){ b._forceSwitch=false; flushAndThen(checkBattleEndOrContinue); }
+  else enemyActsThenContinue();
+};
+
+G.battlePlayerRun = function(){
+  const b = battle(); if (b.turnBusy) return;
+  if (!b.canRun){ G.showToast('You can\'t run from this battle!'); return; }
+  b.turnBusy = true;
+  pushMsgs(['Got away safely!']);
+  flushAndThen(()=>{ endBattle('fled'); });
+};
+
+function doCatchAttempt(ballMod){
+  const b = battle(); const enemy = activeEnemyMon();
+  const chance = G.catchChance(enemy, ballMod);
+  const success = Math.random() < chance;
+  const shakes = success ? 4 : 1+Math.floor(Math.random()*3);
+  const log = ['You threw a Snare Ball!'];
+  for (let i=0;i<shakes;i++) log.push('...');
+  if (success){
+    log.push(`Gotcha! ${enemy.nickname} was caught!`);
+    pushMsgs(log);
+    flushAndThen(()=>{
+      const mon = enemy;
+      if (G.state.party.length<6) G.state.party.push(mon); else G.state.box.push(mon);
+      if (b.kind==='legendary') G.onLegendaryOutcome(true);
+      endBattle('caught');
+    });
+  } else {
+    log.push('Oh no! It broke free!');
+    pushMsgs(log);
+    enemyActsThenContinue();
+  }
+}
+
+function resolveTurn(playerAction){
+  const b = battle();
+  const pm = activePlayerMon(); const em = activeEnemyMon();
+  const aiMoveId = G.pickAiMove(em, pm);
+  const log = [];
+  const playerFirst = statSpeed(pm) >= statSpeed(em);
+  const actors = playerFirst ? [['p',playerAction.moveId],['e',aiMoveId]] : [['e',aiMoveId],['p',playerAction.moveId]];
+  for (const [side, moveId] of actors){
+    const user = side==='p'?pm:em, target = side==='p'?em:pm;
+    if (user.curHp<=0) continue;
+    if (target.curHp<=0) continue;
+    if (!moveId) continue;
+    if (G.statusPreventsMove(user, log)) continue;
+    G.useMove(user, target, moveId, log);
+    if (target.curHp<=0){ log.push(`${target.nickname} fainted!`); break; }
+  }
+  if (pm.curHp>0) G.endTurnStatus(pm, log);
+  if (em.curHp>0) G.endTurnStatus(em, log);
+  pushMsgs(log);
+  flushAndThen(checkBattleEndOrContinue);
+}
+
+function enemyActsThenContinue(){
+  const b = battle(); const pm = activePlayerMon(); const em = activeEnemyMon();
+  const log = [];
+  if (em.curHp>0 && pm.curHp>0){
+    const aiMoveId = G.pickAiMove(em, pm);
+    if (aiMoveId && !G.statusPreventsMove(em, log)) G.useMove(em, pm, aiMoveId, log);
+    if (pm.curHp<=0) log.push(`${pm.nickname} fainted!`);
+  }
+  if (pm.curHp>0) G.endTurnStatus(pm, log);
+  if (em.curHp>0) G.endTurnStatus(em, log);
+  pushMsgs(log);
+  flushAndThen(checkBattleEndOrContinue);
+}
+
+function statSpeed(mon){
+  const stage = mon.stages.spe||0;
+  const mult = stage>=0?(2+stage)/2:2/(2-stage);
+  const base = Math.floor(mon.stats.spe*mult);
+  return mon.status==='para' ? Math.floor(base*0.5) : base;
+}
+
+function flushAndThen(fn){
+  battle().afterMessages = fn;
+  G.uiRender();
+}
+G.battleFlushDone = function(){ /* called by UI once message queue fully drained */ };
+
+function checkBattleEndOrContinue(){
+  const b = battle(); const pm = activePlayerMon(); const em = activeEnemyMon();
+  if (em.curHp<=0){
+    const xpLog = [];
+    G.grantXp(pm, em, xpLog, b.kind!=='wild'&&b.kind!=='legendary');
+    pushMsgs(xpLog);
+    b.enemyIdx++;
+    if (b.enemyIdx < b.enemy.length){
+      pushMsgs([`${b.enemyName} sent out ${b.enemy[b.enemyIdx].nickname}!`]);
+      b.turnBusy = false;
+      G.uiRender();
+      return;
+    }
+    finishBattleVictory();
+    return;
+  }
+  if (pm.curHp<=0){
+    const nextIdx = G.state.party.findIndex(m=>m.curHp>0);
+    if (nextIdx>=0){
+      b._forceSwitch = true;
+      b.turnBusy = false;
+      G.uiRender();
+      return;
+    }
+    finishBattleDefeat();
+    return;
+  }
+  b.turnBusy = false;
+  G.uiRender();
+}
+
+function finishBattleVictory(){
+  const b = battle();
+  let extraMsg = [];
+  if (b.rewardMoney){ G.state.money += b.rewardMoney; extraMsg.push(`You got $${b.rewardMoney} for winning!`); }
+  if (b.kind==='trainer'){ G.state.defeatedTrainers.push(b.trainerId); }
+  if (b.kind==='rival'){ G.state.defeatedRivals.push(b.rivalId); }
+  if (b.kind==='master'){
+    const lines = G.grantMasterReward(b.masterId);
+    extraMsg = extraMsg.concat(lines);
+  }
+  if (b.kind==='pro'){
+    G.state.flags.proIdx = (b.proIdx||0)+1;
+    G.state.flags['proDone'+b.proIdx] = true;
+  }
+  if (b.kind==='champion'){
+    G.state.championDefeated = true;
+    extraMsg.push(G.DIALOGUE.champDefeated);
+  }
+  pushMsgs(extraMsg.length?extraMsg:['You won the battle!']);
+  flushAndThen(()=>{ endBattle('win'); });
+}
+function finishBattleDefeat(){
+  pushMsgs(['You have no wildkin left to fight!', 'You rush to the nearest Wyldkin Center...']);
+  flushAndThen(()=>{
+    for (const mon of G.state.party){ mon.curHp = mon.stats.hp; mon.status=null; }
+    G.state.money = Math.max(0, G.state.money-50);
+    endBattle('lose');
+  });
+}
+
+function endBattle(result){
+  G.state.battle = null;
+  G.state.screen = 'overworld';
+  G.uiRender();
+}
+G.checkBattleEndOrContinue = checkBattleEndOrContinue;
+/* p8: DOM UI - all screens, touch controls, rendering dispatch */
+'use strict';
+const G8 = window.G;
+
+function $(id){ return document.getElementById(id); }
+G.$ = $;
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+G.uiToast = function(msg){
+  const el = $('toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.classList.remove('show'), 1800);
+};
+
+/* ---------- fade ---------- */
+G.uiFadeOut = function(cb){ const f=$('fadeLayer'); f.style.opacity='1'; setTimeout(cb, 220); };
+G.uiFadeIn = function(){ const f=$('fadeLayer'); setTimeout(()=>{ f.style.opacity='0'; }, 30); };
+
+/* ---------- master dispatcher ---------- */
+G.uiRender = function(){
+  const s = G.state.screen;
+  show('titleScreen', s==='title');
+  show('starterScreen', s==='starter');
+  show('dialogueBox', s==='dialogue');
+  show('battleScreen', s==='battle');
+  if (s!=='battle'){ const mb=$('battleMsgBox'); if (mb) mb.style.display='none'; }
+  show('pauseMenu', s==='pause');
+  show('shopScreen', s==='shop');
+  show('hud', s==='overworld'||s==='pause');
+  show('touchControls', s==='overworld');
+  if (s==='dialogue') renderDialogue();
+  if (s==='battle') renderBattle();
+  if (s==='pause') renderPause();
+  if (s==='shop') renderShop();
+  if (s==='overworld') renderHud();
+  if (s==='title') renderTitle();
+  if (s==='starter') renderStarter();
+};
+function show(id, on){ const el=$(id); if (el) el.style.display = on?'':'none'; }
+
+/* ---------- title ---------- */
+function renderTitle(){
+  const hasSave = G.hasAnySave();
+  $('titleContinueBtn').style.display = hasSave? '' : 'none';
+}
+G.uiStartNewGame = function(){
+  G.state = G.newGameState();
+  Object.assign(G4.player, G.state.player, {moving:false, t:0, dur:150, fromX:G.state.player.x, fromY:G.state.player.y, walkFrame:0});
+  G.state.screen = 'overworld';
+  G.uiRender();
+  G.showDialogue([G.DIALOGUE.intro1, G.DIALOGUE.intro2]);
+};
+G.uiContinue = function(){
+  $('loadSlotsWrap').innerHTML = renderSlotList('load');
+  $('continuePicker').style.display = '';
+};
+
+/* ---------- starter ---------- */
+function renderStarter(){
+  const wrap = $('starterCards'); wrap.innerHTML = '';
+  for (const sid of G.STARTER_CHOICES){
+    const sp = G.SPECIES[sid];
+    const card = document.createElement('div');
+    card.className = 'starterCard';
+    card.innerHTML = `<canvas class="starterSprite" width="96" height="96"></canvas>
+      <div class="starterName">${sp.name}</div>
+      <div class="starterType">${sp.types.join(' / ')} type</div>
+      <div class="starterDesc">${esc(sp.desc)}</div>
+      <button class="btn primary">Choose ${sp.name}</button>`;
+    const cv = card.querySelector('canvas');
+    const cx = cv.getContext('2d'); cx.imageSmoothingEnabled=false;
+    cx.drawImage(G3.getSpriteCanvas(sid,96),0,0,96,96);
+    card.querySelector('button').onclick = ()=>G.chooseStarter(sid);
+    wrap.appendChild(card);
+  }
+}
+
+/* ---------- dialogue ---------- */
+function renderDialogue(){
+  $('dialogueText').textContent = G.dialogueLines[0]||'';
+}
+G.uiDialogueTap = function(){ G.advanceDialogue(); };
+
+/* ---------- HUD ---------- */
+function renderHud(){
+  $('hudMoney').textContent = '$'+G.state.money;
+  $('hudBadges').textContent = G.state.badges.length+'/6 Sigils';
+  const lead = G.state.party[0];
+  $('hudLead').textContent = lead ? `${lead.nickname} Lv.${lead.level}` : '';
+}
+G.uiOpenMenu = function(){ G.state.screen='pause'; G.uiRender(); };
+G.uiCloseMenu = function(){ G.state.screen='overworld'; G.uiRender(); };
+
+/* ---------- pause menu ---------- */
+let pauseTab = 'party';
+G.uiPauseTab = function(tab){ pauseTab = tab; renderPause(); };
+function renderPause(){
+  const tabs = ['party','bag','badges','save','load'];
+  for (const t of tabs) $('ptab_'+t).classList.toggle('active', t===pauseTab);
+  const body = $('pauseBody');
+  if (pauseTab==='party') body.innerHTML = renderPartyList(true);
+  else if (pauseTab==='bag') body.innerHTML = renderBagList(true);
+  else if (pauseTab==='badges') body.innerHTML = renderBadges();
+  else if (pauseTab==='save') body.innerHTML = renderSlotList('save');
+  else if (pauseTab==='load') body.innerHTML = renderSlotList('load');
+  wireDynamicButtons(body);
+  paintMonSprites(body);
+}
+function renderBadges(){
+  let html = '<div class="badgeGrid">';
+  for (const mid of G.MASTER_ORDER){
+    const m = G.MASTERS[mid]; const got = G.state.badges.includes(mid);
+    html += `<div class="badgeItem ${got?'got':''}"><div class="badgeIcon">${got?'★':'☆'}</div><div>${m.sigil}<br><small>${m.name} - ${m.city.replace('city',' City')}</small></div></div>`;
+  }
+  html += '</div>';
+  if (G.state.championDefeated) html += '<p class="champBanner">🏆 Pro League Champion 🏆</p>';
+  return html;
+}
+function renderSlotList(mode){
+  let html = '<div class="slotList">';
+  if (mode==='load'){
+    const meta = G.getSlotMeta('auto');
+    html += `<div class="slotRow"><div>${meta?`Autosave: ${esc(meta.name)} - ${meta.badges} Sigils - $${meta.money}`:'Autosave: (empty)'}</div>
+      <button class="btn small" data-act="load" data-slot="auto">Load</button></div>`;
+  }
+  for (let i=1;i<=3;i++){
+    const meta = G.getSlotMeta(i);
+    html += `<div class="slotRow"><div>${meta?`Slot ${i}: ${esc(meta.name)} - ${meta.badges} Sigils - $${meta.money}`:`Slot ${i}: (empty)`}</div>
+      <button class="btn small" data-act="${mode}" data-slot="${i}">${mode==='save'?'Save':'Load'}</button></div>`;
+  }
+  html += '</div>';
+  return html;
+}
+function wireDynamicButtons(root){
+  root.querySelectorAll('[data-act]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const act = btn.getAttribute('data-act');
+      const slotRaw = btn.getAttribute('data-slot');
+      const slot = slotRaw==='auto' ? 'auto' : parseInt(slotRaw);
+      if (act==='save'){ G.saveToSlot(slot); G.uiToast('Saved to slot '+slot+'!'); renderPause(); }
+      else if (act==='load'){ if (G.loadFromSlot(slot)){ G.state.screen='overworld'; G.uiRender(); G.uiToast('Loaded slot '+slot+'!'); $('continuePicker').style.display='none'; } else G.uiToast('Nothing saved there.'); }
+      else if (act==='switch'){ const idx=parseInt(btn.getAttribute('data-idx')); if (G.state.screen==='battle') G.battlePlayerSwitch(idx); else { const t=G.state.party[0]; G.state.party[0]=G.state.party[idx]; G.state.party[idx]=t; renderPause(); } }
+      else if (act==='useitem'){ const id=btn.getAttribute('data-id'); if (G.state.screen==='battle') G.battlePlayerUseItem(id); else fieldUseItem(id); }
+      else if (act==='release'){ const idx=parseInt(btn.getAttribute('data-idx')); if (G.state.party.length>1){ G.state.party.splice(idx,1); renderPause(); } else G.uiToast('You need at least one wildkin!'); }
+      else if (act==='buy'){ const id=btn.getAttribute('data-id'); buyItem(id); }
+    };
+  });
+}
+function fieldUseItem(id){
+  const def = G.ITEMS[id];
+  if (def.kind==='tool' || def.kind==='key'){ G.uiToast('Can\'t use that right now.'); return; }
+  const mon = G.state.party[0];
+  if (def.kind==='heal'){ if (mon.curHp>=mon.stats.hp){ G.uiToast('Already full HP.'); return;} mon.curHp=Math.min(mon.stats.hp,mon.curHp+def.amount); G.removeItem(id,1); G.uiToast('Used '+def.name+'.'); renderPause(); }
+  else if (def.kind==='cure'){ if (!mon.status||!def.cures.includes(mon.status)){ G.uiToast('No effect.'); return;} mon.status=null; G.removeItem(id,1); G.uiToast('Used '+def.name+'.'); renderPause(); }
+  else if (def.kind==='revive'){ G.uiToast('Revive is used automatically from the party screen on fainted wildkin.'); }
+}
+
+/* ---------- party & bag partials ---------- */
+function renderPartyList(withActions){
+  let html = '<div class="partyList">';
+  G.state.party.forEach((mon,idx)=>{
+    const sp = G.SPECIES[mon.species];
+    const pct = Math.round(100*mon.curHp/mon.stats.hp);
+    html += `<div class="monRow ${mon.curHp<=0?'fainted':''}">
+      <canvas class="monSprite" width="48" height="48" data-sp="${mon.species}"></canvas>
+      <div class="monInfo"><b>${esc(mon.nickname)}</b> Lv.${mon.level} ${mon.status?`<span class="status st-${mon.status}">${mon.status.toUpperCase()}</span>`:''}
+        <div class="hpBarBg"><div class="hpBarFg" style="width:${pct}%; background:${pct>50?'#4caf50':pct>20?'#ffb300':'#e53935'}"></div></div>
+        <small>${mon.curHp}/${mon.stats.hp} HP &middot; ${sp.types.join('/')} &middot; XP ${mon.xp}/${mon.nextXp}</small></div>
+      ${withActions?`<div class="monActions">
+        ${G.state.screen==='battle'?`<button class="btn small" data-act="switch" data-idx="${idx}">Send Out</button>`:`<button class="btn small" data-act="switch" data-idx="${idx}">Lead</button><button class="btn small danger" data-act="release" data-idx="${idx}">Release</button>`}
+      </div>`:''}
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+G.renderPartyList = renderPartyList;
+function paintMonSprites(root){
+  root.querySelectorAll('canvas.monSprite').forEach(cv=>{
+    const sp = cv.getAttribute('data-sp'); const cx = cv.getContext('2d'); cx.imageSmoothingEnabled=false;
+    cx.drawImage(G3.getSpriteCanvas(sp,48),0,0,48,48);
+  });
+}
+function renderBagList(field){
+  let html = '<div class="bagList">';
+  const inv = G.state.inventory.filter(i=>i.qty>0);
+  if (!inv.length) html += '<p>Your bag is empty.</p>';
+  for (const it of inv){
+    const def = G.ITEMS[it.id];
+    const usable = field ? true : (G.state.battle && (def.kind==='ball'||def.kind==='heal'||def.kind==='cure'));
+    html += `<div class="itemRow"><div><b>${def.name}</b> x${it.qty}<br><small>${esc(def.desc)}</small></div>
+      ${def.kind!=='tool'&&def.kind!=='key'?`<button class="btn small" data-act="useitem" data-id="${it.id}">Use</button>`:'<span class="tag">Field Tool</span>'}</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ---------- shop ---------- */
+function renderShop(){
+  let html = `<h2>Supply Shop</h2><p>Your money: $${G.state.money}</p><div class="bagList">`;
+  for (const id of G.SHOP_STOCK){
+    const def = G.ITEMS[id];
+    html += `<div class="itemRow"><div><b>${def.name}</b> - $${def.price}<br><small>${esc(def.desc)}</small></div>
+      <button class="btn small" data-act="buy" data-id="${id}">Buy</button></div>`;
+  }
+  html += '</div>';
+  $('shopBody').innerHTML = html;
+  wireDynamicButtons($('shopBody'));
+}
+function buyItem(id){
+  const def = G.ITEMS[id];
+  if (G.state.money<def.price){ G.uiToast('Not enough money!'); return; }
+  G.state.money -= def.price; G.addItem(id,1);
+  G.uiToast('Bought '+def.name+'!'); renderShop();
+}
+G.uiCloseShop = function(){ G.state.screen='overworld'; G.uiRender(); };
+
+/* ---------- battle screen ---------- */
+let battleTab = 'moves';
+G.uiBattleTab = function(t){ battleTab = t; renderBattle(); };
+function renderBattle(){
+  const b = G.state.battle; if (!b) return;
+  const canvas = $('battleCanvas');
+  drawBattleScene(canvas);
+  const box = $('battleMsgBox');
+  const actionsWrap = $('battleActions');
+  if (b.msgQueue.length>0){
+    box.style.display=''; actionsWrap.style.display='none';
+    box.textContent = b.msgQueue[0];
+    box.onclick = ()=>{
+      if (!G.state.battle || G.state.battle!==b) return;
+      b.msgQueue.shift();
+      if (b.msgQueue.length>0){ renderBattle(); }
+      else {
+        const cb = b.afterMessages; b.afterMessages=null;
+        if (cb) cb(); else { G.uiRender(); }
+      }
+    };
+    return;
+  }
+  box.style.display='none'; actionsWrap.style.display='';
+  if (b._forceSwitch){
+    $('battleTabsWrap').innerHTML = '<b>Choose your next wildkin!</b>';
+    const html = renderPartyList(true);
+    actionsWrap.innerHTML = html;
+    wireDynamicButtons(actionsWrap);
+    paintMonSprites(actionsWrap);
+    return;
+  }
+  let tabsHtml = ['moves','party','bag'].map(t=>`<button class="btn tabbtn ${battleTab===t?'active':''}" onclick="G.uiBattleTab('${t}')">${t[0].toUpperCase()+t.slice(1)}</button>`).join('');
+  tabsHtml += `<button class="btn tabbtn ${b.canRun?'':'disabled'}" onclick="${b.canRun?'G.battlePlayerRun()':''}">Run</button>`;
+  $('battleTabsWrap').innerHTML = tabsHtml;
+  let html = '';
+  if (battleTab==='moves'){
+    const pm = G.activePlayerMon();
+    html = '<div class="moveGrid">';
+    pm.moves.forEach((m,idx)=>{
+      const def = G.MOVES[m.id];
+      html += `<button class="btn moveBtn type-${def.type}" ${m.pp<=0?'disabled':''} onclick="G.battlePlayerChooseMove(${idx})">${def.name}<br><small>${def.type} &middot; PP ${m.pp}/${m.maxPp}</small></button>`;
+    });
+    html += '</div>';
+  } else if (battleTab==='party'){
+    html = renderPartyList(true);
+  } else if (battleTab==='bag'){
+    html = renderBagList(false);
+  }
+  actionsWrap.innerHTML = html;
+  wireDynamicButtons(actionsWrap);
+  paintMonSprites(actionsWrap);
+}
+function drawBattleScene(canvas){
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.clientWidth, h = canvas.height = canvas.clientHeight;
+  ctx.imageSmoothingEnabled = false;
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,'#bcdff0'); grad.addColorStop(0.6,'#bcdff0'); grad.addColorStop(0.6,'#8fcf6a'); grad.addColorStop(1,'#6bab4a');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
+  const b = G.state.battle; if (!b) return;
+  const em = b.enemy[b.enemyIdx];
+  const pm = G.state.party[b.playerIdx];
+  const esize = Math.min(w,h)*0.34, psize = Math.min(w,h)*0.4;
+  if (em && em.curHp>0) G3.drawCreature(ctx, em.species, w*0.62, h*0.12, esize, false);
+  if (pm && pm.curHp>0) G3.drawCreature(ctx, pm.species, w*0.06, h*0.42, psize, true);
+  drawHpPlate(ctx, w*0.05, h*0.06, w*0.42, em, b.enemyName + (b.enemy.length>1?` (${b.enemyIdx+1}/${b.enemy.length})`:''));
+  drawHpPlate(ctx, w*0.53, h*0.58, w*0.44, pm, (pm?pm.nickname:'')+' (You)');
+}
+function drawHpPlate(ctx,x,y,w,mon,label){
+  if (!mon) return;
+  ctx.fillStyle='rgba(255,255,255,0.88)'; ctx.strokeStyle='#333'; ctx.lineWidth=2;
+  const h = 44;
+  roundRect(ctx,x,y,w,h,8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#222'; ctx.font='bold 13px sans-serif'; ctx.textAlign='left';
+  ctx.fillText(`${label}  Lv.${mon.level}`, x+8, y+16);
+  const pct = Math.max(0,mon.curHp/mon.stats.hp);
+  ctx.fillStyle='#ccc'; ctx.fillRect(x+8,y+22,w-16,8);
+  ctx.fillStyle = pct>0.5?'#4caf50':pct>0.2?'#ffb300':'#e53935';
+  ctx.fillRect(x+8,y+22,(w-16)*pct,8);
+  ctx.strokeStyle='#333'; ctx.strokeRect(x+8,y+22,w-16,8);
+  if (mon.status){ ctx.fillStyle='#b23'; ctx.font='11px sans-serif'; ctx.fillText(mon.status.toUpperCase(), x+8, y+40); }
+}
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+/* ---------- touch controls ---------- */
+G.uiWireTouch = function(){
+  const map = { up:'up', down:'down', left:'left', right:'right' };
+  for (const k in map){
+    const el = $('dpad_'+k);
+    const set = ()=>{ G3.touchDir = map[k]; };
+    const clear = ()=>{ if (G3.touchDir===map[k]) G3.touchDir=null; };
+    el.addEventListener('touchstart', e=>{ e.preventDefault(); set(); }, {passive:false});
+    el.addEventListener('touchend', e=>{ e.preventDefault(); clear(); }, {passive:false});
+    el.addEventListener('mousedown', set);
+    el.addEventListener('mouseup', clear);
+    el.addEventListener('mouseleave', clear);
+  }
+  const abtn = $('actionBtn');
+  const press = e=>{ e.preventDefault(); G3.justPressed['enter']=true; };
+  abtn.addEventListener('touchstart', press, {passive:false});
+  abtn.addEventListener('click', press);
+};
+/* p9: save / load via localStorage */
+'use strict';
+const G9 = window.G;
+const SAVE_PREFIX = 'wyldkin_save_v1_slot_';
+
+function serialize(){
+  const s = G.state;
+  return {
+    playerName: s.playerName, party: s.party, box: s.box, inventory: s.inventory, money: s.money,
+    badges: s.badges, defeatedTrainers: s.defeatedTrainers, defeatedRivals: s.defeatedRivals,
+    starterSpecies: s.starterSpecies, rivalSpecies: s.rivalSpecies, flags: s.flags,
+    championDefeated: s.championDefeated, playtimeSec: s.playtimeSec,
+    player: { map: G4.player.map, x: G4.player.x, y: G4.player.y, dir: G4.player.dir },
+    savedAt: Date.now()
+  };
+}
+function deserializeInto(data){
+  const s = G.newGameState();
+  Object.assign(s, {
+    playerName:data.playerName, party:data.party, box:data.box, inventory:data.inventory, money:data.money,
+    badges:data.badges, defeatedTrainers:data.defeatedTrainers, defeatedRivals:data.defeatedRivals,
+    starterSpecies:data.starterSpecies, rivalSpecies:data.rivalSpecies, flags:Object.assign({collected:{}}, data.flags),
+    championDefeated:!!data.championDefeated, playtimeSec:data.playtimeSec||0
+  });
+  s.screen = 'overworld';
+  G.state = s;
+  G4.player.map = data.player.map; G4.player.x = data.player.x; G4.player.y = data.player.y; G4.player.dir = data.player.dir||'down';
+  G4.player.moving = false;
+}
+
+G.saveToSlot = function(slot){
+  try { localStorage.setItem(SAVE_PREFIX+slot, JSON.stringify(serialize())); return true; }
+  catch(e){ G.uiToast('Could not save (storage unavailable).'); return false; }
+};
+G.loadFromSlot = function(slot){
+  try {
+    const raw = localStorage.getItem(SAVE_PREFIX+slot);
+    if (!raw) return false;
+    deserializeInto(JSON.parse(raw));
+    return true;
+  } catch(e){ return false; }
+};
+G.getSlotMeta = function(slot){
+  try {
+    const raw = localStorage.getItem(SAVE_PREFIX+slot);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return { name: d.playerName||'Jasz', badges: (d.badges||[]).length, money: d.money||0 };
+  } catch(e){ return null; }
+};
+G.hasAnySave = function(){
+  if (localStorage.getItem(SAVE_PREFIX+'auto')) return true;
+  for (let i=1;i<=3;i++) if (localStorage.getItem(SAVE_PREFIX+i)) return true;
+  return false;
+};
+
+/* autosave every 20s + on visibility change, into slot 0 (auto) */
+G.autosave = function(){
+  try { localStorage.setItem(SAVE_PREFIX+'auto', JSON.stringify(serialize())); } catch(e){}
+};
+G.loadAutosave = function(){ return G.loadFromSlotRaw('auto'); };
+G.loadFromSlotRaw = function(key){
+  try { const raw = localStorage.getItem(SAVE_PREFIX+key); if (!raw) return false; deserializeInto(JSON.parse(raw)); return true; }
+  catch(e){ return false; }
+};
+/* p10: boot + main loop */
+'use strict';
+(function(){
+  const G10 = window.G;
+  G.state = G.newGameState();
+
+  function boot(){
+    G3.initCanvas();
+    G3.initInput();
+    G.uiWireTouch();
+
+    $('newGameBtn').onclick = ()=>{ $('continuePicker').style.display='none'; G.uiStartNewGame(); };
+    $('titleContinueBtn').onclick = ()=> G.uiContinue();
+    $('continueCancelBtn').onclick = ()=>{ $('continuePicker').style.display='none'; };
+    $('dialogueBox').onclick = ()=> G.uiDialogueTap();
+    $('menuBtn').onclick = ()=> G.uiOpenMenu();
+    $('closeMenuBtn').onclick = ()=> G.uiCloseMenu();
+    $('closeShopBtn').onclick = ()=> G.uiCloseShop();
+    ['party','bag','badges','save','load'].forEach(t=>{ $('ptab_'+t).onclick = ()=>G.uiPauseTab(t); });
+
+    G.state.screen = 'title';
+    G.uiRender();
+
+    let last = performance.now();
+    function loop(now){
+      const dt = now-last; last = now;
+      if (G.state.screen==='overworld') { G4.updateOverworld(dt); }
+      G3.ctx.clearRect(0,0,G3.viewW,G3.viewH);
+      if (['overworld','pause','dialogue','shop'].includes(G.state.screen)) G4.drawOverworld();
+      G.justPressed = {};
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    setInterval(()=>{
+      if (G.state.screen!=='title'){ G.state.playtimeSec++; }
+      if (G.state.flags && G.state.flags.gotStarter) G.autosave();
+    }, 1000);
+
+    window.addEventListener('beforeunload', ()=>{ if (G.state.flags && G.state.flags.gotStarter) G.autosave(); });
+    document.addEventListener('visibilitychange', ()=>{ if (document.hidden && G.state.flags && G.state.flags.gotStarter) G.autosave(); });
+  }
+
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
