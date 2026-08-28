@@ -1,26 +1,327 @@
 <!doctype html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>AI Games</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Games</title>
+<meta name="description" content="Play the AI Games collection.">
+<meta name="theme-color" content="#14121f">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AI Games">
+<meta name="mobile-web-app-capable" content="yes">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+<!-- Apply saved/system theme before first paint to avoid a flash -->
+<script>
+(function(){
+  try{
+    var KEY = 'aigames.theme'; // 'light' | 'dark' | 'system'
+    var saved = localStorage.getItem(KEY) || 'system';
+    var isDark = saved === 'dark' || (saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme-pref', saved);
+  }catch(e){}
+})();
+</script>
+
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg: #f4f3f8;
+    --bg-elev: #ffffff;
+    --card: #ffffff;
+    --card-border: #e4e2ee;
+    --text: #1b1930;
+    --text-soft: #635f7a;
+    --accent: #6c4fe0;
+    --accent-2: #ff5da2;
+    --shadow: 0 6px 20px rgba(30, 20, 60, 0.10);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+  html[data-theme="dark"]{
+    --bg: #131120;
+    --bg-elev: #191730;
+    --card: #1c1a33;
+    --card-border: #2c2948;
+    --text: #f1eefc;
+    --text-soft: #a9a4c4;
+    --accent: #9c85ff;
+    --accent-2: #ff7fb8;
+    --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-top:var(--safe-top);
+    padding-bottom:var(--safe-bottom);
+    padding-left:var(--safe-left);
+    padding-right:var(--safe-right);
+  }
+
+  header{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px;
+    padding:16px clamp(16px, 4vw, 32px);
+    padding-top:calc(16px + var(--safe-top));
+    margin-top:calc(var(--safe-top) * -1);
+    background:linear-gradient(180deg, var(--bg) 70%, transparent);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:36px; height:36px; border-radius:11px; flex:none;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: var(--shadow);
+  }
+  .brand-mark svg{ width:20px; height:20px; }
+  .brand h1{ font-size:1.15rem; margin:0; letter-spacing:-0.01em; }
+  .brand span{ display:block; font-size:0.72rem; color:var(--text-soft); font-weight:500; }
+
+  #theme-toggle{
+    display:flex; align-items:center; justify-content:center;
+    width:42px; height:42px; border-radius:50%;
+    background:var(--card); border:1px solid var(--card-border);
+    box-shadow: var(--shadow);
+    cursor:pointer; flex:none;
+  }
+  #theme-toggle svg{ width:20px; height:20px; }
+  #theme-toggle .icon-sun{ display:none; }
+  html[data-theme="dark"] #theme-toggle .icon-moon{ display:none; }
+  html[data-theme="dark"] #theme-toggle .icon-sun{ display:block; }
+
+  main{ padding: 8px clamp(16px, 4vw, 32px) 48px; max-width:1100px; margin:0 auto; }
+
+  .hero{ padding: 10px 2px 22px; }
+  .hero h2{ margin:0 0 6px; font-size:clamp(1.3rem, 3vw, 1.7rem); letter-spacing:-0.01em; }
+  .hero p{ margin:0; color:var(--text-soft); font-size:0.95rem; }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: clamp(12px, 2.5vw, 20px);
+  }
+  @media (min-width: 700px){
+    .grid{ grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  }
+
+  .card{
+    display:flex; flex-direction:column;
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:18px;
+    overflow:hidden;
+    text-decoration:none;
+    color:var(--text);
+    box-shadow: var(--shadow);
+    transition: transform 0.15s ease;
+  }
+  .card:active{ transform:scale(0.97); }
+
+  .card-art{
+    aspect-ratio: 1 / 1;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:1.9rem; color:#fff;
+    letter-spacing:-0.02em;
+  }
+  .card-body{ padding:12px 14px 14px; }
+  .card-body h3{ margin:0; font-size:0.95rem; line-height:1.25; font-weight:700; }
+  .card-body p{ margin:4px 0 0; font-size:0.75rem; color:var(--text-soft); }
+
+  .empty{
+    text-align:center; padding:60px 20px; color:var(--text-soft);
+  }
+
+  footer{
+    text-align:center; padding:8px 16px calc(24px + var(--safe-bottom));
+    color:var(--text-soft); font-size:0.75rem;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .card{ transition:none; }
+  }
+</style>
 </head>
 <body>
-	<h1>AI Games</h1>
 
-    <p><a href="claw-catch/index.html" target="_blank">Claw Catch - Claw machine game</a></p>
-    <p><a href="hollow-wick/index.html" target="_blank">Hollow Wick - RPG game</a></p>
-    <p><a href="wonderblocks-adventures/index.html" target="_blank">Wonderblocks Adventures - Wonderblocks Puzzle game</a></p>
-    <p><a href="junction-quest/index.html" target="_blank">Junction Quest - Wonderblocks RPG</a></p>
-    <p><a href="ember-fall/index.html" target="_blank">Ember Fall - Online open-world RPG</a></p>
-    <p><a href="sundered-banners/index.html" target="_blank">Sundered Banners - Strategy game like Battle Realms</a></p>
-    <p><a href="doodleverse/index.html" target="_blank">Doodleverse - Creative drawing game</a></p>
-    <p><a href="petkeep/index.html" target="_blank">PetKeep - Virtual Pet Game</a></p>
-    <p><a href="Wyldkin/index.html" target="_blank">Wyldkin - Pokemon like Game</a></p>
+<header>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="7" width="20" height="11" rx="4" stroke="#fff" stroke-width="1.8"/>
+        <circle cx="8" cy="12.5" r="1.4" fill="#fff"/>
+        <path d="M14.5 12.5h3" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M16 11v3" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>AI Games<span>Pick a game to play</span></h1>
+  </div>
+  <button id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle theme">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="var(--text)" stroke-width="1.6" stroke-linejoin="round"/>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="4.2" stroke="var(--text)" stroke-width="1.6"/>
+      <g stroke="var(--text)" stroke-width="1.6" stroke-linecap="round">
+        <path d="M12 2.5v2.4"/><path d="M12 19.1v2.4"/>
+        <path d="M4.2 4.2l1.7 1.7"/><path d="M18.1 18.1l1.7 1.7"/>
+        <path d="M2.5 12h2.4"/><path d="M19.1 12h2.4"/>
+        <path d="M4.2 19.8l1.7-1.7"/><path d="M18.1 5.9l1.7-1.7"/>
+      </g>
+    </svg>
+  </button>
+</header>
+
+<main>
+  <div class="hero">
+    <h2>Your games</h2>
+    <p id="game-count-line">Loading library&hellip;</p>
+  </div>
+  <div class="grid" id="game-grid" role="list"></div>
+  <div class="empty" id="empty-state" hidden>No games found. Add a folder under <code>games/</code> and rebuild the list.</div>
+</main>
+
+<footer>AI Games &middot; your progress is saved on this device</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Theme ----------
+  var THEME_KEY = 'aigames.theme';
+  function systemPrefersDark(){
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function applyTheme(pref){
+    var isDark = pref === 'dark' || (pref === 'system' && systemPrefersDark());
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme-pref', pref);
+  }
+  function getThemePref(){
+    try{ return localStorage.getItem(THEME_KEY) || 'system'; }catch(e){ return 'system'; }
+  }
+  function setThemePref(pref){
+    try{ localStorage.setItem(THEME_KEY, pref); }catch(e){}
+    applyTheme(pref);
+  }
+  applyTheme(getThemePref());
+
+  document.getElementById('theme-toggle').addEventListener('click', function(){
+    var current = document.documentElement.getAttribute('data-theme');
+    // Toggle relative to what's currently shown, then remember it explicitly.
+    setThemePref(current === 'dark' ? 'light' : 'dark');
+  });
+
+  // If user hasn't explicitly chosen, keep following the OS setting live.
+  if (window.matchMedia){
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
+      if (getThemePref() === 'system') applyTheme('system');
+    });
+  }
+
+  // ---------- Game list ----------
+  // Fallback used if games.json can't be fetched (e.g. opened as a local file:// page).
+  var FALLBACK_GAMES = [
+    { "slug": "claw-catch", "title": "Claw Catch" },
+    { "slug": "doodleverse", "title": "Doodleverse" },
+    { "slug": "ember-fall", "title": "Ember Fall" },
+    { "slug": "hollow-wick", "title": "Hollow Wick" },
+    { "slug": "junction-quest", "title": "Junction Quest" },
+    { "slug": "petkeep", "title": "Petkeep" },
+    { "slug": "sundered-banners", "title": "Sundered Banners" },
+    { "slug": "wonderblocks-adventures", "title": "Wonderblocks Adventures" },
+    { "slug": "wyldkin", "title": "Wyldkin" }
+  ];
+
+  var GRADIENTS = [
+    "linear-gradient(135deg,#6c4fe0,#ff5da2)",
+    "linear-gradient(135deg,#2fb8a3,#5da6ff)",
+    "linear-gradient(135deg,#ff7a45,#ffce45)",
+    "linear-gradient(135deg,#7c5cff,#38d6c4)",
+    "linear-gradient(135deg,#ff5d8f,#ff9d5d)",
+    "linear-gradient(135deg,#4f7bff,#8a5cff)",
+    "linear-gradient(135deg,#3fbf7f,#2fd9c8)",
+    "linear-gradient(135deg,#ff5d5d,#ff9a5d)",
+    "linear-gradient(135deg,#5d6cff,#c15dff)"
+  ];
+
+  function initials(title){
+    var words = title.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return "?";
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  function renderGames(games){
+    var grid = document.getElementById('game-grid');
+    var empty = document.getElementById('empty-state');
+    var countLine = document.getElementById('game-count-line');
+    grid.innerHTML = '';
+
+    if (!games || games.length === 0){
+      empty.hidden = false;
+      countLine.textContent = '0 games available';
+      return;
+    }
+    empty.hidden = true;
+    countLine.textContent = games.length + (games.length === 1 ? ' game available' : ' games available');
+
+    games.forEach(function(game, i){
+      var a = document.createElement('a');
+      a.className = 'card';
+      a.href = 'games/' + encodeURIComponent(game.slug) + '/index.html';
+      a.setAttribute('role', 'listitem');
+      a.setAttribute('aria-label', 'Play ' + game.title);
+
+      var art = document.createElement('div');
+      art.className = 'card-art';
+      art.style.background = GRADIENTS[i % GRADIENTS.length];
+      art.textContent = initials(game.title);
+
+      var body = document.createElement('div');
+      body.className = 'card-body';
+      var h3 = document.createElement('h3');
+      h3.textContent = game.title;
+      var p = document.createElement('p');
+      p.textContent = 'Tap to play';
+      body.appendChild(h3);
+      body.appendChild(p);
+
+      a.appendChild(art);
+      a.appendChild(body);
+      grid.appendChild(a);
+    });
+  }
+
+  function loadGames(){
+    fetch('games.json', { cache: 'no-cache' })
+      .then(function(res){ if(!res.ok) throw new Error('bad response'); return res.json(); })
+      .then(function(list){ renderGames(Array.isArray(list) && list.length ? list : FALLBACK_GAMES); })
+      .catch(function(){ renderGames(FALLBACK_GAMES); });
+  }
+  loadGames();
+
+  // ---------- PWA install (service worker) ----------
+  if ('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('./sw.js').catch(function(){ /* offline caching just won't be available */ });
+    });
+  }
+})();
+</script>
 </body>
 </html>
