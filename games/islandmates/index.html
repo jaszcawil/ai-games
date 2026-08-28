@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Islandmates</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* ================= Design tokens ================= */
+  :root{
+    --sand:        #f5e6c8;
+    --sand-deep:   #e8d3a3;
+    --lagoon:      #1c6e8c;
+    --lagoon-dark: #124b60;
+    --coral:       #ff6f59;
+    --coral-dark:  #e0503c;
+    --leaf:        #3f9a63;
+    --leaf-dark:   #2c7549;
+    --ink:         #23303a;
+    --ink-soft:    #4a5a63;
+    --panel-bg:    rgba(255,250,238,0.90);
+    --panel-bd:    rgba(35,48,58,0.10);
+    --panel-shadow: 0 12px 40px rgba(20,30,20,0.22);
+    --chip-bg:     rgba(255,250,238,0.85);
+    --warn:        #d9822b;
+    --bad:         #d9483a;
+    --good:        #3f9a63;
+    --sky-top: #bfe3f7;
+    --sky-bot: #eaf7ee;
+    --card-bg: rgba(255,255,255,0.5);
+    --track-bg: rgba(35,48,58,0.10);
+    --title-glow: #dff3ff;
+    --mg-bg-a: rgba(191,227,247,0.97);
+    --mg-bg-b: rgba(234,247,238,0.97);
+    --font-display: 'Baloo 2', 'Segoe UI Rounded', system-ui, sans-serif;
+    --font-body: 'Nunito', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --radius-panel: 22px;
+    --radius-card: 14px;
+    --radius-pill: 999px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --sand:        #241c33;
+      --sand-deep:   #1b1526;
+      --ink:         #f2ecdd;
+      --ink-soft:    #c9c0da;
+      --panel-bg:    rgba(35,27,51,0.88);
+      --panel-bd:    rgba(242,236,221,0.12);
+      --panel-shadow: 0 12px 44px rgba(0,0,0,0.5);
+      --chip-bg:     rgba(35,27,51,0.82);
+      --sky-top: #0e1636;
+      --sky-bot: #2a2350;
+      --card-bg: rgba(255,255,255,0.05);
+      --track-bg: rgba(255,255,255,0.14);
+      --title-glow: #322a55;
+      --mg-bg-a: rgba(14,22,54,0.97);
+      --mg-bg-b: rgba(42,35,80,0.97);
+    }
+  }
+  :root[data-theme="dark"]{
+    --sand:        #241c33;
+    --sand-deep:   #1b1526;
+    --ink:         #f2ecdd;
+    --ink-soft:    #c9c0da;
+    --panel-bg:    rgba(35,27,51,0.88);
+    --panel-bd:    rgba(242,236,221,0.12);
+    --panel-shadow: 0 12px 44px rgba(0,0,0,0.5);
+    --chip-bg:     rgba(35,27,51,0.82);
+    --sky-top: #0e1636;
+    --sky-bot: #2a2350;
+    --card-bg: rgba(255,255,255,0.05);
+    --track-bg: rgba(255,255,255,0.14);
+    --title-glow: #322a55;
+    --mg-bg-a: rgba(14,22,54,0.97);
+    --mg-bg-b: rgba(42,35,80,0.97);
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; height:100%; overflow:hidden; overscroll-behavior:none;}
+  body{
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: linear-gradient(180deg, var(--sky-top), var(--sky-bot));
+    -webkit-user-select:none; user-select:none;
+  }
+  #app{position:fixed; inset:0; display:flex; flex-direction:column;}
+  #canvas-wrap{position:absolute; inset:0;}
+  #scene-canvas{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none;}
+
+  h1,h2,h3,.font-display{font-family:var(--font-display); font-weight:700; text-wrap:balance;}
+  .mono{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+  button{font-family:var(--font-body); -webkit-tap-highlight-color:transparent;}
+  button:focus-visible, [tabindex]:focus-visible, input:focus-visible{outline:3px solid var(--coral); outline-offset:2px;}
+
+  /* ---------- Top HUD ---------- */
+  #hud{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; row-gap:6px;
+    padding: max(10px, env(safe-area-inset-top)) 10px 8px;
+    pointer-events:none;
+    z-index:20;
+  }
+  .hud-pill{
+    pointer-events:auto; flex:0 0 auto;
+    display:flex; align-items:center; gap:6px;
+    background:var(--panel-bg); border:1px solid var(--panel-bd);
+    border-radius:var(--radius-pill); padding:7px 12px 7px 8px;
+    box-shadow:0 6px 18px rgba(20,30,20,0.15);
+    font-size:13px; font-weight:700; color:var(--ink);
+    backdrop-filter: blur(10px);
+  }
+  .hud-pill .ic{width:22px; height:22px; flex:none;}
+  #hud-title{
+    font-family:var(--font-display); font-weight:800; font-size:19px;
+    color:var(--ink); margin-right:auto; pointer-events:auto;
+    display:flex; align-items:center; gap:8px; letter-spacing:0.2px;
+    text-shadow: 0 2px 10px rgba(255,255,255,0.4);
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    flex:1 1 auto;
+  }
+  #hud-title .isle-dot{width:11px;height:11px;border-radius:50%;background:var(--coral); box-shadow:0 0 0 3px rgba(255,111,89,0.25); flex:none;}
+  #menu-btn{
+    pointer-events:auto; background:var(--panel-bg); border:1px solid var(--panel-bd);
+    border-radius:var(--radius-pill); width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 18px rgba(20,30,20,0.15); cursor:pointer; backdrop-filter: blur(10px);
+    flex:0 0 auto; order:1;
+  }
+  #menu-btn svg{width:18px;height:18px;}
+  @media (max-width:380px){
+    #hud-title{ font-size:16px; }
+    .hud-pill{ font-size:12px; padding:6px 10px 6px 7px; }
+  }
+
+  /* ---------- News ticker ---------- */
+  #news{
+    position:absolute; top:60px; left:12px; right:12px;
+    display:flex; justify-content:center; pointer-events:none; z-index:15;
+  }
+  #news-pill{
+    pointer-events:auto; max-width:min(560px, 92vw);
+    background:var(--panel-bg); border:1px solid var(--panel-bd); backdrop-filter:blur(10px);
+    border-radius:var(--radius-pill); padding:6px 14px; font-size:12.5px; font-weight:700;
+    color:var(--ink-soft); box-shadow:0 6px 16px rgba(20,30,20,0.12);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    opacity:0; transform:translateY(-6px); transition:opacity .35s ease, transform .35s ease;
+  }
+  #news-pill.show{opacity:1; transform:translateY(0);}
+
+  /* ---------- Thought bubbles (DOM overlay, positioned via JS) ---------- */
+  .bubble-layer{position:absolute; inset:0; pointer-events:none; z-index:12;}
+  .thought-bubble{
+    position:absolute; transform:translate(-50%,-100%);
+    background:#fff; border-radius:16px; padding:6px 9px;
+    box-shadow:0 6px 14px rgba(20,30,20,0.25); font-size:18px; line-height:1;
+    pointer-events:auto; cursor:pointer; border:2px solid rgba(35,48,58,0.12);
+    animation: bob 1.6s ease-in-out infinite;
+  }
+  .thought-bubble::after{
+    content:""; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%);
+    width:12px; height:12px; background:#fff; border-radius:3px; rotate:45deg;
+    border-right:2px solid rgba(35,48,58,0.12); border-bottom:2px solid rgba(35,48,58,0.12);
+  }
+  @keyframes bob{0%,100%{margin-top:0;} 50%{margin-top:-6px;}}
+  .name-tag{
+    position:absolute; transform:translate(-50%, 6px);
+    font-family:var(--font-display); font-weight:700; font-size:12px;
+    color:var(--ink); background:var(--chip-bg); border:1px solid var(--panel-bd);
+    padding:2px 8px; border-radius:var(--radius-pill); pointer-events:none;
+    white-space:nowrap;
+  }
+
+  /* ---------- Bottom dock: character chips ---------- */
+  #dock{
+    position:absolute; left:0; right:0; bottom:0;
+    display:flex; justify-content:center;
+    padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+    pointer-events:none; z-index:20;
+  }
+  #dock-inner{
+    pointer-events:auto; display:flex; gap:8px; align-items:flex-end;
+    background:var(--panel-bg); border:1px solid var(--panel-bd); backdrop-filter:blur(10px);
+    padding:8px; border-radius:20px; box-shadow:var(--panel-shadow);
+    max-width:96vw; overflow-x:auto;
+  }
+  .char-chip{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:transparent; border:none; cursor:pointer; padding:6px 10px; border-radius:14px;
+    min-width:64px; transition: background .15s ease, transform .1s ease;
+  }
+  .char-chip:hover{background:var(--track-bg);}
+  .char-chip:active{transform:scale(0.95);}
+  .chip-avatar{
+    width:42px; height:42px; border-radius:50%; border:2.5px solid var(--panel-bd);
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+    box-shadow:inset 0 -3px 8px rgba(0,0,0,0.12);
+  }
+  .char-chip .chip-name{font-size:11px; font-weight:800; font-family:var(--font-display); color:var(--ink);}
+  .chip-mood{width:26px; height:4px; border-radius:2px; background:var(--panel-bd); overflow:hidden;}
+  .chip-mood > i{display:block; height:100%; background:var(--leaf); border-radius:2px;}
+  .chip-thought{position:relative;}
+  .chip-thought::after{
+    content:"•"; position:absolute; top:-2px; right:2px; color:var(--coral); font-size:20px; line-height:0;
+    text-shadow:0 0 0 var(--coral);
+  }
+
+  /* ---------- Camera/zoom controls ---------- */
+  #cam-controls{
+    position:absolute; right:12px; bottom:96px; display:flex; flex-direction:column; gap:8px; z-index:20;
+  }
+  .round-btn{
+    width:40px; height:40px; border-radius:50%; background:var(--panel-bg); border:1px solid var(--panel-bd);
+    backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow:0 6px 16px rgba(20,30,20,0.15); font-size:18px; color:var(--ink); font-weight:800;
+  }
+  .round-btn:active{transform:scale(0.92);}
+
+  /* ================= Panel system (bottom sheet / side card) ================= */
+  #scrim{
+    position:absolute; inset:0; background:rgba(15,15,10,0.38); opacity:0; pointer-events:none;
+    transition:opacity .25s ease; z-index:29;
+  }
+  #scrim.show{opacity:1; pointer-events:auto;}
+  .sheet{
+    position:absolute; z-index:30; background:var(--panel-bg); border:1px solid var(--panel-bd);
+    box-shadow:var(--panel-shadow); backdrop-filter:blur(14px);
+    display:flex; flex-direction:column;
+    /* mobile: bottom sheet */
+    left:0; right:0; bottom:0; max-height:82vh;
+    border-radius:22px 22px 0 0;
+    transform:translateY(100%); transition:transform .28s cubic-bezier(.2,.8,.3,1);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .sheet.show{transform:translateY(0);}
+  .sheet-handle{width:38px; height:4px; background:var(--panel-bd); border-radius:2px; margin:9px auto 2px;}
+  .sheet-head{display:flex; align-items:center; gap:10px; padding:8px 16px 4px;}
+  .sheet-head h2{margin:0; font-size:19px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sheet-close{
+    width:32px; height:32px; border-radius:50%; border:none; background:var(--track-bg); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--ink-soft); flex:none;
+  }
+  .sheet-body{overflow-y:auto; padding:8px 16px 18px; -webkit-overflow-scrolling:touch;}
+
+  @media (min-width:820px){
+    .sheet{
+      left:auto; right:18px; top:70px; bottom:96px; width:380px; max-height:none;
+      border-radius:22px; transform:translateX(120%);
+    }
+    .sheet.show{transform:translateX(0);}
+  }
+
+  /* buttons */
+  .btn{
+    font-weight:800; font-family:var(--font-display); border:none; border-radius:14px;
+    padding:11px 16px; cursor:pointer; font-size:14.5px; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    transition: transform .08s ease, filter .15s ease;
+  }
+  .btn:active{transform:scale(0.96);}
+  .btn-primary{background:var(--coral); color:#fff; box-shadow:0 4px 0 var(--coral-dark);}
+  .btn-primary:active{box-shadow:0 1px 0 var(--coral-dark); transform:translateY(3px) scale(0.99);}
+  .btn-secondary{background:var(--lagoon); color:#fff; box-shadow:0 4px 0 var(--lagoon-dark);}
+  .btn-secondary:active{box-shadow:0 1px 0 var(--lagoon-dark); transform:translateY(3px) scale(0.99);}
+  .btn-ghost{background:var(--track-bg); color:var(--ink);}
+  .btn-leaf{background:var(--leaf); color:#fff; box-shadow:0 4px 0 var(--leaf-dark);}
+  .btn-leaf:active{box-shadow:0 1px 0 var(--leaf-dark); transform:translateY(3px) scale(0.99);}
+  .btn:disabled{opacity:0.45; cursor:not-allowed; box-shadow:none !important; transform:none !important;}
+  .btn-block{width:100%;}
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+
+  /* needs bars */
+  .need-row{display:flex; align-items:center; gap:8px; margin:7px 0; font-size:13px; font-weight:700; color:var(--ink-soft);}
+  .need-row .need-label{width:64px; flex:none; display:flex; align-items:center; gap:5px;}
+  .need-track{flex:1; height:10px; border-radius:6px; background:var(--track-bg); overflow:hidden;}
+  .need-fill{height:100%; border-radius:6px; transition:width .4s ease;}
+
+  .card{background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:var(--radius-card); padding:12px; margin:10px 0;}
+
+  .shop-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:9px; margin-top:8px;}
+  .shop-item{
+    background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:14px; padding:8px 6px;
+    display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; text-align:center;
+  }
+  .shop-item .emoji{font-size:26px;}
+  .shop-item .nm{font-size:11px; font-weight:800; color:var(--ink);}
+  .shop-item .pr{font-size:11px; font-weight:700; color:var(--lagoon); font-family:var(--font-mono);}
+  .shop-item:active{transform:scale(0.95);}
+  .shop-item.owned{outline:2px solid var(--leaf);}
+
+  .tabs{display:flex; gap:6px; margin:4px 0 8px;}
+  .tab-btn{
+    flex:1; background:var(--track-bg); border:none; border-radius:12px; padding:8px 4px; font-weight:800;
+    font-family:var(--font-display); font-size:12.5px; color:var(--ink-soft); cursor:pointer;
+  }
+  .tab-btn.active{background:var(--lagoon); color:#fff;}
+
+  .friend-row{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--panel-bd);}
+  .friend-row:last-child{border-bottom:none;}
+  .mini-avatar{width:34px;height:34px;border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; flex:none; box-shadow:inset 0 -2px 5px rgba(0,0,0,0.15);}
+
+  /* toast */
+  #toast{
+    position:absolute; left:50%; bottom:118px; transform:translate(-50%, 14px);
+    background:var(--ink); color:var(--sand); font-weight:700; font-size:13px;
+    padding:9px 16px; border-radius:var(--radius-pill); box-shadow:0 8px 22px rgba(0,0,0,0.3);
+    opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease; z-index:40; max-width:88vw; text-align:center;
+  }
+  #toast.show{opacity:1; transform:translate(-50%,0);}
+
+  /* start / title overlay */
+  #title-screen{
+    position:absolute; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(circle at 50% 20%, var(--title-glow) 0%, var(--sky-top) 50%, var(--sky-bot) 100%);
+    flex-direction:column; text-align:center; padding:24px;
+  }
+  #title-screen h1{font-size:clamp(34px,9vw,58px); margin:0; color:var(--ink); letter-spacing:0.5px;}
+  #title-screen .sub{font-family:var(--font-body); font-weight:700; color:var(--ink-soft); margin:6px 0 26px; font-size:15px;}
+  #title-card{
+    background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:26px; padding:22px 24px;
+    box-shadow:var(--panel-shadow); backdrop-filter:blur(10px); width:min(420px,90vw);
+  }
+  .slot-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--card-bg); border-radius:14px; padding:10px 14px; margin:8px 0; text-align:left;
+  }
+  .slot-row .slot-info{font-size:12.5px; color:var(--ink-soft); font-weight:700;}
+  .slot-row .slot-title{font-family:var(--font-display); font-weight:800; font-size:15px; color:var(--ink);}
+  .loading-row{display:flex; align-items:center; gap:10px; justify-content:center; color:var(--ink-soft); font-weight:700; font-size:13px;}
+  .spinner{width:16px;height:16px;border-radius:50%; border:3px solid rgba(0,0,0,0.15); border-top-color:var(--coral); animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* minigame overlay */
+  #minigame{
+    position:absolute; inset:0; z-index:45; display:none; flex-direction:column;
+    background:linear-gradient(180deg, var(--mg-bg-a), var(--mg-bg-b));
+  }
+  #minigame.show{display:flex;}
+  #mg-hud{display:flex; justify-content:space-between; align-items:center; padding:14px 18px; padding-top:max(14px,env(safe-area-inset-top));}
+  #mg-canvas{flex:1; width:100%; display:block; touch-action:none;}
+  #mg-end{
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; gap:10px;
+    background:rgba(0,0,0,0.25);
+  }
+  #mg-end.show{display:flex;}
+  #mg-end .card{background:var(--panel-bg); text-align:center; padding:26px 30px; border-radius:22px; min-width:240px;}
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.18); border-radius:6px;}
+
+  .hint{font-size:12px; color:var(--ink-soft); font-weight:700; margin:4px 0 0;}
+  .empty-note{font-size:13px; color:var(--ink-soft); font-weight:700; text-align:center; padding:18px 8px;}
+
+  @media (prefers-reduced-motion: reduce){
+    .thought-bubble{animation:none;}
+    *{transition-duration:0.001ms !important; animation-duration:0.001ms !important;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="canvas-wrap">
+    <canvas id="scene-canvas"></canvas>
+    <div class="bubble-layer" id="bubble-layer"></div>
+  </div>
+
+  <div id="hud">
+    <div id="hud-title"><span class="isle-dot"></span>Islandmates</div>
+    <div class="hud-pill mono" id="hud-day">Day 1</div>
+    <div class="hud-pill mono" id="hud-time">8:00 AM</div>
+    <div class="hud-pill mono" id="hud-shells">🐚 0</div>
+    <button id="menu-btn" title="Menu" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
+
+  <div id="news"><div id="news-pill" class="mono"></div></div>
+
+  <div id="cam-controls">
+    <button class="round-btn" id="zoom-in" aria-label="Zoom in">+</button>
+    <button class="round-btn" id="zoom-out" aria-label="Zoom out">−</button>
+    <button class="round-btn" id="recenter" title="Recenter" aria-label="Recenter camera">⤾</button>
+  </div>
+
+  <div id="dock"><div id="dock-inner"></div></div>
+
+  <div id="scrim"></div>
+
+  <!-- Character sheet -->
+  <div class="sheet" id="sheet-char">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h2 id="char-name">Name</h2><button class="sheet-close" data-close>✕</button></div>
+    <div class="sheet-body" id="char-body"></div>
+  </div>
+
+  <!-- Shop sheet -->
+  <div class="sheet" id="sheet-shop">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h2>🏪 Shell Shop</h2><button class="sheet-close" data-close>✕</button></div>
+    <div class="sheet-body" id="shop-body"></div>
+  </div>
+
+  <!-- Apartment / decorate sheet -->
+  <div class="sheet" id="sheet-home">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h2 id="home-title">Home</h2><button class="sheet-close" data-close>✕</button></div>
+    <div class="sheet-body" id="home-body"></div>
+  </div>
+
+  <!-- Menu sheet -->
+  <div class="sheet" id="sheet-menu">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h2>☰ Menu</h2><button class="sheet-close" data-close>✕</button></div>
+    <div class="sheet-body" id="menu-body"></div>
+  </div>
+
+  <div id="toast" class="mono"></div>
+
+  <!-- Minigame -->
+  <div id="minigame">
+    <div id="mg-hud">
+      <div class="hud-pill mono" id="mg-timer">⏱ 30</div>
+      <div class="hud-pill mono" id="mg-score">🐚 0</div>
+      <button class="round-btn" id="mg-quit" aria-label="Quit game">✕</button>
+    </div>
+    <canvas id="mg-canvas"></canvas>
+    <div id="mg-end">
+      <div class="card">
+        <h2 style="margin:0 0 6px;">Nice work!</h2>
+        <p class="hint" id="mg-result" style="margin:0 0 16px; font-size:14px;">You earned 0 shells.</p>
+        <button class="btn btn-primary" id="mg-done">Collect &amp; Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Title / load screen -->
+  <div id="title-screen">
+    <h1>🌺 Islandmates</h1>
+    <div class="sub">a tiny life-sim island for Jasz, Naomi, Nayah &amp; Carmela</div>
+    <div id="title-card"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   ISLANDMATES — a tiny original life-sim, inspired by pocket "everyone
+   living on one island" games. All art is procedural (Three.js primitives),
+   no image or audio assets. Single-file, self-contained.
+   ========================================================================= */
+
+/* ---------------------------------------------------------------------
+   1. DATA TABLES
+   --------------------------------------------------------------------- */
+const CHAR_IDS = ["jasz","naomi","nayah","carmela"];
+
+const CHAR_DEFAULTS = {
+  jasz:    { name:"Jasz",    emoji:"🙂", accent:"#2e6fb0",
+             look:{ skin:0xe3a97a, hair:0x2b2018, hairStyle:"short", shirt:0x2e6fb0, pants:0x33404a } },
+  naomi:   { name:"Naomi",   emoji:"😊", accent:"#1c8f83",
+             look:{ skin:0xc98a5e, hair:0x3a2415, hairStyle:"pony",  shirt:0x1c8f83, pants:0x445566 } },
+  nayah:   { name:"Nayah",   emoji:"😄", accent:"#e0629c",
+             look:{ skin:0xf0c8a0, hair:0x5b2f52, hairStyle:"twin",  shirt:0xe0629c, pants:0x5a4a73 } },
+  carmela: { name:"Carmela", emoji:"🙂", accent:"#7a1f3d",
+             look:{ skin:0x8a5a3b, hair:0x1a1410, hairStyle:"updo",  shirt:0x7a1f3d, pants:0x2a2320 } }
+};
+
+const HAIR_STYLES = ["short","pony","twin","updo","spike","curly"];
+const HAIR_COLORS  = [0x2b2018,0x1a1410,0x5b2f52,0x8a5a3b,0xc99a3b,0xd94f4f,0x3a4a6b,0xf2ecdd];
+const SKIN_TONES   = [0xf0c8a0,0xe3a97a,0xc98a5e,0x8a5a3b,0x5c3a24];
+const OUTFITS = [
+  { id:"classic",  name:"Classic",     shirt:0x2e6fb0, pants:0x33404a, price:0 },
+  { id:"sunset",   name:"Sunset Coral",shirt:0xff6f59, pants:0x3a2f2a, price:15 },
+  { id:"lagoon",   name:"Lagoon Teal", shirt:0x1c8f83, pants:0x264653, price:15 },
+  { id:"palm",     name:"Palm Green",  shirt:0x3f9a63, pants:0x2c3e2c, price:15 },
+  { id:"blossom",  name:"Blossom Pink",shirt:0xe0629c, pants:0x5a4a73, price:15 },
+  { id:"royal",    name:"Royal Plum",  shirt:0x6a2c8f, pants:0x241a30, price:18 },
+  { id:"gold",     name:"Golden Hour", shirt:0xd4af37, pants:0x3a2f1a, price:20 }
+];
+
+const FOOD_ITEMS = [
+  { id:"watermelon", name:"Watermelon", emoji:"🍉", price:5,  hunger:22, fun:3 },
+  { id:"riceball",   name:"Rice Ball",  emoji:"🍙", price:6,  hunger:26, fun:2 },
+  { id:"mango",      name:"Mango",      emoji:"🥭", price:5,  hunger:20, fun:4 },
+  { id:"icecream",   name:"Ice Cream",  emoji:"🍦", price:8,  hunger:18, fun:10 },
+  { id:"pizza",      name:"Pizza Slice",emoji:"🍕", price:10, hunger:32, fun:6 },
+  { id:"cake",       name:"Cake Slice", emoji:"🍰", price:12, hunger:24, fun:14 }
+];
+const FUN_ITEMS = [
+  { id:"kite",    name:"Kite",         emoji:"🪁", price:9,  fun:20, energy:-4 },
+  { id:"fishing", name:"Fishing Rod",  emoji:"🎣", price:11, fun:18, energy:-2, social:4 },
+  { id:"book",    name:"Story Book",   emoji:"📖", price:7,  fun:14, energy:6 },
+  { id:"music",   name:"Music Player", emoji:"🎧", price:13, fun:24, energy:2 },
+  { id:"ball",    name:"Beach Ball",   emoji:"⚽", price:8,  fun:16, social:8, energy:-4 }
+];
+const FURNITURE_ITEMS = [
+  { id:"sofa",  name:"Sofa",        emoji:"🛋️", price:20, slot:"floor" },
+  { id:"palm",  name:"Potted Palm", emoji:"🪴", price:10, slot:"floor" },
+  { id:"art",   name:"Wall Art",    emoji:"🖼️", price:12, slot:"wall"  },
+  { id:"lamp",  name:"Lamp",        emoji:"💡", price:9,  slot:"floor" },
+  { id:"bed",   name:"Cozy Bed",    emoji:"🛏️", price:18, slot:"floor" },
+  { id:"tv",    name:"TV",          emoji:"📺", price:22, slot:"wall"  },
+  { id:"piano", name:"Piano",       emoji:"🎹", price:25, slot:"floor" }
+];
+const SHOP_CATALOG = { food:FOOD_ITEMS, fun:FUN_ITEMS, furniture:FURNITURE_ITEMS, outfits:OUTFITS };
+
+const NEED_META = {
+  hunger: { label:"Hunger", icon:"🍽️", color:"#ff6f59" },
+  fun:    { label:"Fun",    icon:"🎈", color:"#e0629c" },
+  energy: { label:"Energy", icon:"⚡", color:"#d4af37" },
+  social: { label:"Social", icon:"💬", color:"#1c8f83" }
+};
+
+const FLAVOR_THOUGHTS = [
+  "I love the sound of the waves today.","Do you think it'll rain tonight?",
+  "I found a neat shell on the beach!","I wonder what everyone else is up to.",
+  "This is a nice place to live.","I should learn to fish properly one day.",
+  "The sunsets here are unbeatable.","I keep finding sand in my shoes.",
+  "Someone should build a treehouse.","I had the strangest dream last night."
+];
+
+const RELATIONSHIP_TIERS = [
+  { min:0,  label:"Strangers" },
+  { min:15, label:"Acquaintances" },
+  { min:35, label:"Friends" },
+  { min:65, label:"Close Friends" },
+  { min:88, label:"Sweethearts-in-waiting" }
+];
+
+const SIM_MIN_PER_SEC = 6;           // 1 real second = 6 sim minutes -> 4 real min/day
+const DECAY_PER_MIN = { hunger:0.032, fun:0.026, energy:0.020, social:0.024 };
+const AUTOSAVE_MS = 20000;
+const MAX_NEWS = 24;
+const SAVE_KEY_PREFIX = "islandmates_slot_";
+const THEME_KEY = "islandmates_theme";
+
+function pairKey(a,b){ return [a,b].sort().join("-"); }
+function allPairs(){
+  const out=[];
+  for(let i=0;i<CHAR_IDS.length;i++) for(let j=i+1;j<CHAR_IDS.length;j++) out.push(pairKey(CHAR_IDS[i],CHAR_IDS[j]));
+  return out;
+}
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+function rand(a,b){ return a + Math.random()*(b-a); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function fmtTime(mins){
+  let h = Math.floor(mins/60)%24, m = Math.floor(mins%60);
+  const ap = h>=12 ? "PM":"AM"; let h12 = h%12; if(h12===0) h12=12;
+  return h12+":"+String(m).padStart(2,"0")+" "+ap;
+}
+
+/* ---------------------------------------------------------------------
+   2. STATE
+   --------------------------------------------------------------------- */
+function freshCharState(id){
+  const def = CHAR_DEFAULTS[id];
+  return {
+    id, name: def.name,
+    needs: { hunger:82, fun:78, energy:85, social:75 },
+    look: Object.assign({}, def.look),
+    outfit: "classic",
+    thought: null,          // {kind, text, emoji, needKey, itemId, targetId, expiresAtMin}
+    thoughtCooldown: rand(20,80),
+    home: { furniture: {} },   // itemId -> {placed:boolean}
+    energyLockUntil: 0
+  };
+}
+function defaultState(){
+  const chars = {}; CHAR_IDS.forEach(id => chars[id]=freshCharState(id));
+  const friendships = {}; allPairs().forEach(k => friendships[k]=8);
+  return {
+    version:1, day:1, time: 8*60, shells: 40,
+    chars, friendships, sweethearts:{}, wardrobe:["classic"],
+    news:[{ t:"Day 1 — Welcome to the island! 🌺", day:1 }],
+    createdAt: Date.now(), savedAt: Date.now(),
+    theme: "auto"
+  };
+}
+
+let state = null;
+let activeSlot = null;
+
+function slotKey(n){ return SAVE_KEY_PREFIX+n; }
+function readSlot(n){
+  try{
+    const raw = localStorage.getItem(slotKey(n));
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || !parsed.chars) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function writeSlot(n, s){
+  try{
+    s.savedAt = Date.now();
+    localStorage.setItem(slotKey(n), JSON.stringify(s));
+    return true;
+  }catch(e){ return false; }
+}
+function deleteSlot(n){ try{ localStorage.removeItem(slotKey(n)); }catch(e){} }
+
+function saveNow(silent){
+  if(activeSlot==null || !state) return;
+  writeSlot(activeSlot, state);
+  if(!silent) toast("Game saved 💾");
+}
+
+/* ---------------------------------------------------------------------
+   3. THREE.JS SCENE
+   --------------------------------------------------------------------- */
+let renderer, scene, camera, clock, raycaster, ptrVec;
+let sunLight, hemiLight;
+let waterMat, sandMat;
+const CHAR_MESH = {};   // id -> { group, head, hair, leftArm, rightArm, leftLeg, rightLeg, shirtMat, pantsMat, skinMat, hairMat, hit }
+const APT_GROUP = {};   // id -> { group, slots:{floor:[Vector3...], wall:[Vector3...]}, placedMeshes:{itemId:mesh} }
+let shopHit, plazaStageHit;
+const interactables = []; // {mesh, type:'char'|'apt'|'shop', id}
+
+function polar(angleDeg, radius, cx, cz){
+  const a = angleDeg*Math.PI/180;
+  return { x:(cx||0)+Math.cos(a)*radius, z:(cz||0)+Math.sin(a)*radius };
+}
+const APT_ANGLES = { jasz:205, naomi:115, nayah:25, carmela:295 };
+const APT_RADIUS = 9.2;
+const APT_POS = {};
+CHAR_IDS.forEach(id=>{ APT_POS[id]=polar(APT_ANGLES[id], APT_RADIUS); });
+const SHOP_POS = { x:0, z:15.5 };
+const ISLAND_RADIUS = 18;
+
+function initScene(){
+  const canvas = document.getElementById("scene-canvas");
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  if(THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xbfe3f7);
+  scene.fog = new THREE.Fog(0xbfe3f7, 46, 92);
+
+  camera = new THREE.PerspectiveCamera(42, 1, 0.1, 300);
+  clock = new THREE.Clock();
+  raycaster = new THREE.Raycaster();
+  ptrVec = new THREE.Vector2();
+
+  hemiLight = new THREE.HemisphereLight(0xffffff, 0x4a6a4a, 0.75);
+  scene.add(hemiLight);
+  sunLight = new THREE.DirectionalLight(0xffffff, 1.05);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(1536,1536);
+  sunLight.shadow.camera.left=-32; sunLight.shadow.camera.right=32;
+  sunLight.shadow.camera.top=32; sunLight.shadow.camera.bottom=-32;
+  sunLight.shadow.camera.near=1; sunLight.shadow.camera.far=90;
+  sunLight.shadow.bias=-0.0015;
+  scene.add(sunLight);
+  scene.add(sunLight.target);
+
+  buildEnvironment();
+  CHAR_IDS.forEach(buildCharacterMesh);
+  onResize();
+  window.addEventListener("resize", onResize);
+}
+
+function buildEnvironment(){
+  // Water
+  waterMat = new THREE.MeshStandardMaterial({ color:0x1c6e8c, roughness:0.35, metalness:0.05 });
+  const water = new THREE.Mesh(new THREE.CircleGeometry(220, 48), waterMat);
+  water.rotation.x = -Math.PI/2; water.position.y = -0.28; water.receiveShadow = true;
+  scene.add(water);
+
+  // Island base (layered low-poly disc)
+  sandMat = new THREE.MeshStandardMaterial({ color:0xe9d6a4, roughness:0.95 });
+  const island = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_RADIUS, ISLAND_RADIUS+1.4, 1.1, 40, 1), sandMat);
+  island.position.y = -0.55; island.receiveShadow = true; island.castShadow=false;
+  scene.add(island);
+  const grassMat = new THREE.MeshStandardMaterial({ color:0x5fae74, roughness:0.9 });
+  const grass = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_RADIUS-4.2, ISLAND_RADIUS-3.4, 0.32, 40), grassMat);
+  grass.position.y = 0.02; grass.receiveShadow = true;
+  scene.add(grass);
+  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(6.4, 6.6, 0.14, 32), sandMat);
+  plaza.position.y = 0.16; plaza.receiveShadow = true;
+  scene.add(plaza);
+
+  // Fountain / stage centerpiece
+  const stageGroup = new THREE.Group();
+  const stageBase = new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.7,0.5,20), new THREE.MeshStandardMaterial({color:0xf2ecdd, roughness:0.8}));
+  stageBase.position.y = 0.5; stageBase.castShadow=true; stageBase.receiveShadow=true;
+  stageGroup.add(stageBase);
+  const stagePost = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.16,1.5,10), new THREE.MeshStandardMaterial({color:0xd9c48a}));
+  stagePost.position.y = 1.45; stagePost.castShadow=true;
+  stageGroup.add(stagePost);
+  const flag = new THREE.Mesh(new THREE.ConeGeometry(0.5,0.7,3), new THREE.MeshStandardMaterial({color:0xff6f59}));
+  flag.rotation.z = Math.PI/2; flag.position.set(0.4,2.05,0); flag.castShadow=true;
+  stageGroup.add(flag);
+  scene.add(stageGroup);
+  plazaStageHit = stageGroup;
+
+  // Palm trees around the island
+  const trunkMat = new THREE.MeshStandardMaterial({ color:0x8a6a45, roughness:0.9 });
+  const leafMat = new THREE.MeshStandardMaterial({ color:0x2f8a52, roughness:0.85 });
+  for(let i=0;i<15;i++){
+    const ang = (i/15)*360 + rand(-8,8);
+    const rad = ISLAND_RADIUS - rand(1.0,3.2);
+    const p = polar(ang, rad);
+    // avoid apartment/shop zones
+    let skip=false;
+    CHAR_IDS.forEach(id=>{ if(Math.hypot(p.x-APT_POS[id].x, p.z-APT_POS[id].z)<3.4) skip=true; });
+    if(Math.hypot(p.x-SHOP_POS.x, p.z-SHOP_POS.z)<4.2) skip=true;
+    if(skip) continue;
+    scene.add(buildPalmTree(p.x, p.z, trunkMat, leafMat));
+  }
+  // rocks
+  const rockMat = new THREE.MeshStandardMaterial({ color:0x9a9186, roughness:1 });
+  for(let i=0;i<8;i++){
+    const ang = rand(0,360), rad = ISLAND_RADIUS - rand(0.5,2.2);
+    const p = polar(ang, rad);
+    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(rand(0.3,0.6), 0), rockMat);
+    rock.position.set(p.x, 0.2, p.z); rock.rotation.set(rand(0,6),rand(0,6),rand(0,6));
+    rock.castShadow=true; rock.receiveShadow=true;
+    scene.add(rock);
+  }
+
+  CHAR_IDS.forEach(buildApartment);
+  buildShop();
+}
+
+function buildPalmTree(x,z,trunkMat,leafMat){
+  const g = new THREE.Group();
+  const lean = rand(-0.08,0.08);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.22,3.4,7), trunkMat);
+  trunk.position.y=1.7; trunk.rotation.z=lean; trunk.castShadow=true;
+  g.add(trunk);
+  for(let i=0;i<6;i++){
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.28,1.9,4), leafMat);
+    leaf.position.y=3.35;
+    leaf.rotation.z = Math.PI/2.3 + rand(-0.1,0.1);
+    leaf.rotation.y = (i/6)*Math.PI*2;
+    leaf.position.x += Math.cos((i/6)*Math.PI*2)*0.5;
+    leaf.position.z += Math.sin((i/6)*Math.PI*2)*0.5;
+    leaf.castShadow=true;
+    g.add(leaf);
+  }
+  g.position.set(x,0,z);
+  return g;
+}
+
+function buildApartment(id){
+  const def = CHAR_DEFAULTS[id];
+  const pos = APT_POS[id];
+  const g = new THREE.Group();
+  g.position.set(pos.x, 0, pos.z);
+  // orient the open front toward the plaza center
+  g.lookAt(0, 0, 0);
+
+  const wallMat = new THREE.MeshStandardMaterial({ color:0xfaf1de, roughness:0.9 });
+  const floorMat = new THREE.MeshStandardMaterial({ color:0xd9c08f, roughness:0.9 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(def.accent), roughness:0.7 });
+
+  const W=3.6, D=2.8, H=2.1;
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(W,0.16,D), floorMat);
+  floor.position.y=0.08; floor.receiveShadow=true; floor.castShadow=true;
+  g.add(floor);
+  // Object3D.lookAt(0,0,0) points this group's local -Z at the plaza, so the
+  // open (wall-less) side of the cottage must be the -Z side, and the solid
+  // back wall goes on the +Z side (facing the sea) so the interior reads
+  // toward the camera/plaza.
+  const back = new THREE.Mesh(new THREE.BoxGeometry(W,H,0.14), wallMat);
+  back.position.set(0,H/2+0.16,D/2); back.castShadow=true; back.receiveShadow=true;
+  g.add(back);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.14,H,D), wallMat);
+  left.position.set(-W/2,H/2+0.16,0); left.castShadow=true; left.receiveShadow=true;
+  g.add(left);
+  const right = left.clone(); right.position.x = W/2; g.add(right);
+  // roof (open-front dollhouse style, pitched)
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.7,1.3,4), roofMat);
+  roof.rotation.y = Math.PI/4; roof.position.y = H+0.16+0.55; roof.castShadow=true;
+  g.add(roof);
+  // small sign / nameplate post, near the open entrance facing the plaza
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.1,6), new THREE.MeshStandardMaterial({color:0xffffff}));
+  post.position.set(-W/2-0.4, 0.55, -D/2-0.3); post.castShadow=true;
+  g.add(post);
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.4,0.06), roofMat);
+  sign.position.set(-W/2-0.4, 1.15, -D/2-0.3); sign.castShadow=true;
+  g.add(sign);
+
+  scene.add(g);
+
+  const floorSlots = [
+    new THREE.Vector3(-1.1,0.16,-0.5), new THREE.Vector3(0.1,0.16,-0.7), new THREE.Vector3(1.15,0.16,-0.4),
+    new THREE.Vector3(-1.1,0.16,0.4), new THREE.Vector3(1.1,0.16,0.5)
+  ];
+  const wallSlots = [
+    new THREE.Vector3(-0.9, H*0.62+0.16, D/2-0.08), new THREE.Vector3(0.9, H*0.62+0.16, D/2-0.08)
+  ];
+  APT_GROUP[id] = { group:g, floorSlots, wallSlots, placed:{}, hit:floor };
+  interactables.push({ mesh: floor, type:"apt", id });
+  floor.userData.pick = { type:"apt", id };
+  back.userData.pick = { type:"apt", id };
+}
+
+function buildShop(){
+  const g = new THREE.Group();
+  g.position.set(SHOP_POS.x, 0, SHOP_POS.z);
+  g.lookAt(0,0,0);
+  const wallMat = new THREE.MeshStandardMaterial({ color:0xf7ead0, roughness:0.85 });
+  const roofMat = new THREE.MeshStandardMaterial({ color:0xff6f59, roughness:0.7 });
+  const W=4.4,D=3.2,H=2.4;
+  const base = new THREE.Mesh(new THREE.BoxGeometry(W,H,D), wallMat);
+  base.position.y = H/2; base.castShadow=true; base.receiveShadow=true;
+  g.add(base);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(3.4,1.4,4), roofMat);
+  roof.rotation.y = Math.PI/4; roof.position.y = H+0.7; roof.castShadow=true;
+  g.add(roof);
+  // awning
+  for(let i=-1;i<=1;i++){
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.06,1.0), new THREE.MeshStandardMaterial({color: i%2===0?0xff6f59:0xf7ead0}));
+    stripe.position.set(i*0.5, H+0.02, D/2+0.55); stripe.rotation.x = -0.35; stripe.castShadow=true;
+    g.add(stripe);
+  }
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,0.08), new THREE.MeshStandardMaterial({color:0xffffff}));
+  sign.position.set(0,H+0.05,D/2+0.1); sign.castShadow=true;
+  g.add(sign);
+  scene.add(g);
+  shopHit = base;
+  base.userData.pick = { type:"shop" };
+  interactables.push({ mesh:base, type:"shop", id:null });
+}
+
+/* ---- character avatar construction ---- */
+function hairMeshFor(style, hairMat){
+  const g = new THREE.Group();
+  if(style==="short"){
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.315,12,10,0,Math.PI*2,0,Math.PI*0.62), hairMat);
+    m.position.y=0.05; g.add(m);
+  } else if(style==="pony"){
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.315,12,10,0,Math.PI*2,0,Math.PI*0.6), hairMat);
+    cap.position.y=0.05; g.add(cap);
+    const tail = new THREE.Mesh(THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(0.09,0.55,4,8) : new THREE.CylinderGeometry(0.09,0.06,0.6,8), hairMat);
+    tail.position.set(0,-0.05,-0.32); tail.rotation.x = 0.5; g.add(tail);
+  } else if(style==="twin"){
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3,12,10,0,Math.PI*2,0,Math.PI*0.58), hairMat);
+    cap.position.y=0.05; g.add(cap);
+    [-1,1].forEach(s=>{
+      const t = new THREE.Mesh(new THREE.SphereGeometry(0.13,8,8), hairMat);
+      t.position.set(s*0.33, -0.02, 0); g.add(t);
+      const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.04,0.42,7), hairMat);
+      strand.position.set(s*0.35,-0.24,0); strand.rotation.z = s*0.25; g.add(strand);
+    });
+  } else if(style==="updo"){
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.31,12,10,0,Math.PI*2,0,Math.PI*0.58), hairMat);
+    cap.position.y=0.05; g.add(cap);
+    const bun = new THREE.Mesh(new THREE.TorusGeometry(0.15,0.08,8,14), hairMat);
+    bun.position.set(0,0.32,0); bun.rotation.x = Math.PI/2; g.add(bun);
+  } else if(style==="spike"){
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3,10,8,0,Math.PI*2,0,Math.PI*0.5), hairMat);
+    cap.position.y=0.02; g.add(cap);
+    for(let i=0;i<5;i++){
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08,0.28,6), hairMat);
+      const ang = (i/4-0.5)*1.6;
+      spike.position.set(Math.sin(ang)*0.2, 0.28, Math.cos(ang)*0.1-0.05);
+      spike.rotation.z = -ang*0.6;
+      g.add(spike);
+    }
+  } else { // curly
+    for(let i=0;i<9;i++){
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.13,8,8), hairMat);
+      const ang = (i/9)*Math.PI*2;
+      puff.position.set(Math.cos(ang)*0.24, 0.08+Math.sin(i)*0.05, Math.sin(ang)*0.24);
+      g.add(puff);
+    }
+  }
+  return g;
+}
+
+function buildCharacterMesh(id){
+  const cs = state.chars[id];
+  const look = cs.look;
+  const skinMat = new THREE.MeshStandardMaterial({ color: look.skin, roughness:0.85 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: look.hair, roughness:0.6 });
+  const shirtMat = new THREE.MeshStandardMaterial({ color: look.shirt, roughness:0.75 });
+  const pantsMat = new THREE.MeshStandardMaterial({ color: look.pants, roughness:0.75 });
+
+  const group = new THREE.Group();
+
+  const hips = new THREE.Group(); hips.position.y = 0.78; group.add(hips);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.235,0.27,0.62,10), shirtMat);
+  torso.position.y = 0.34; torso.castShadow=true; hips.add(torso);
+
+  function leg(side){
+    const g = new THREE.Group(); g.position.set(side*0.115,0,0);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.08,0.72,8), pantsMat);
+    m.position.y=-0.36; m.castShadow=true; g.add(m);
+    return g;
+  }
+  const leftLeg = leg(-1), rightLeg = leg(1);
+  hips.add(leftLeg, rightLeg);
+
+  function arm(side){
+    const g = new THREE.Group(); g.position.set(side*0.30,0.58,0);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.065,0.56,8), skinMat.clone());
+    m.position.y=-0.28; m.castShadow=true; g.add(m);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), m.material);
+    hand.position.y=-0.56; g.add(hand);
+    return g;
+  }
+  const leftArm = arm(-1), rightArm = arm(1);
+  hips.add(leftArm, rightArm);
+
+  const headGroup = new THREE.Group(); headGroup.position.y = 0.72; hips.add(headGroup);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.30,16,14), skinMat);
+  head.castShadow=true; headGroup.add(head);
+  const hair = hairMeshFor(look.hairStyle, hairMat);
+  headGroup.add(hair);
+  // simple face: two eye dots
+  const eyeMat = new THREE.MeshStandardMaterial({ color:0x23303a });
+  [-1,1].forEach(s=>{
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028,6,6), eyeMat);
+    eye.position.set(s*0.11, 0.02, 0.275); headGroup.add(eye);
+  });
+
+  // invisible larger hit target for easy tap/click selection
+  const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,1.7,8), new THREE.MeshBasicMaterial({visible:false}));
+  hit.position.y = 0.85;
+  hit.userData.pick = { type:"char", id };
+  group.add(hit);
+  interactables.push({ mesh:hit, type:"char", id });
+
+  group.castShadow = true;
+  scene.add(group);
+
+  CHAR_MESH[id] = {
+    group, hips, head, headGroup, hair, leftArm, rightArm, leftLeg, rightLeg,
+    shirtMat, pantsMat, skinMat, hairMat, hit,
+    walkPhase: Math.random()*10, bobPhase: Math.random()*10
+  };
+  refreshCharacterAppearance(id);
+}
+
+function refreshCharacterAppearance(id){
+  const cs = state.chars[id];
+  const cm = CHAR_MESH[id];
+  if(!cm) return;
+  cm.shirtMat.color.setHex(cs.look.shirt);
+  cm.pantsMat.color.setHex(cs.look.pants);
+  cm.skinMat.color.setHex(cs.look.skin);
+  cm.hairMat.color.setHex(cs.look.hair);
+  if(cm.hair.userData.style !== cs.look.hairStyle){
+    cm.headGroup.remove(cm.hair);
+    cm.hair = hairMeshFor(cs.look.hairStyle, cm.hairMat);
+    cm.hair.userData.style = cs.look.hairStyle;
+    cm.headGroup.add(cm.hair);
+  }
+}
+
+/* ---- furniture meshes ---- */
+function buildFurnitureMesh(itemId, accentHex){
+  const accent = new THREE.MeshStandardMaterial({ color: accentHex||0x8a6a45, roughness:0.75 });
+  const wood = new THREE.MeshStandardMaterial({ color:0x8a6a45, roughness:0.8 });
+  const g = new THREE.Group();
+  switch(itemId){
+    case "sofa": {
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.28,0.42), accent); base.position.y=0.16; g.add(base);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.34,0.1), accent); back.position.set(0,0.4,-0.16); g.add(back);
+      break; }
+    case "palm": {
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.11,0.2,10), new THREE.MeshStandardMaterial({color:0xaa6b45}));
+      pot.position.y=0.1; g.add(pot);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.04,0.4,6), wood); trunk.position.y=0.36; g.add(trunk);
+      for(let i=0;i<5;i++){ const l=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.32,4), new THREE.MeshStandardMaterial({color:0x3f9a63}));
+        l.position.y=0.62; l.rotation.z=Math.PI/2.4; l.rotation.y=(i/5)*Math.PI*2; g.add(l); }
+      break; }
+    case "art": {
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.36,0.04), wood);
+      const inner = new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.28), accent); inner.position.z=0.03;
+      g.add(frame,inner); break; }
+    case "lamp": {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.5,6), new THREE.MeshStandardMaterial({color:0x444}));
+      pole.position.y=0.25; g.add(pole);
+      const shade = new THREE.Mesh(new THREE.ConeGeometry(0.13,0.18,10,1,true), accent);
+      shade.position.y=0.54; g.add(shade);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color:0xfff2c0, emissive:0xffe08a, emissiveIntensity:0.8}));
+      bulb.position.y=0.46; g.add(bulb);
+      break; }
+    case "bed": {
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.95,0.2,0.55), wood); base.position.y=0.1; g.add(base);
+      const mattress = new THREE.Mesh(new THREE.BoxGeometry(0.88,0.12,0.5), new THREE.MeshStandardMaterial({color:0xf2ecdd})); mattress.position.y=0.26; g.add(mattress);
+      const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.08,0.4), accent); pillow.position.set(-0.32,0.34,0); g.add(pillow);
+      break; }
+    case "tv": {
+      const screen = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.36,0.05), new THREE.MeshStandardMaterial({color:0x1a1a1a}));
+      const inner = new THREE.Mesh(new THREE.PlaneGeometry(0.52,0.28), new THREE.MeshStandardMaterial({color:0x2a3a5a, emissive:0x14203a, emissiveIntensity:0.6})); inner.position.z=0.03;
+      g.add(screen, inner); break; }
+    case "piano": {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.4,0.4), new THREE.MeshStandardMaterial({color:0x1a1410}));
+      body.position.y=0.2; g.add(body);
+      const keys = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.04,0.14), new THREE.MeshStandardMaterial({color:0xf2ecdd}));
+      keys.position.set(0,0.4,0.2); g.add(keys);
+      break; }
+    default: { const m = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.3), accent); m.position.y=0.15; g.add(m); }
+  }
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  return g;
+}
+
+/* ---------------------------------------------------------------------
+   4. CAMERA CONTROLS (manual orbit — no external addon needed)
+   --------------------------------------------------------------------- */
+const camState = { theta: Math.PI*0.28, phi: 1.02, radius: 27, target: new THREE.Vector3(0,1.2,0),
+                    minRadius:12, maxRadius:46, minPhi:0.55, maxPhi:1.45 };
+function updateCameraPosition(){
+  const {theta,phi,radius,target} = camState;
+  camera.position.set(
+    target.x + radius*Math.sin(phi)*Math.sin(theta),
+    target.y + radius*Math.cos(phi),
+    target.z + radius*Math.sin(phi)*Math.cos(theta)
+  );
+  camera.lookAt(target);
+}
+function recenterCamera(){
+  camState.theta = Math.PI*0.28; camState.phi = 1.02; camState.radius = 27;
+  camState.target.set(0,1.2,0);
+  updateCameraPosition();
+}
+
+const pointers = new Map();
+let dragLast = null, pinchLastDist = null, dragMoved = 0, dragStartT = 0, dragStartXY=null;
+
+function ndcFromEvent(evt, canvas){
+  const r = canvas.getBoundingClientRect();
+  return new THREE.Vector2(((evt.clientX-r.left)/r.width)*2-1, -((evt.clientY-r.top)/r.height)*2+1);
+}
+
+function initInput(){
+  const canvas = document.getElementById("scene-canvas");
+  canvas.addEventListener("pointerdown", e=>{
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    dragMoved = 0; dragStartT = performance.now(); dragStartXY = {x:e.clientX,y:e.clientY};
+    if(pointers.size===1) dragLast = {x:e.clientX, y:e.clientY};
+    if(pointers.size===2){
+      const pts = Array.from(pointers.values());
+      pinchLastDist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+    }
+  });
+  canvas.addEventListener("pointermove", e=>{
+    if(!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pointers.size===2){
+      const pts = Array.from(pointers.values());
+      const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+      if(pinchLastDist!=null){
+        const delta = dist - pinchLastDist;
+        camState.radius = clamp(camState.radius - delta*0.05, camState.minRadius, camState.maxRadius);
+        updateCameraPosition();
+      }
+      pinchLastDist = dist;
+    } else if(pointers.size===1 && dragLast){
+      const dx = e.clientX - dragLast.x, dy = e.clientY - dragLast.y;
+      dragMoved += Math.abs(dx)+Math.abs(dy);
+      camState.theta -= dx*0.0065;
+      camState.phi = clamp(camState.phi - dy*0.0055, camState.minPhi, camState.maxPhi);
+      dragLast = {x:e.clientX, y:e.clientY};
+      updateCameraPosition();
+    }
+  });
+  function endPointer(e){
+    const wasSingle = pointers.size===1;
+    pointers.delete(e.pointerId);
+    pinchLastDist = null;
+    if(pointers.size===1){
+      const remain = Array.from(pointers.values())[0];
+      dragLast = {x:remain.x, y:remain.y};
+    } else dragLast = null;
+    if(wasSingle && dragMoved < 8 && (performance.now()-dragStartT) < 550){
+      handleTap(dragStartXY, canvas);
+    }
+  }
+  canvas.addEventListener("pointerup", endPointer);
+  canvas.addEventListener("pointercancel", endPointer);
+  canvas.addEventListener("wheel", e=>{
+    e.preventDefault();
+    camState.radius = clamp(camState.radius + e.deltaY*0.03, camState.minRadius, camState.maxRadius);
+    updateCameraPosition();
+  }, {passive:false});
+
+  document.getElementById("zoom-in").addEventListener("click", ()=>{ camState.radius = clamp(camState.radius-4, camState.minRadius, camState.maxRadius); updateCameraPosition(); });
+  document.getElementById("zoom-out").addEventListener("click", ()=>{ camState.radius = clamp(camState.radius+4, camState.minRadius, camState.maxRadius); updateCameraPosition(); });
+  document.getElementById("recenter").addEventListener("click", recenterCamera);
+}
+
+function handleTap(xy, canvas){
+  const ndc = ndcFromEvent({clientX:xy.x, clientY:xy.y}, canvas);
+  raycaster.setFromCamera(ndc, camera);
+  const meshes = interactables.map(o=>o.mesh);
+  const hits = raycaster.intersectObjects(meshes, false);
+  if(hits.length){
+    const pick = hits[0].object.userData.pick;
+    if(!pick) return;
+    if(pick.type==="char") openCharSheet(pick.id);
+    else if(pick.type==="apt") openHomeSheet(pick.id);
+    else if(pick.type==="shop") openShopSheet();
+  }
+}
+
+/* ---------------------------------------------------------------------
+   5. DAY / NIGHT LIGHTING
+   --------------------------------------------------------------------- */
+const SKY_STOPS = [
+  {t:0,    sky:0x0e1636, fog:0x101a3a, sun:0x27345c, sunI:0.06, hemi:0.22},
+  {t:300,  sky:0x0e1636, fog:0x101a3a, sun:0x27345c, sunI:0.06, hemi:0.22},
+  {t:360,  sky:0xf6c98a, fog:0xf3cf9e, sun:0xffcf94, sunI:0.55, hemi:0.52},
+  {t:480,  sky:0xbfe3f7, fog:0xcdeaf5, sun:0xffffff, sunI:1.08, hemi:0.78},
+  {t:1020, sky:0xbfe3f7, fog:0xcdeaf5, sun:0xffffff, sunI:1.08, hemi:0.78},
+  {t:1080, sky:0xf2905c, fog:0xefa878, sun:0xffb37a, sunI:0.62, hemi:0.5},
+  {t:1170, sky:0x2a2350, fog:0x2a2350, sun:0x3a3a6b, sunI:0.16, hemi:0.3},
+  {t:1260, sky:0x0e1636, fog:0x101a3a, sun:0x27345c, sunI:0.06, hemi:0.22},
+  {t:1440, sky:0x0e1636, fog:0x101a3a, sun:0x27345c, sunI:0.06, hemi:0.22}
+];
+const _cA = new THREE.Color(), _cB = new THREE.Color();
+function updateDayNight(){
+  const t = state.time;
+  let i=0; while(i<SKY_STOPS.length-2 && SKY_STOPS[i+1].t < t) i++;
+  const a=SKY_STOPS[i], b=SKY_STOPS[i+1];
+  const span = Math.max(1,b.t-a.t); const f = clamp((t-a.t)/span,0,1);
+  _cA.set(a.sky); _cB.set(b.sky); const sky=_cA.clone().lerp(_cB,f);
+  _cA.set(a.fog); _cB.set(b.fog); const fog=_cA.clone().lerp(_cB,f);
+  _cA.set(a.sun); _cB.set(b.sun); const sun=_cA.clone().lerp(_cB,f);
+  const sunI = a.sunI + (b.sunI-a.sunI)*f;
+  const hemi = a.hemi + (b.hemi-a.hemi)*f;
+  scene.background.copy(sky);
+  scene.fog.color.copy(fog);
+  sunLight.color.copy(sun); sunLight.intensity = sunI;
+  hemiLight.intensity = hemi;
+  const dayFrac = clamp((t-360)/720,0,1);
+  const elev = Math.max(0.02, Math.sin(Math.PI*dayFrac));
+  const ang = Math.PI*(1-dayFrac);
+  sunLight.position.set(Math.cos(ang)*36, 10+elev*34, Math.sin(ang)*18-6);
+}
+
+/* ---------------------------------------------------------------------
+   6. CHARACTER AI / ANIMATION
+   --------------------------------------------------------------------- */
+const CHAR_AI = {};
+function initCharAI(){
+  CHAR_IDS.forEach(id=>{
+    const start = polar(APT_ANGLES[id], APT_RADIUS-1.4);
+    CHAR_AI[id] = { x:start.x, z:start.z, tx:start.x, tz:start.z, facing:0, mode:"idle", idleT:rand(1,4), speed:1.15 };
+  });
+}
+function pickWanderTarget(id){
+  const roll = Math.random();
+  let p;
+  if(roll<0.5) p = polar(rand(0,360), rand(0.5,5.6));
+  else if(roll<0.72) p = polar(APT_ANGLES[id]+rand(-25,25), APT_RADIUS+rand(-1.6,0.4));
+  else if(roll<0.88) p = { x: SHOP_POS.x+rand(-1.6,1.6), z: SHOP_POS.z+rand(-2.6,-1.2) };
+  else { const other = pick(CHAR_IDS.filter(o=>o!==id)); p = polar(APT_ANGLES[other]+rand(-20,20), APT_RADIUS+rand(-1.2,0.6)); }
+  return p;
+}
+function updateCharacterAI(delta){
+  CHAR_IDS.forEach(id=>{
+    const ai = CHAR_AI[id]; const cm = CHAR_MESH[id];
+    if(!ai||!cm) return;
+    if(ai.mode==="idle"){
+      ai.idleT -= delta;
+      cm.bobPhase += delta*1.6;
+      cm.headGroup.position.y = 0.72 + Math.sin(cm.bobPhase)*0.012;
+      cm.leftLeg.rotation.x = 0; cm.rightLeg.rotation.x = 0;
+      cm.leftArm.rotation.x = Math.sin(cm.bobPhase*0.7)*0.03; cm.rightArm.rotation.x = -Math.sin(cm.bobPhase*0.7)*0.03;
+      if(ai.idleT<=0){
+        const t = pickWanderTarget(id); ai.tx=t.x; ai.tz=t.z; ai.mode="walk";
+      }
+    } else {
+      const dx = ai.tx-ai.x, dz = ai.tz-ai.z, dist = Math.hypot(dx,dz);
+      if(dist < 0.18){ ai.mode="idle"; ai.idleT = rand(2.5,7.5); }
+      else{
+        const nx=dx/dist, nz=dz/dist;
+        const step = Math.min(dist, ai.speed*delta);
+        ai.x += nx*step; ai.z += nz*step;
+        const targetFacing = Math.atan2(nx,nz);
+        let df = targetFacing - ai.facing;
+        while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
+        ai.facing += df*Math.min(1,delta*8);
+        cm.walkPhase += delta*7.5;
+        const swing = Math.sin(cm.walkPhase)*0.55;
+        cm.leftLeg.rotation.x = swing; cm.rightLeg.rotation.x = -swing;
+        cm.leftArm.rotation.x = -swing*0.7; cm.rightArm.rotation.x = swing*0.7;
+        cm.headGroup.position.y = 0.72 + Math.abs(Math.sin(cm.walkPhase))*0.02;
+      }
+    }
+    cm.group.position.set(ai.x, 0, ai.z);
+    cm.group.rotation.y = ai.facing;
+  });
+}
+
+/* ---------------------------------------------------------------------
+   7. THOUGHT-BUBBLE / NAME-TAG DOM SYNC
+   --------------------------------------------------------------------- */
+const bubbleEls = {}; // id -> {tag, bubble}
+function initBubbleLayer(){
+  const layer = document.getElementById("bubble-layer");
+  CHAR_IDS.forEach(id=>{
+    const tag = document.createElement("div"); tag.className="name-tag"; tag.textContent = state.chars[id].name;
+    const bubble = document.createElement("div"); bubble.className="thought-bubble"; bubble.style.display="none";
+    bubble.addEventListener("click", (e)=>{ e.stopPropagation(); onThoughtBubbleTap(id); });
+    layer.appendChild(tag); layer.appendChild(bubble);
+    bubbleEls[id] = {tag, bubble};
+  });
+}
+const _projV = new THREE.Vector3();
+function syncBubbleLayer(){
+  const canvas = document.getElementById("scene-canvas");
+  const rect = canvas.getBoundingClientRect();
+  CHAR_IDS.forEach(id=>{
+    const cm = CHAR_MESH[id]; const els = bubbleEls[id];
+    if(!cm||!els) return;
+    _projV.set(cm.group.position.x, 1.62, cm.group.position.z);
+    _projV.project(camera);
+    const behind = _projV.z>1;
+    const x = (_projV.x*0.5+0.5)*rect.width, y = (1-(_projV.y*0.5+0.5))*rect.height;
+    if(behind || x<-40||x>rect.width+40||y<-40||y>rect.height+40){
+      els.tag.style.display="none"; els.bubble.style.display="none"; return;
+    }
+    els.tag.style.display="block";
+    els.tag.style.left = x+"px"; els.tag.style.top = y+"px";
+    const cs = state.chars[id];
+    if(cs.thought){
+      els.bubble.style.display="block";
+      els.bubble.style.left = x+"px"; els.bubble.style.top = (y-30)+"px";
+      els.bubble.textContent = cs.thought.emoji;
+    } else {
+      els.bubble.style.display="none";
+    }
+  });
+}
+
+/* ---------------------------------------------------------------------
+   8. SIMULATION — needs, thoughts, relationships, news, economy
+   --------------------------------------------------------------------- */
+function nowAbsMinutes(){ return state.day*1440 + state.time; }
+
+function moodOf(cs){
+  const n = cs.needs;
+  const avg = (n.hunger+n.fun+n.energy+n.social)/4;
+  if(avg>=75) return {key:"great", label:"Great",  emoji:"😄", color:"var(--good)"};
+  if(avg>=55) return {key:"good",  label:"Good",   emoji:"🙂", color:"var(--good)"};
+  if(avg>=35) return {key:"okay",  label:"Okay",   emoji:"😐", color:"var(--warn)"};
+  if(avg>=18) return {key:"low",   label:"Low",    emoji:"😕", color:"var(--warn)"};
+  return {key:"bad", label:"Struggling", emoji:"😣", color:"var(--bad)"};
+}
+function weakestNeed(cs){
+  let k=null,v=101;
+  Object.keys(cs.needs).forEach(key=>{ if(cs.needs[key]<v){ v=cs.needs[key]; k=key; } });
+  return {key:k, value:v};
+}
+
+function generateThought(cs){
+  const weak = weakestNeed(cs);
+  if(weak.value<45 && Math.random()<0.72){
+    if(weak.key==="hunger"){
+      const item = pick(FOOD_ITEMS);
+      cs.thought = { kind:"need", needKey:"hunger", itemId:item.id, text:`${cs.name} is craving ${item.name.toLowerCase()}.`, emoji:item.emoji, createdAt: nowAbsMinutes() };
+    } else if(weak.key==="fun"){
+      const item = pick(FUN_ITEMS);
+      cs.thought = { kind:"need", needKey:"fun", itemId:item.id, text:`${cs.name} is bored — could use ${item.name.toLowerCase()}.`, emoji:item.emoji, createdAt: nowAbsMinutes() };
+    } else if(weak.key==="energy"){
+      cs.thought = { kind:"rest", text:`${cs.name} is tired and wants a nap.`, emoji:"💤", createdAt: nowAbsMinutes() };
+    } else {
+      const other = pick(CHAR_IDS.filter(o=>o!==cs.id));
+      cs.thought = { kind:"social", targetId:other, text:`${cs.name} wants to talk to ${state.chars[other].name}.`, emoji:"💬", createdAt: nowAbsMinutes() };
+    }
+  } else {
+    cs.thought = { kind:"flavor", text: pick(FLAVOR_THOUGHTS), emoji: pick(["💭","✨","🌊","🐚","☀️"]), createdAt: nowAbsMinutes() };
+  }
+}
+
+function addFriendship(a,b,amount){
+  const k = pairKey(a,b);
+  state.friendships[k] = clamp((state.friendships[k]||0)+amount, 0, 100);
+}
+function friendTier(value){
+  let tier = RELATIONSHIP_TIERS[0];
+  RELATIONSHIP_TIERS.forEach(t=>{ if(value>=t.min) tier=t; });
+  return tier;
+}
+function addNews(text){
+  state.news.unshift({ t:text, day: state.day });
+  if(state.news.length>MAX_NEWS) state.news.length = MAX_NEWS;
+  showNewsPill(text);
+}
+
+const FRIEND_EVENT_LINES = [
+  "{a} and {b} traded stories by the fountain.",
+  "{a} taught {b} a new beach game.",
+  "{a} and {b} watched the sunset together.",
+  "{a} shared a snack with {b}.",
+  "{a} and {b} went shell-hunting together.",
+  "{a} helped {b} fix up their apartment.",
+  "{a} and {b} had a long chat about nothing in particular."
+];
+
+/* ---------------------------------------------------------------------
+   9b. RESOLUTION HELPERS (shared by thought bubbles + char sheet)
+   --------------------------------------------------------------------- */
+function findShopItem(id){
+  return FOOD_ITEMS.find(i=>i.id===id) || FUN_ITEMS.find(i=>i.id===id) || FURNITURE_ITEMS.find(i=>i.id===id);
+}
+function applyConsumable(cs, item, cat){
+  if(cat==="food"){
+    cs.needs.hunger = clamp(cs.needs.hunger+item.hunger,0,100);
+    cs.needs.fun = clamp(cs.needs.fun+(item.fun||0),0,100);
+  } else {
+    cs.needs.fun = clamp(cs.needs.fun+(item.fun||0),0,100);
+    if(item.energy) cs.needs.energy = clamp(cs.needs.energy+item.energy,0,100);
+    if(item.social) cs.needs.social = clamp(cs.needs.social+item.social,0,100);
+  }
+}
+function sweetheartOf(id){
+  let found=null;
+  Object.keys(state.sweethearts).forEach(k=>{
+    if(state.sweethearts[k]){ const [a,b]=k.split("-"); if(a===id) found=b; else if(b===id) found=a; }
+  });
+  return found;
+}
+
+function advanceSimMinute(){
+  state.time += 1;
+  if(state.time>=1440){
+    state.time -= 1440; state.day += 1;
+    addNews(`Day ${state.day} has begun. 🌅`);
+  }
+  CHAR_IDS.forEach(id=>{
+    const cs = state.chars[id];
+    cs.needs.hunger = clamp(cs.needs.hunger - DECAY_PER_MIN.hunger, 0, 100);
+    cs.needs.fun    = clamp(cs.needs.fun    - DECAY_PER_MIN.fun,    0, 100);
+    cs.needs.energy = clamp(cs.needs.energy - DECAY_PER_MIN.energy, 0, 100);
+    cs.needs.social = clamp(cs.needs.social - DECAY_PER_MIN.social, 0, 100);
+
+    if(cs.thought && (nowAbsMinutes() - cs.thought.createdAt) > 240){
+      cs.thought = null; // stale thought fades away
+    }
+    if(!cs.thought){
+      cs.thoughtCooldown -= 1;
+      if(cs.thoughtCooldown<=0){ generateThought(cs); cs.thoughtCooldown = rand(50,140); }
+    }
+  });
+  if(state.time % 60 === 0){
+    let earned = 0;
+    CHAR_IDS.forEach(id=>{
+      const m = moodOf(state.chars[id]);
+      if(m.key==="great"||m.key==="good") earned += 1;
+    });
+    if(earned>0) state.shells += earned;
+  }
+  if(state.time % 45 === 0 && Math.random()<0.4){
+    const a = pick(CHAR_IDS); let b = pick(CHAR_IDS.filter(o=>o!==a));
+    addFriendship(a,b, rand(1,3));
+    if(Math.random()<0.5){
+      const line = pick(FRIEND_EVENT_LINES).replace("{a}", state.chars[a].name).replace("{b}", state.chars[b].name);
+      addNews(line);
+    }
+  }
+  refreshHUD();
+  refreshDock();
+  if(currentSheet==="char" && currentCharId) renderCharBody(currentCharId);
+}
+
+/* ---------------------------------------------------------------------
+   9. SMALL DOM HELPERS (toast, news pill, hex utils)
+   --------------------------------------------------------------------- */
+let toastTimer=null;
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove("show"), 2600);
+}
+let newsTimer=null;
+function showNewsPill(text){
+  const el = document.getElementById("news-pill");
+  el.textContent = text;
+  el.classList.add("show");
+  clearTimeout(newsTimer);
+  newsTimer = setTimeout(()=>el.classList.remove("show"), 4200);
+}
+function colorCss(num){ return "#"+(num>>>0).toString(16).padStart(6,"0"); }
+function hexToRgba(hex, a){
+  const n = parseInt(hex.replace("#",""),16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+function syncApartmentFurniture(id){
+  const cs = state.chars[id];
+  const ag = APT_GROUP[id];
+  if(!ag) return;
+  const accent = new THREE.Color(CHAR_DEFAULTS[id].accent).getHex();
+  // remove meshes no longer placed
+  Object.keys(ag.placed).forEach(itemId=>{
+    const rec = cs.home.furniture[itemId];
+    if(!rec || !rec.placed){ ag.group.remove(ag.placed[itemId]); delete ag.placed[itemId]; }
+  });
+  // add newly placed
+  let fi=0, wi=0;
+  FURNITURE_ITEMS.forEach(item=>{
+    const rec = cs.home.furniture[item.id];
+    if(rec && rec.placed && !ag.placed[item.id]){
+      const mesh = buildFurnitureMesh(item.id, accent);
+      const slot = item.slot==="wall" ? ag.wallSlots[wi % ag.wallSlots.length] : ag.floorSlots[fi % ag.floorSlots.length];
+      if(item.slot==="wall") wi++; else fi++;
+      mesh.position.copy(slot);
+      if(item.slot==="wall") mesh.rotation.y = 0;
+      ag.group.add(mesh);
+      ag.placed[item.id] = mesh;
+    } else if(rec && rec.placed){
+      fi += item.slot==="wall"?0:1; wi += item.slot==="wall"?1:0;
+    }
+  });
+}
+
+/* ---------------------------------------------------------------------
+   10. UI STATE + SHEET PLUMBING
+   --------------------------------------------------------------------- */
+let currentSheet = null;      // null | 'char' | 'shop' | 'home' | 'menu'
+let currentCharId = null;
+let currentHomeId = null;
+let shopTab = "food";
+let shopPending = null;       // {cat, item}
+let pendingDeleteSlot = null;
+let pendingResetIsland = false;
+let gameStarted = false;
+let simAccum = 0;
+let autosaveHandle = null;
+let pendingOfflineToast = null;
+
+function openSheet(name){
+  ["char","shop","home","menu"].forEach(n=>{
+    document.getElementById("sheet-"+n).classList.toggle("show", n===name);
+  });
+  document.getElementById("scrim").classList.add("show");
+  currentSheet = name;
+}
+function closeSheets(){
+  ["char","shop","home","menu"].forEach(n=> document.getElementById("sheet-"+n).classList.remove("show"));
+  document.getElementById("scrim").classList.remove("show");
+  currentSheet = null;
+}
+
+function refreshHUD(){
+  document.getElementById("hud-day").textContent = "Day "+state.day;
+  document.getElementById("hud-time").textContent = fmtTime(state.time);
+  document.getElementById("hud-shells").textContent = "🐚 "+state.shells;
+}
+
+function refreshDock(){
+  const wrap = document.getElementById("dock-inner");
+  wrap.innerHTML = CHAR_IDS.map(id=>{
+    const cs = state.chars[id];
+    const m = moodOf(cs);
+    const avg = Math.round((cs.needs.hunger+cs.needs.fun+cs.needs.energy+cs.needs.social)/4);
+    const accent = CHAR_DEFAULTS[id].accent;
+    return `<button class="char-chip ${cs.thought?'chip-thought':''}" onclick="UI.openChar('${id}')" aria-label="${cs.name}">
+      <div class="chip-avatar" style="background:${hexToRgba(accent,0.22)}; border-color:${accent}">${m.emoji}</div>
+      <div class="chip-name">${cs.name}</div>
+      <div class="chip-mood"><i style="width:${avg}%; background:${m.color}"></i></div>
+    </button>`;
+  }).join("");
+}
+
+/* ---- Character sheet ---- */
+function openCharSheet(id){
+  currentCharId = id;
+  document.getElementById("char-name").textContent = state.chars[id].name;
+  renderCharBody(id);
+  openSheet("char");
+}
+function onThoughtBubbleTap(id){ openCharSheet(id); }
+
+function renderCharBody(id){
+  const cs = state.chars[id];
+  const m = moodOf(cs);
+  const accent = CHAR_DEFAULTS[id].accent;
+
+  const needsHtml = Object.keys(NEED_META).map(k=>{
+    const meta = NEED_META[k]; const v = Math.round(cs.needs[k]);
+    return `<div class="need-row"><span class="need-label">${meta.icon} ${meta.label}</span>
+      <span class="need-track"><span class="need-fill" style="width:${v}%; background:${meta.color}"></span></span>
+      <span class="mono" style="width:28px; text-align:right;">${v}</span></div>`;
+  }).join("");
+
+  let thoughtHtml = "";
+  if(cs.thought){
+    const t = cs.thought;
+    let actionBtn = "";
+    if(t.kind==="need"){
+      const item = findShopItem(t.itemId);
+      actionBtn = `<button class="btn btn-primary btn-block" onclick="UI.buyGiveThought('${id}')">Buy &amp; give ${item?item.name:"item"} — 🐚${item?item.price:0}</button>`;
+    } else if(t.kind==="rest"){
+      actionBtn = `<button class="btn btn-primary btn-block" onclick="UI.napChar('${id}')">Tuck in for a nap 💤</button>`;
+    } else if(t.kind==="social"){
+      actionBtn = `<button class="btn btn-primary btn-block" onclick="UI.talkWith('${id}','${t.targetId}')">Talk to ${state.chars[t.targetId].name}</button>`;
+    } else {
+      actionBtn = `<button class="btn btn-ghost btn-block" onclick="UI.dismissFlavor('${id}')">Nod along 🐚+</button>`;
+    }
+    thoughtHtml = `<div class="card"><div style="display:flex; gap:8px; align-items:flex-start;">
+      <div style="font-size:22px;">${t.emoji}</div>
+      <div style="flex:1; font-weight:700; font-size:13.5px;">${t.text}</div>
+      </div><div style="margin-top:8px;">${actionBtn}</div></div>`;
+  }
+
+  const napDisabled = (nowAbsMinutes() < (cs.energyLockUntil||0)) || cs.needs.energy>=70;
+  const playDisabled = cs.needs.energy < 15;
+
+  const friendsHtml = CHAR_IDS.filter(o=>o!==id).map(oid=>{
+    const oc = state.chars[oid];
+    const val = state.friendships[pairKey(id,oid)]||0;
+    const tier = friendTier(val);
+    const isSweet = state.sweethearts[pairKey(id,oid)];
+    const oaccent = CHAR_DEFAULTS[oid].accent;
+    const sparkBtn = (!isSweet && val>=88) ? `<button class="btn btn-ghost" style="padding:6px 10px; font-size:12px;" onclick="UI.spark('${id}','${oid}')">💕 Spark</button>` : "";
+    return `<div class="friend-row">
+      <div class="mini-avatar" style="background:${hexToRgba(oaccent,0.22)}; border:2px solid ${oaccent};">${moodOf(oc).emoji}</div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:800; font-size:13.5px;">${oc.name} ${isSweet?"💕":""}</div>
+        <div class="need-track" style="margin-top:3px;"><span class="need-fill" style="width:${val}%; background:${oaccent}"></span></div>
+        <div class="hint" style="margin-top:2px;">${tier.label}</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" style="padding:6px 10px; font-size:12px;" onclick="UI.talkWith('${id}','${oid}')">Talk</button>
+        ${sparkBtn}
+      </div>
+    </div>`;
+  }).join("");
+
+  const hairBtns = HAIR_STYLES.map(h=>`<button class="btn ${cs.look.hairStyle===h?'btn-secondary':'btn-ghost'}" style="padding:7px 10px; font-size:12px; text-transform:capitalize;" onclick="UI.setHairStyle('${id}','${h}')">${h}</button>`).join("");
+  const hairColorSw = HAIR_COLORS.map(c=>`<button aria-label="hair color" onclick="UI.setHairColor('${id}',${c})" style="width:26px;height:26px;border-radius:50%;background:${colorCss(c)};border:2px solid ${cs.look.hair===c?accent:'transparent'}; box-shadow:0 0 0 1px rgba(0,0,0,0.15);"></button>`).join("");
+  const skinSw = SKIN_TONES.map(c=>`<button aria-label="skin tone" onclick="UI.setSkinTone('${id}',${c})" style="width:26px;height:26px;border-radius:50%;background:${colorCss(c)};border:2px solid ${cs.look.skin===c?accent:'transparent'}; box-shadow:0 0 0 1px rgba(0,0,0,0.15);"></button>`).join("");
+  const outfitBtns = state.wardrobe.map(oid=>{
+    const o = OUTFITS.find(x=>x.id===oid); if(!o) return "";
+    return `<button class="btn ${cs.outfit===oid?'btn-secondary':'btn-ghost'}" style="padding:7px 10px; font-size:12px;" onclick="UI.setOutfit('${id}','${oid}')">${o.name}</button>`;
+  }).join("");
+  const lockedCount = OUTFITS.length - state.wardrobe.length;
+
+  document.getElementById("char-body").innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <div class="mini-avatar" style="width:50px;height:50px;font-size:24px; background:${hexToRgba(accent,0.22)}; border:2px solid ${accent};">${m.emoji}</div>
+      <div><div class="font-display" style="font-size:17px;">${m.label}</div><div class="hint">Overall mood</div></div>
+    </div>
+    ${needsHtml}
+    ${thoughtHtml}
+    <div class="btn-row" style="margin-top:6px;">
+      <button class="btn btn-secondary" ${playDisabled?'disabled':''} onclick="UI.playMinigame('${id}')">🎮 Play</button>
+      <button class="btn btn-leaf" ${napDisabled?'disabled':''} onclick="UI.napChar('${id}')">💤 Nap</button>
+      <button class="btn btn-ghost" onclick="UI.openHomeFromChar('${id}')">🏠 Home</button>
+      <button class="btn btn-ghost" onclick="UI.openShop()">🏪 Shop</button>
+    </div>
+
+    <h3 style="margin:16px 0 2px; font-size:15px;">Friendships</h3>
+    <div>${friendsHtml}</div>
+
+    <h3 style="margin:16px 0 6px; font-size:15px;">🎨 Style</h3>
+    <div class="hint" style="margin-bottom:4px;">Hairstyle</div>
+    <div class="btn-row">${hairBtns}</div>
+    <div class="hint" style="margin:10px 0 4px;">Hair color</div>
+    <div class="btn-row">${hairColorSw}</div>
+    <div class="hint" style="margin:10px 0 4px;">Skin tone</div>
+    <div class="btn-row">${skinSw}</div>
+    <div class="hint" style="margin:10px 0 4px;">Outfit ${lockedCount>0?`<span style="opacity:0.7;">(${lockedCount} more in shop)</span>`:""}</div>
+    <div class="btn-row">${outfitBtns}</div>
+  `;
+}
+
+/* ---- Shop sheet ---- */
+function openShopSheet(){ shopTab="food"; shopPending=null; renderShopBody(); openSheet("shop"); }
+function renderShopBody(){
+  const body = document.getElementById("shop-body");
+  if(shopPending){
+    const {cat,item} = shopPending;
+    const pickerHtml = CHAR_IDS.map(id=>{
+      const cs = state.chars[id]; const accent = CHAR_DEFAULTS[id].accent;
+      let note = "";
+      if(cat==="furniture"){
+        const rec = cs.home.furniture[item.id];
+        if(rec && rec.placed) note = `<span class="hint">already has this</span>`;
+      }
+      return `<button class="btn btn-ghost btn-block" style="justify-content:space-between; margin-bottom:6px;" onclick="UI.confirmShopPurchase('${id}')">
+        <span style="display:flex; align-items:center; gap:8px;"><span class="mini-avatar" style="width:26px;height:26px;font-size:13px;background:${hexToRgba(accent,0.22)};border:2px solid ${accent};">${moodOf(cs).emoji}</span>${cs.name}</span>
+        ${note}
+      </button>`;
+    }).join("");
+    body.innerHTML = `
+      <button class="btn btn-ghost" onclick="UI.shopBack()">← Back</button>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:34px;">${item.emoji}</div>
+        <div class="font-display" style="font-size:16px;">${item.name}</div>
+        <div class="hint">🐚 ${item.price}${item.price===0?" (default)":""}</div>
+      </div>
+      <div class="hint" style="margin:8px 0 4px;">Give to:</div>
+      ${pickerHtml}
+    `;
+    return;
+  }
+  const cats = [["food","🍽️ Food"],["fun","🎈 Fun"],["furniture","🛋️ Furniture"],["outfits","👕 Outfits"]];
+  const tabsHtml = cats.map(([k,l])=>`<button class="tab-btn ${shopTab===k?'active':''}" onclick="UI.shopTabSwitch('${k}')">${l}</button>`).join("");
+  let items;
+  if(shopTab==="outfits"){
+    items = OUTFITS.filter(o=>o.price>0).map(o=>{
+      const owned = state.wardrobe.includes(o.id);
+      return `<div class="shop-item ${owned?'owned':''}" onclick="${owned?'':`UI.buyOutfit('${o.id}')`}">
+        <div class="emoji">👕</div><div class="nm">${o.name}</div>
+        <div class="pr">${owned?"Owned":"🐚 "+o.price}</div>
+      </div>`;
+    }).join("");
+  } else {
+    const list = SHOP_CATALOG[shopTab];
+    items = list.map(it=>`<div class="shop-item" onclick="UI.shopPick('${shopTab}','${it.id}')">
+      <div class="emoji">${it.emoji}</div><div class="nm">${it.name}</div><div class="pr">🐚 ${it.price}</div>
+    </div>`).join("");
+  }
+  body.innerHTML = `
+    <div class="hud-pill mono" style="display:inline-flex; margin-bottom:8px;">🐚 ${state.shells} shells</div>
+    <div class="tabs">${tabsHtml}</div>
+    <div class="shop-grid">${items}</div>
+  `;
+}
+
+/* ---- Home / decorate sheet ---- */
+function openHomeSheet(id){ currentHomeId=id; renderHomeBody(id); document.getElementById("home-title").textContent = state.chars[id].name+"'s Home"; openSheet("home"); }
+function renderHomeBody(id){
+  const cs = state.chars[id];
+  const rows = FURNITURE_ITEMS.map(item=>{
+    const rec = cs.home.furniture[item.id];
+    if(!rec){
+      return `<div class="friend-row"><div style="font-size:22px;">${item.emoji}</div>
+        <div style="flex:1;"><div style="font-weight:800; font-size:13.5px;">${item.name}</div><div class="hint">Not owned yet</div></div>
+        <button class="btn btn-secondary" style="padding:6px 10px; font-size:12px;" onclick="UI.openShop()">Shop 🐚${item.price}</button>
+      </div>`;
+    }
+    return `<div class="friend-row"><div style="font-size:22px;">${item.emoji}</div>
+      <div style="flex:1;"><div style="font-weight:800; font-size:13.5px;">${item.name}</div><div class="hint">${rec.placed?"Placed at home":"In storage"}</div></div>
+      <button class="btn ${rec.placed?'btn-ghost':'btn-leaf'}" style="padding:6px 10px; font-size:12px;" onclick="UI.toggleFurniture('${id}','${item.id}')">${rec.placed?"Store":"Place"}</button>
+    </div>`;
+  }).join("");
+  document.getElementById("home-body").innerHTML = `
+    <div class="hint" style="margin-bottom:6px;">Tap "Place" to set furniture out on display in ${cs.name}'s open-air cottage — you'll see it on the island. Room holds up to 5 floor pieces + 2 wall pieces.</div>
+    ${rows}
+  `;
+}
+
+/* ---- Menu sheet ---- */
+function openMenuSheet(){ pendingResetIsland=false; renderMenuBody(); openSheet("menu"); }
+function renderMenuBody(){
+  const themeMode = localStorage.getItem(THEME_KEY) || "auto";
+  document.getElementById("menu-body").innerHTML = `
+    <button class="btn btn-primary btn-block" style="margin-bottom:8px;" onclick="UI.saveNowClick()">💾 Save Now</button>
+    <button class="btn btn-secondary btn-block" style="margin-bottom:8px;" onclick="UI.backToTitle()">🏝️ Switch Save / Title Screen</button>
+    <h3 style="font-size:14px; margin:14px 0 6px;">Appearance</h3>
+    <div class="btn-row">
+      <button class="btn ${themeMode==='light'?'btn-secondary':'btn-ghost'}" onclick="UI.setTheme('light')">☀️ Light</button>
+      <button class="btn ${themeMode==='auto'?'btn-secondary':'btn-ghost'}" onclick="UI.setTheme('auto')">🌓 Auto</button>
+      <button class="btn ${themeMode==='dark'?'btn-secondary':'btn-ghost'}" onclick="UI.setTheme('dark')">🌙 Dark</button>
+    </div>
+    <h3 style="font-size:14px; margin:16px 0 6px;">Controls</h3>
+    <p class="hint" style="line-height:1.5;">Drag to orbit the camera · scroll or pinch to zoom · tap a resident, apartment, or the shop to interact.</p>
+    <h3 style="font-size:14px; margin:16px 0 6px; color:var(--bad);">Danger Zone</h3>
+    <button class="btn btn-block" style="background:var(--bad); color:#fff;" onclick="UI.resetIslandClick()">${pendingResetIsland?"Tap again to confirm reset":"♻️ Reset This Island"}</button>
+  `;
+}
+
+/* ---------------------------------------------------------------------
+   11. UI ACTION NAMESPACE (called from inline onclick handlers)
+   --------------------------------------------------------------------- */
+const UI = {
+  openChar(id){ openCharSheet(id); },
+  openShop(){ openShopSheet(); },
+  openHomeFromChar(id){ openHomeSheet(id); },
+  closeSheet(){ closeSheets(); },
+
+  napChar(id){
+    const cs = state.chars[id];
+    const now = nowAbsMinutes();
+    if(now < (cs.energyLockUntil||0)){ toast(`${cs.name} isn't sleepy yet.`); return; }
+    if(cs.needs.energy>=70){ toast(`${cs.name} doesn't need a nap right now.`); return; }
+    cs.needs.energy = clamp(cs.needs.energy+35,0,100);
+    cs.energyLockUntil = now+90;
+    if(cs.thought && cs.thought.kind==="rest") cs.thought=null;
+    toast(`${cs.name} took a cozy nap 💤`);
+    renderCharBody(id); refreshDock(); saveNow(true);
+  },
+  dismissFlavor(id){
+    const cs = state.chars[id];
+    if(!cs.thought || cs.thought.kind!=="flavor") return;
+    state.shells += Math.round(rand(2,4));
+    cs.needs.fun = clamp(cs.needs.fun+6,0,100);
+    cs.thought = null;
+    toast("🐚 Shells found!");
+    renderCharBody(id); refreshHUD(); refreshDock(); saveNow(true);
+  },
+  buyGiveThought(id){
+    const cs = state.chars[id];
+    if(!cs.thought || cs.thought.kind!=="need") return;
+    const item = findShopItem(cs.thought.itemId);
+    if(!item) { cs.thought=null; renderCharBody(id); return; }
+    if(state.shells < item.price){ toast("Not enough shells 🐚"); return; }
+    state.shells -= item.price;
+    const cat = FOOD_ITEMS.includes(item) ? "food" : "fun";
+    applyConsumable(cs, item, cat);
+    cs.thought = null;
+    state.shells += 2;
+    addNews(`${cs.name} got ${item.name.toLowerCase()} and feels much better! ${item.emoji}`);
+    toast(`Gave ${item.name} to ${cs.name} 🎁`);
+    renderCharBody(id); refreshHUD(); refreshDock(); saveNow(true);
+  },
+  talkWith(id, otherId){
+    if(id===otherId) return;
+    const cs = state.chars[id], oc = state.chars[otherId];
+    addFriendship(id, otherId, rand(4,8));
+    if(cs.thought && cs.thought.kind==="social" && cs.thought.targetId===otherId) cs.thought=null;
+    if(oc.thought && oc.thought.kind==="social" && oc.thought.targetId===id) oc.thought=null;
+    cs.needs.social = clamp(cs.needs.social+14,0,100);
+    oc.needs.social = clamp(oc.needs.social+14,0,100);
+    toast(`${cs.name} and ${oc.name} had a nice chat 💬`);
+    if(Math.random()<0.4) addNews(pick(FRIEND_EVENT_LINES).replace("{a}",cs.name).replace("{b}",oc.name));
+    renderCharBody(id); refreshDock(); saveNow(true);
+  },
+  spark(id, otherId){
+    if(sweetheartOf(id) || sweetheartOf(otherId)){ toast("One of them already has a sweetheart 💔"); return; }
+    state.sweethearts[pairKey(id,otherId)] = true;
+    addNews(`💕 ${state.chars[id].name} and ${state.chars[otherId].name} are now sweethearts!`);
+    toast("💕 New sweethearts!");
+    renderCharBody(id); refreshDock(); saveNow(true);
+  },
+  setHairStyle(id, style){ state.chars[id].look.hairStyle=style; refreshCharacterAppearance(id); renderCharBody(id); saveNow(true); },
+  setHairColor(id, hex){ state.chars[id].look.hair=hex; refreshCharacterAppearance(id); renderCharBody(id); saveNow(true); },
+  setSkinTone(id, hex){ state.chars[id].look.skin=hex; refreshCharacterAppearance(id); renderCharBody(id); saveNow(true); },
+  setOutfit(id, outfitId){
+    if(!state.wardrobe.includes(outfitId)) return;
+    const o = OUTFITS.find(x=>x.id===outfitId); if(!o) return;
+    const cs = state.chars[id];
+    cs.outfit=outfitId; cs.look.shirt=o.shirt; cs.look.pants=o.pants;
+    refreshCharacterAppearance(id); renderCharBody(id); saveNow(true);
+  },
+
+  shopTabSwitch(tab){ shopTab=tab; shopPending=null; renderShopBody(); },
+  shopPick(cat, itemId){ const item = SHOP_CATALOG[cat].find(i=>i.id===itemId); shopPending={cat,item}; renderShopBody(); },
+  shopBack(){ shopPending=null; renderShopBody(); },
+  buyOutfit(outfitId){
+    const o = OUTFITS.find(x=>x.id===outfitId); if(!o) return;
+    if(state.wardrobe.includes(outfitId)){ toast("Already own this style."); return; }
+    if(state.shells<o.price){ toast("Not enough shells 🐚"); return; }
+    state.shells -= o.price; state.wardrobe.push(outfitId);
+    toast(`Unlocked ${o.name} for everyone's wardrobe! 👕`);
+    renderShopBody(); refreshHUD(); saveNow(true);
+  },
+  confirmShopPurchase(charId){
+    if(!shopPending) return;
+    const {cat,item} = shopPending;
+    const cs = state.chars[charId];
+    if(cat==="furniture"){
+      const rec = cs.home.furniture[item.id];
+      if(rec && rec.placed){ toast(`${cs.name} already has that at home.`); return; }
+      if(state.shells<item.price){ toast("Not enough shells 🐚"); return; }
+      state.shells -= item.price;
+      cs.home.furniture[item.id] = {placed:true};
+      syncApartmentFurniture(charId);
+      toast(`Placed ${item.name} in ${cs.name}'s home 🏠`);
+    } else {
+      if(state.shells<item.price){ toast("Not enough shells 🐚"); return; }
+      state.shells -= item.price;
+      applyConsumable(cs, item, cat);
+      if(cs.thought && cs.thought.kind==="need" && cs.thought.itemId===item.id){ cs.thought=null; state.shells+=2; addNews(`${cs.name} got ${item.name.toLowerCase()} and feels much better! ${item.emoji}`); }
+      toast(`Gave ${item.name} to ${cs.name} 🎁`);
+    }
+    shopPending=null;
+    renderShopBody(); refreshHUD(); refreshDock(); saveNow(true);
+    if(currentSheet==="char" && currentCharId===charId) renderCharBody(charId);
+  },
+
+  toggleFurniture(charId, itemId){
+    const cs = state.chars[charId]; const rec = cs.home.furniture[itemId]; if(!rec) return;
+    const item = FURNITURE_ITEMS.find(f=>f.id===itemId);
+    if(!rec.placed){
+      const cap = item.slot==="wall" ? 2 : 5;
+      const count = FURNITURE_ITEMS.filter(f=>f.slot===item.slot && cs.home.furniture[f.id] && cs.home.furniture[f.id].placed).length;
+      if(count>=cap){ toast("No more room for that here."); return; }
+    }
+    rec.placed = !rec.placed;
+    syncApartmentFurniture(charId);
+    renderHomeBody(charId); saveNow(true);
+  },
+
+  playMinigame(id){
+    const cs = state.chars[id];
+    if(cs.needs.energy<15){ toast(`${cs.name} is too tired to play right now.`); return; }
+    launchMinigame(id);
+  },
+
+  saveNowClick(){ saveNow(false); },
+  setTheme(mode){ localStorage.setItem(THEME_KEY, mode); applyTheme(mode); renderMenuBody(); },
+  backToTitle(){
+    saveNow(true); stopAutosaveTimer(); closeSheets();
+    document.getElementById("title-screen").style.display="flex";
+    renderTitleScreen();
+    gameStarted = false; activeSlot = null;
+  },
+  resetIslandClick(){
+    if(!pendingResetIsland){ pendingResetIsland=true; renderMenuBody(); toast("Tap again to confirm — this erases this island."); return; }
+    state = defaultState();
+    if(activeSlot!=null) writeSlot(activeSlot, state);
+    CHAR_IDS.forEach(id=>{ refreshCharacterAppearance(id); syncApartmentFurniture(id); });
+    refreshHUD(); refreshDock(); closeSheets();
+    toast("Island reset. Fresh start! 🌱");
+    pendingResetIsland=false;
+  },
+
+  continueSlot(n){
+    const s = readSlot(n); if(!s) return;
+    activeSlot = n;
+    state = hydrateState(s);
+    applyOfflineCatchup(s.savedAt);
+    startGame();
+  },
+  newGameSlot(n){
+    activeSlot = n;
+    state = defaultState();
+    writeSlot(n, state);
+    startGame();
+  },
+  deleteSlotConfirm(n){
+    if(pendingDeleteSlot===n){ deleteSlot(n); pendingDeleteSlot=null; renderTitleScreen(); toast("Slot deleted."); return; }
+    pendingDeleteSlot = n;
+    renderTitleScreen();
+    setTimeout(()=>{ if(pendingDeleteSlot===n){ pendingDeleteSlot=null; renderTitleScreen(); } }, 4000);
+  }
+};
+
+/* ---------------------------------------------------------------------
+   12. MINIGAME — Shell Catch
+   --------------------------------------------------------------------- */
+const mg = { active:false, charId:null, timeLeft:30, score:0, objects:[], spawnAcc:0, ctx:null, raf:null, lastT:0, timerInt:null };
+function resizeMgCanvas(){
+  const canvas = document.getElementById("mg-canvas");
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio||1;
+  canvas.width = Math.max(1,Math.round(r.width*dpr));
+  canvas.height = Math.max(1,Math.round(r.height*dpr));
+}
+function updateMgHud(){
+  document.getElementById("mg-timer").textContent = "⏱ "+Math.max(0,mg.timeLeft);
+  document.getElementById("mg-score").textContent = "🐚 "+mg.score;
+}
+function launchMinigame(charId){
+  const cs = state.chars[charId];
+  cs.needs.energy = clamp(cs.needs.energy-15,0,100);
+  closeSheets();
+  mg.active=true; mg.charId=charId; mg.timeLeft=30; mg.score=0; mg.objects=[]; mg.spawnAcc=0;
+  document.getElementById("minigame").classList.add("show");
+  document.getElementById("mg-end").classList.remove("show");
+  resizeMgCanvas();
+  mg.ctx = document.getElementById("mg-canvas").getContext("2d");
+  updateMgHud(); refreshDock();
+  mg.timerInt = setInterval(()=>{
+    mg.timeLeft--; updateMgHud();
+    if(mg.timeLeft<=0){ clearInterval(mg.timerInt); finishMinigame(); }
+  },1000);
+  mg.lastT = performance.now();
+  cancelAnimationFrame(mg.raf);
+  mg.raf = requestAnimationFrame(mgLoop);
+}
+function mgLoop(t){
+  if(!mg.active) return;
+  const dt = Math.min(0.05,(t-mg.lastT)/1000); mg.lastT=t;
+  const canvas = document.getElementById("mg-canvas");
+  const w=canvas.width, h=canvas.height, ctx=mg.ctx;
+  if(!ctx){ mg.raf=requestAnimationFrame(mgLoop); return; }
+  ctx.clearRect(0,0,w,h);
+  mg.spawnAcc += dt;
+  if(mg.spawnAcc>0.62 && mg.timeLeft>0){
+    mg.spawnAcc=0;
+    const dpr = window.devicePixelRatio||1;
+    const bad = Math.random()<0.28;
+    mg.objects.push({ x:rand(0.08,0.92)*w, y:-40, vy:rand(90,150)*dpr, emoji: bad?pick(["🦀","💣"]):pick(["🐚","⭐","🍉"]), bad, r:26*dpr });
+  }
+  ctx.font = Math.round(34*((window.devicePixelRatio||1)))+"px sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  mg.objects.forEach(o=>{ o.y += o.vy*dt; ctx.fillText(o.emoji, o.x, o.y); });
+  mg.objects = mg.objects.filter(o=>o.y < h+60);
+  mg.raf = requestAnimationFrame(mgLoop);
+}
+function mgPointer(evt){
+  if(!mg.active) return;
+  const canvas = document.getElementById("mg-canvas");
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio||1;
+  const x = (evt.clientX-rect.left)*dpr, y=(evt.clientY-rect.top)*dpr;
+  for(let i=mg.objects.length-1;i>=0;i--){
+    const o=mg.objects[i];
+    if(Math.hypot(o.x-x,o.y-y) < o.r*1.35){
+      mg.score += o.bad? -1 : 1; if(mg.score<0) mg.score=0;
+      mg.objects.splice(i,1);
+      updateMgHud();
+      break;
+    }
+  }
+}
+function finishMinigame(){
+  if(!mg.active) return;
+  mg.active=false;
+  cancelAnimationFrame(mg.raf);
+  const cs = state.chars[mg.charId];
+  const reward = mg.score;
+  state.shells += reward;
+  cs.needs.fun = clamp(cs.needs.fun + Math.min(30, 8+reward*1.5), 0, 100);
+  document.getElementById("mg-result").textContent = `${cs.name} earned ${reward} shell${reward===1?"":"s"} and had fun! 🎉`;
+  document.getElementById("mg-end").classList.add("show");
+  refreshHUD(); refreshDock();
+  saveNow(true);
+}
+function quitMinigame(){
+  if(mg.timerInt) clearInterval(mg.timerInt);
+  if(mg.active) finishMinigame();
+  else document.getElementById("minigame").classList.remove("show");
+}
+function closeMinigameOverlay(){ document.getElementById("minigame").classList.remove("show"); }
+
+/* ---------------------------------------------------------------------
+   13. SAVE / LOAD / TITLE SCREEN
+   --------------------------------------------------------------------- */
+function hydrateState(saved){
+  const fresh = defaultState();
+  const merged = Object.assign({}, fresh, saved);
+  merged.chars = {};
+  CHAR_IDS.forEach(id=>{
+    const fc = freshCharState(id);
+    const sc = (saved.chars && saved.chars[id]) || {};
+    merged.chars[id] = Object.assign({}, fc, sc, {
+      needs: Object.assign({}, fc.needs, sc.needs||{}),
+      look: Object.assign({}, fc.look, sc.look||{}),
+      home: { furniture: Object.assign({}, (sc.home&&sc.home.furniture)||{}) },
+      thought: sc.thought || null,
+      thoughtCooldown: (typeof sc.thoughtCooldown==="number") ? sc.thoughtCooldown : rand(20,80),
+      outfit: sc.outfit || "classic",
+      energyLockUntil: sc.energyLockUntil || 0
+    });
+  });
+  merged.friendships = Object.assign({}, fresh.friendships, saved.friendships||{});
+  merged.sweethearts = Object.assign({}, saved.sweethearts||{});
+  merged.wardrobe = (saved.wardrobe && saved.wardrobe.length) ? saved.wardrobe.slice() : fresh.wardrobe.slice();
+  merged.news = (saved.news && saved.news.length) ? saved.news.slice(0,MAX_NEWS) : fresh.news.slice();
+  merged.day = saved.day || 1;
+  merged.time = (typeof saved.time==="number") ? saved.time : 480;
+  merged.shells = (typeof saved.shells==="number") ? saved.shells : 40;
+  return merged;
+}
+function applyOfflineCatchup(savedAt){
+  const elapsedRealMs = Date.now()-savedAt;
+  if(elapsedRealMs < 15000) return;
+  const elapsedSimMin = Math.floor(elapsedRealMs/1000*SIM_MIN_PER_SEC);
+  const capped = Math.min(elapsedSimMin, 60*24*3);
+  if(capped<=0) return;
+  const newTotal = state.day*1440 + state.time + capped;
+  state.day = Math.max(1, Math.floor(newTotal/1440));
+  state.time = newTotal % 1440;
+  let worst = {name:null, val:101};
+  CHAR_IDS.forEach(id=>{
+    const cs = state.chars[id];
+    cs.needs.hunger = clamp(cs.needs.hunger - DECAY_PER_MIN.hunger*capped, 0, 100);
+    cs.needs.fun    = clamp(cs.needs.fun    - DECAY_PER_MIN.fun*capped,    0, 100);
+    cs.needs.energy = clamp(cs.needs.energy - DECAY_PER_MIN.energy*capped, 0, 100);
+    cs.needs.social = clamp(cs.needs.social - DECAY_PER_MIN.social*capped, 0, 100);
+    cs.thought = null; cs.thoughtCooldown = rand(10,40);
+    const avg = (cs.needs.hunger+cs.needs.fun+cs.needs.energy+cs.needs.social)/4;
+    if(avg<worst.val){ worst.val=avg; worst.name=cs.name; }
+  });
+  const ticks = Math.min(6, Math.floor(capped/180));
+  for(let i=0;i<ticks;i++){ if(Math.random()<0.5){ const a=pick(CHAR_IDS); const b=pick(CHAR_IDS.filter(o=>o!==a)); addFriendship(a,b,rand(1,3)); } }
+  const hrs = Math.round(capped/60);
+  pendingOfflineToast = hrs>=1 ? `While you were away (${hrs}h): everyone got a little hungrier${worst.name?", especially "+worst.name:""}.` : null;
+}
+
+function slotSummary(n){
+  const s = readSlot(n);
+  if(!s) return null;
+  return { day:s.day||1, time:fmtTime((typeof s.time==="number")?s.time:480), shells:(typeof s.shells==="number")?s.shells:0 };
+}
+function renderTitleScreen(){
+  const card = document.getElementById("title-card");
+  let html = "";
+  for(let n=1;n<=3;n++){
+    const sum = slotSummary(n);
+    if(sum){
+      html += `<div class="slot-row"><div><div class="slot-title">Save ${n}</div><div class="slot-info">Day ${sum.day} · ${sum.time} · 🐚 ${sum.shells}</div></div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="UI.continueSlot(${n})">Continue</button>
+        <button class="btn btn-ghost" onclick="UI.deleteSlotConfirm(${n})" aria-label="Delete save ${n}">${pendingDeleteSlot===n?"Confirm?":"🗑️"}</button></div></div>`;
+    } else {
+      html += `<div class="slot-row"><div><div class="slot-title">Save ${n}</div><div class="slot-info">Empty</div></div>
+        <button class="btn btn-secondary" onclick="UI.newGameSlot(${n})">New Island</button></div>`;
+    }
+  }
+  card.innerHTML = html;
+}
+
+function applyTheme(mode){
+  const root = document.documentElement;
+  if(mode==="light") root.setAttribute("data-theme","light");
+  else if(mode==="dark") root.setAttribute("data-theme","dark");
+  else root.removeAttribute("data-theme");
+}
+
+function startAutosaveTimer(){ stopAutosaveTimer(); autosaveHandle = setInterval(()=>saveNow(true), AUTOSAVE_MS); }
+function stopAutosaveTimer(){ if(autosaveHandle){ clearInterval(autosaveHandle); autosaveHandle=null; } }
+
+function startGame(){
+  document.getElementById("title-screen").style.display = "none";
+  CHAR_IDS.forEach(id=>{
+    if(!CHAR_MESH[id]) buildCharacterMesh(id); else refreshCharacterAppearance(id);
+    syncApartmentFurniture(id);
+  });
+  if(!Object.keys(bubbleEls).length) initBubbleLayer();
+  else CHAR_IDS.forEach(id=>{ bubbleEls[id].tag.textContent = state.chars[id].name; });
+  refreshHUD(); refreshDock();
+  updateDayNight(); updateCameraPosition();
+  gameStarted = true;
+  simAccum = 0;
+  startAutosaveTimer();
+  if(pendingOfflineToast){ const msg = pendingOfflineToast; setTimeout(()=>toast(msg), 500); pendingOfflineToast=null; }
+}
+
+/* ---------------------------------------------------------------------
+   14. RESIZE + MAIN LOOP + BOOTSTRAP
+   --------------------------------------------------------------------- */
+function onResize(){
+  const canvas = renderer.domElement;
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect = w/Math.max(1,h);
+  camera.updateProjectionMatrix();
+  if(document.getElementById("minigame").classList.contains("show")) resizeMgCanvas();
+}
+
+function animate(t){
+  requestAnimationFrame(animate);
+  const delta = Math.min(0.05, clock.getDelta());
+  if(gameStarted){
+    simAccum += delta*SIM_MIN_PER_SEC;
+    let guard=0;
+    while(simAccum>=1 && guard<200){ advanceSimMinute(); simAccum-=1; guard++; }
+    updateCharacterAI(delta);
+    updateDayNight();
+    syncBubbleLayer();
+  }
+  renderer.render(scene, camera);
+}
+
+function init(){
+  const savedTheme = localStorage.getItem(THEME_KEY) || "auto";
+  applyTheme(savedTheme);
+
+  state = defaultState(); // placeholder so scene-building code has char data before a slot is chosen
+  initScene();
+  initCharAI();
+  initInput();
+  updateCameraPosition();
+
+  document.getElementById("menu-btn").addEventListener("click", openMenuSheet);
+  document.getElementById("scrim").addEventListener("click", closeSheets);
+  document.querySelectorAll("[data-close]").forEach(btn=> btn.addEventListener("click", closeSheets));
+  document.getElementById("mg-canvas").addEventListener("pointerdown", mgPointer);
+  document.getElementById("mg-quit").addEventListener("click", quitMinigame);
+  document.getElementById("mg-done").addEventListener("click", closeMinigameOverlay);
+  document.addEventListener("visibilitychange", ()=>{ if(document.hidden && activeSlot!=null) saveNow(true); });
+  window.addEventListener("pagehide", ()=>{ if(activeSlot!=null) saveNow(true); });
+
+  renderTitleScreen();
+  requestAnimationFrame(animate);
+}
+
+window.UI = UI;
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init);
+else init();
+
+})();
+</script>
