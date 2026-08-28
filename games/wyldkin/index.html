@@ -68,7 +68,13 @@
   .starterDesc{ font-size:12px; min-height:52px; margin-bottom:10px; }
 
   #battleScreen{ position:absolute; inset:0; z-index:35; display:flex; flex-direction:column; background:#000; }
-  #battleCanvas{ width:100%; flex:1; min-height:0; display:block; }
+  #battleCanvasWrap{ position:relative; flex:1; min-height:0; }
+  #battleCanvas{ position:absolute; inset:0; display:block; }
+  #battleHpEnemy{ position:absolute; left:4%; top:5%; width:44%; max-width:320px; }
+  #battleHpPlayer{ position:absolute; right:4%; top:52%; width:46%; max-width:320px; }
+  .hpPlate{ background:rgba(255,255,255,0.92); border:2px solid #333; border-radius:8px; padding:6px 10px; font-size:12px; color:#222; }
+  .hpPlate b{ font-size:13px; }
+  .hpPlate .hpBarBg{ height:8px; margin-top:4px; }
   #battleMsgBox{ background:var(--panel); color:var(--ink); border-top:3px solid var(--panelBorder); padding:14px 16px; font-size:15px; min-height:50px; }
   #battleActions{ background:var(--panel); color:var(--ink); padding:8px 10px 10px; max-height:44vh; overflow:auto; }
   #battleTabsWrap{ display:flex; gap:6px; padding:6px 10px 0; background:var(--panel); color:var(--ink); flex-wrap:wrap; }
@@ -168,7 +174,10 @@
     </div>
 
     <div id="battleScreen" style="display:none">
-      <canvas id="battleCanvas"></canvas>
+      <div id="battleCanvasWrap"><canvas id="battleCanvas"></canvas>
+        <div id="battleHpEnemy" class="hpPlate"></div>
+        <div id="battleHpPlayer" class="hpPlate"></div>
+      </div>
       <div id="battleMsgBox"></div>
       <div id="battleTabsWrap"></div>
       <div id="battleActions"></div>
@@ -192,6 +201,7 @@
     </div>
   </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* ===================== WYLDKIN: CHAMPION'S PATH ===================== */
 /* p1: core data - types, moves, species */
@@ -917,42 +927,40 @@ G2.MAPS = {
     champion:{x:10,y:1},
     encounters:[] }
 };
-/* p3: engine - canvas, input, procedural pixel-art sprites, camera */
+/* p3: engine - Three.js renderers, input, procedural pixel-art textures & 3D primitives */
 'use strict';
 const G3 = window.G;
+const THREE = window.THREE;
 
-/* ================= Canvas & viewport ================= */
-G3.canvas = null; G3.ctx = null;
-G3.viewW = 800; G3.viewH = 600; G3.TILE = 32;
-
-function initCanvas(){
-  G3.canvas = document.getElementById('gameCanvas');
-  G3.ctx = G3.canvas.getContext('2d');
-  G3.ctx.imageSmoothingEnabled = false;
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('orientationchange', ()=>setTimeout(resizeCanvas,50));
+/* ================= Renderers ================= */
+G3.owRenderer = null; G3.battleRenderer = null;
+function initRenderers(){
+  G3.owRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias:true });
+  G3.owRenderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  G3.battleRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('battleCanvas'), antialias:true });
+  G3.battleRenderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  resizeRenderers();
+  window.addEventListener('resize', resizeRenderers);
+  window.addEventListener('orientationchange', ()=>setTimeout(resizeRenderers,50));
 }
-function resizeCanvas(){
+function resizeRenderers(){
   const wrap = document.getElementById('canvasWrap');
   const rect = wrap.getBoundingClientRect();
-  const dpr = Math.min(window.devicePixelRatio||1, 2);
-  G3.viewW = Math.max(240, Math.floor(rect.width));
-  G3.viewH = Math.max(180, Math.floor(rect.height));
-  G3.canvas.width = Math.floor(G3.viewW*dpr);
-  G3.canvas.height = Math.floor(G3.viewH*dpr);
-  G3.canvas.style.width = G3.viewW+'px';
-  G3.canvas.style.height = G3.viewH+'px';
-  G3.ctx.setTransform(dpr,0,0,dpr,0,0);
-  G3.ctx.imageSmoothingEnabled = false;
-  /* choose tile size so ~9 tiles are visible across the narrower dimension */
-  const targetTiles = 9;
-  G3.TILE = Math.max(18, Math.min(48, Math.floor(Math.min(G3.viewW,G3.viewH)/targetTiles)));
+  const w = Math.max(240, Math.floor(rect.width)), h = Math.max(180, Math.floor(rect.height));
+  G3.viewW = w; G3.viewH = h;
+  if (G3.owRenderer){ G3.owRenderer.setSize(w,h,true); if (G4.owCamera){ G4.owCamera.aspect = w/h; G4.owCamera.updateProjectionMatrix(); } }
+  const bwrap = document.getElementById('battleCanvasWrap');
+  if (bwrap && G3.battleRenderer){
+    const brect = bwrap.getBoundingClientRect();
+    const bw = Math.max(240, Math.floor(brect.width)), bh = Math.max(160, Math.floor(brect.height));
+    G3.battleRenderer.setSize(bw,bh,true);
+    if (G.battleCamera){ G.battleCamera.aspect = bw/bh; G.battleCamera.updateProjectionMatrix(); }
+  }
 }
-G3.initCanvas = initCanvas;
-G3.resizeCanvas = resizeCanvas;
+G3.initRenderers = initRenderers;
+G3.resizeRenderers = resizeRenderers;
 
-/* ================= Input ================= */
+/* ================= Input (unchanged from 2D version) ================= */
 G3.keys = {};
 G3.touchDir = null; /* 'up'|'down'|'left'|'right'|null */
 G3.justPressed = {};
@@ -979,7 +987,7 @@ G3.moveDir = function(){
   return null;
 };
 
-/* ================= Procedural pixel-art sprites ================= */
+/* ================= Procedural pixel-art textures (2D canvas, used for billboards + UI icons) ================= */
 const GRID = 22;
 function newGrid(){ return new Array(GRID*GRID).fill(-1); }
 function idx(x,y){ return y*GRID+x; }
@@ -992,13 +1000,6 @@ function fillEllipse(g,cx,cy,rx,ry,c){
     }
 }
 function fillRect(g,x0,y0,x1,y1,c){ for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) setPx(g,x,y,c); }
-function mirrorLeft(g){
-  const cx = GRID/2;
-  for (let y=0;y<GRID;y++) for (let x=0;x<Math.floor(cx);x++){
-    const v = g[idx(x,y)];
-    if (v>=0) setPx(g,GRID-1-x,y,v);
-  }
-}
 
 function buildForm(form){
   const g = newGrid();
@@ -1018,7 +1019,7 @@ function buildForm(form){
     fillRect(g,cx-6,cy+5,cx-4,cy+8,0); fillRect(g,cx-5.6,cy+5,cx-4.4,cy+7.6,1);
     fillRect(g,cx+3,cy+5,cx+5,cy+8,0); fillRect(g,cx+3.4,cy+5,cx+4.6,cy+7.6,1);
     fillRect(g,cx+5.5,cy-1,cx+8,cy+0.6,0); fillRect(g,cx+5.8,cy-0.7,cx+7.6,cy+0.2,3);
-    setPx(g,cx-6,cy-4,0); setPx(g,cx-5,cy-5.5,3); /* ear */
+    setPx(g,cx-6,cy-4,0); setPx(g,cx-5,cy-5.5,3);
     setPx(g,cx-6.2,cy-3.2,0); setPx(g,cx-6.2,cy-2.8,0);
   } else if (form==='bird'){
     fillEllipse(g,cx,cy+1.5,5.5,5.5,0);
@@ -1058,13 +1059,10 @@ function buildForm(form){
     fillRect(g,cx+7,cy+1,cx+10,cy+2.4,0); fillRect(g,cx+7.4,cy+1.2,cx+9.4,cy+2,3);
     setPx(g,cx-6,cy-4.5,3); setPx(g,cx-4,cy-4.5,3);
   }
-  /* eyes */
   const ex = form==='quad'?cx-5.5:(form==='bird'?cx-1:(form==='fish'?cx-3:(form==='insect'?cx-1.6:(form==='dragon'?cx-5.5:cx-2.2))));
   const ey = form==='quad'?cy-3.4:(form==='bird'?cy-5.2:(form==='fish'?cy-0.6:(form==='insect'?cy-4.2:(form==='dragon'?cy-3.7:cy-1.4))));
   setPx(g,ex,ey,0); setPx(g,ex+ (form==='quad'||form==='dragon'?2.4:1.6), ey, 0);
-  mirrorLeftOff(); /* noop placeholder to keep structure clear */
   return g;
-  function mirrorLeftOff(){}
 }
 G.SPECIES_FORM = {
   cindle:'quad', cindral:'quad', cindrake:'dragon',
@@ -1110,71 +1108,149 @@ function getSpriteCanvas(speciesId, size){
   return off;
 }
 G3.getSpriteCanvas = getSpriteCanvas;
-G3.drawCreature = function(ctx, speciesId, x, y, size, flip){
-  const c = getSpriteCanvas(speciesId, Math.round(size));
-  if (!c) return;
-  ctx.save();
-  if (flip){ ctx.translate(x+size, y); ctx.scale(-1,1); ctx.drawImage(c,0,0,size,size); }
-  else ctx.drawImage(c, x, y, size, size);
-  ctx.restore();
+
+/* ================= Three.js world setup ================= */
+G3.TILE = 2; /* world units per grid tile */
+const matCache = {};
+function mat(colorHex, opts){
+  const key = colorHex+'_'+(opts&&opts.opacity!==undefined?opts.opacity:1)+'_'+(opts&&opts.emissive?opts.emissive:'');
+  if (matCache[key]) return matCache[key];
+  const params = { color: colorHex };
+  if (opts&&opts.opacity!==undefined){ params.transparent=true; params.opacity=opts.opacity; }
+  if (opts&&opts.emissive){ params.emissive = opts.emissive; params.emissiveIntensity = 0.4; }
+  const m = new THREE.MeshLambertMaterial(params);
+  matCache[key] = m;
+  return m;
+}
+/* shared geometries */
+const GEO = {
+  trunk: new THREE.CylinderGeometry(0.09,0.13,0.55,6),
+  foliage: new THREE.ConeGeometry(0.62,1.05,7),
+  buildingBox: new THREE.BoxGeometry(G3.TILE*0.92,1.7,G3.TILE*0.92),
+  roof: new THREE.ConeGeometry(G3.TILE*0.72,0.65,4),
+  water: new THREE.PlaneGeometry(G3.TILE,G3.TILE),
+  ledge: new THREE.BoxGeometry(G3.TILE*0.98,0.32,G3.TILE*0.98),
+  bush: new THREE.SphereGeometry(0.4,8,6),
+  grassBlade: new THREE.ConeGeometry(0.09,0.5,4),
+  signPost: new THREE.CylinderGeometry(0.05,0.05,0.7,5),
+  signPlate: new THREE.BoxGeometry(0.45,0.32,0.06),
+  itemOrb: new THREE.OctahedronGeometry(0.22,0)
 };
 
-/* simple human sprite (player / NPCs) */
-const humanCache = {};
-G3.drawPerson = function(ctx, key, palette, x, y, size, dir, walkFrame){
-  const ck = key+'_'+size+'_'+dir+'_'+walkFrame;
-  let c = humanCache[ck];
-  if (!c){
-    c = document.createElement('canvas'); c.width=size; c.height=size;
-    const octx = c.getContext('2d'); octx.imageSmoothingEnabled=false;
-    const g = newGrid();
-    const cx=GRID/2, cy=GRID/2;
-    /* head */
-    fillEllipse(g,cx,cy-6,3.6,3.4,0); fillEllipse(g,cx,cy-6,2.9,2.7,2);
-    /* body */
-    fillRect(g,cx-3,cy-3,cx+3,cy+4,0); fillRect(g,cx-2.6,cy-2.6,cx+2.6,cy+3.6,1);
-    /* legs (offset by walkFrame) */
-    const off = walkFrame? 1.4:0;
-    fillRect(g,cx-2.4,cy+4,cx-0.4,cy+7+off,0); fillRect(g,cx-2.1,cy+4,cx-0.7,cy+6.6+off,3);
-    fillRect(g,cx+0.4,cy+4,cx+2.4,cy+7-off,0); fillRect(g,cx+0.7,cy+4,cx+2.1,cy+6.6-off,3);
-    /* arms */
-    fillRect(g,cx-4.6,cy-2,cx-3,cy+2,0); fillRect(g,cx+3,cy-2,cx+4.6,cy+2,0);
-    /* face direction dot */
-    if (dir==='down'){ setPx(g,cx-1.2,cy-6.2,0); setPx(g,cx+1.2,cy-6.2,0); }
-    else if (dir==='up'){ /* back of head, no eyes */ }
-    else if (dir==='left'){ setPx(g,cx-1.6,cy-6.2,0); }
-    else { setPx(g,cx+1.6,cy-6.2,0); }
-    const px = size/GRID;
-    for (let y=0;y<GRID;y++) for (let x=0;x<GRID;x++){
-      const v = g[idx(x,y)]; if (v<0) continue;
-      octx.fillStyle = palette[v]||palette[1];
-      octx.fillRect(Math.floor(x*px), Math.floor(y*px), Math.ceil(px)+1, Math.ceil(px)+1);
-    }
-    humanCache[ck]=c;
+function makeSpriteTexture(canvas){
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+const texCache = {};
+G3.getSpriteTexture = function(speciesId, size){
+  const key = speciesId+'_'+size;
+  if (texCache[key]) return texCache[key];
+  const c = getSpriteCanvas(speciesId, size);
+  const t = makeSpriteTexture(c);
+  texCache[key] = t;
+  return t;
+};
+G3.makeCreatureSprite = function(speciesId, worldSize){
+  const tex = G3.getSpriteTexture(speciesId, 64);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent:true }));
+  sp.scale.set(worldSize, worldSize, 1);
+  return sp;
+};
+G3.makeLabelSprite = function(text, bg){
+  const c = document.createElement('canvas'); c.width=160; c.height=56;
+  const cx = c.getContext('2d');
+  cx.fillStyle = bg; roundRectPath(cx,4,4,152,48,10); cx.fill();
+  cx.fillStyle = '#fff'; cx.font='bold 26px sans-serif'; cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText(text, 80, 30);
+  const tex = makeSpriteTexture(c);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent:true }));
+  sp.scale.set(1.6,0.56,1);
+  return sp;
+};
+function roundRectPath(cx,x,y,w,h,r){ cx.beginPath(); cx.moveTo(x+r,y); cx.arcTo(x+w,y,x+w,y+h,r); cx.arcTo(x+w,y+h,x,y+h,r); cx.arcTo(x,y+h,x,y,r); cx.arcTo(x,y,x+w,y,r); cx.closePath(); }
+
+/* ---------- humanoid builder (player / NPCs / trainers / rival) ---------- */
+G3.buildHuman = function(palette){
+  const group = new THREE.Group();
+  const matBody = mat(palette[1]), matSkin = mat(palette[2]), matAccent = mat(palette[3]), matDark = mat(palette[0]);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.6,0.32), matBody); torso.position.y=0.65; group.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22,10,8), matSkin); head.position.y=1.12; group.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.235,10,8,0,Math.PI*2,0,Math.PI*0.55), matDark); hair.position.y=1.18; group.add(hair);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.08), matDark); nose.position.set(0,1.1,0.2); group.add(nose);
+  const legGeo = new THREE.CylinderGeometry(0.09,0.09,0.5,7);
+  const legL = new THREE.Mesh(legGeo, matAccent); legL.position.set(-0.13,0.25,0); legL.name='legL'; group.add(legL);
+  const legR = new THREE.Mesh(legGeo, matAccent); legR.position.set(0.13,0.25,0); legR.name='legR'; group.add(legR);
+  const armGeo = new THREE.CylinderGeometry(0.07,0.07,0.46,7);
+  const armL = new THREE.Mesh(armGeo, matBody); armL.position.set(-0.32,0.65,0); armL.name='armL'; group.add(armL);
+  const armR = new THREE.Mesh(armGeo, matBody); armR.position.set(0.32,0.65,0); armR.name='armR'; group.add(armR);
+  return group;
+};
+const DIR_ANGLE = { down:0, left:Math.PI/2, up:Math.PI, right:-Math.PI/2 };
+G3.faceDir = function(humanGroup, dir){ humanGroup.rotation.y = DIR_ANGLE[dir]||0; };
+G3.animateWalk = function(humanGroup, t, moving){
+  const legL = humanGroup.getObjectByName('legL'), legR = humanGroup.getObjectByName('legR');
+  const armL = humanGroup.getObjectByName('armL'), armR = humanGroup.getObjectByName('armR');
+  const swing = moving ? Math.sin(t*0.012)*0.6 : 0;
+  if (legL) legL.rotation.x = swing; if (legR) legR.rotation.x = -swing;
+  if (armL) armL.rotation.x = -swing; if (armR) armR.rotation.x = swing;
+};
+
+/* ---------- tile prop builders ---------- */
+G3.buildTree = function(){
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(GEO.trunk, mat(0x5a3a22)); trunk.position.y=0.27; g.add(trunk);
+  const foliage = new THREE.Mesh(GEO.foliage, mat(0x2f6a24)); foliage.position.y=0.95; g.add(foliage);
+  return g;
+};
+G3.buildBuilding = function(){
+  const g = new THREE.Group();
+  const box = new THREE.Mesh(GEO.buildingBox, mat(0xc9b89a)); box.position.y=0.85; g.add(box);
+  const roof = new THREE.Mesh(GEO.roof, mat(0x8a5a3a)); roof.position.y=2.0; roof.rotation.y=Math.PI/4; g.add(roof);
+  return g;
+};
+G3.buildWater = function(){
+  const m = new THREE.Mesh(GEO.water, mat(0x2f8fd6,{opacity:0.85}));
+  m.rotation.x = -Math.PI/2; m.position.y=0.02;
+  return m;
+};
+G3.buildLedge = function(){ const m = new THREE.Mesh(GEO.ledge, mat(0x8a7360)); m.position.y=0.16; return m; };
+G3.buildBush = function(seed){
+  const g = new THREE.Group();
+  const m1 = new THREE.Mesh(GEO.bush, mat(0x2f6a24)); m1.position.set(-0.22,0.32,0); m1.scale.setScalar(0.8); g.add(m1);
+  const m2 = new THREE.Mesh(GEO.bush, mat(0x357a28)); m2.position.set(0.2,0.34,0.1); m2.scale.setScalar(0.72); g.add(m2);
+  return g;
+};
+function pseudoRand(a,b){ const v = Math.sin(a*12.9898+b*78.233)*43758.5453; return v-Math.floor(v); }
+G3.buildGrassPatch = function(tx,ty){
+  const g = new THREE.Group();
+  for (let i=0;i<3;i++){
+    const rx = (pseudoRand(tx*3+i,ty*7+i)-0.5)*G3.TILE*0.6;
+    const rz = (pseudoRand(tx*11+i,ty*5+i)-0.5)*G3.TILE*0.6;
+    const blade = new THREE.Mesh(GEO.grassBlade, mat(0x4f9a34));
+    blade.position.set(rx,0.24,rz);
+    blade.scale.setScalar(0.8+pseudoRand(tx+i,ty-i)*0.5);
+    g.add(blade);
   }
-  ctx.drawImage(c,x,y,size,size);
+  return g;
 };
-
-/* ================= tile colors ================= */
-G3.TILE_COLORS = {
-  '.': null, /* uses map bg */
-  '"': null,
-  ',': '#4f9a34',
-  '#': '#2f5a20',
-  '~': '#2f8fd6',
-  '^': '#8a7360',
-  'b': '#3f7a2b',
-  'd': '#0a0614',
-  'B': '#8a6a52',
-  'S': '#c9b89a',
-  ' ': '#101010'
+G3.buildSign = function(){
+  const g = new THREE.Group();
+  const post = new THREE.Mesh(GEO.signPost, mat(0x7a5a3a)); post.position.y=0.35; g.add(post);
+  const plate = new THREE.Mesh(GEO.signPlate, mat(0xd9c19a)); plate.position.y=0.62; g.add(plate);
+  return g;
+};
+G3.buildItemOrb = function(){
+  const m = new THREE.Mesh(GEO.itemOrb, mat(0xffe27a,{emissive:0xffcc00}));
+  m.position.y=0.5;
+  return m;
 };
 /* p4: overworld - movement, camera, collision, encounters, interactions */
 'use strict';
 const G4 = window.G;
 
 G4.player = { map:'willowbrook', x:6, y:12, dir:'down', moving:false, t:0, dur:150, fromX:6, fromY:12, walkFrame:0, name:'Jasz' };
-G4.camera = { x:0, y:0 };
 G4.stepsSinceEncounter = 0;
 
 function getTile(mapId,x,y){
@@ -1416,7 +1492,7 @@ function interact(){
 }
 G4.interact = interact;
 
-/* ================= Update & render ================= */
+/* ================= Update ================= */
 function updateOverworld(dtMs){
   const p = G4.player;
   if (p.moving){
@@ -1430,73 +1506,7 @@ function updateOverworld(dtMs){
 }
 G4.updateOverworld = updateOverworld;
 
-function drawOverworld(){
-  const ctx = G3.ctx; const T = G3.TILE; const p = G4.player;
-  const m = currentMap();
-  ctx.fillStyle = m.bg || '#333';
-  ctx.fillRect(0,0,G3.viewW,G3.viewH);
-  let px = p.x, py = p.y;
-  if (p.moving){
-    const f = p.t/p.dur;
-    px = p.fromX + (p.x-p.fromX)*f;
-    py = p.fromY + (p.y-p.fromY)*f;
-  }
-  const camX = px*T - G3.viewW/2 + T/2;
-  const camY = py*T - G3.viewH/2 + T/2;
-  const cols = Math.ceil(G3.viewW/T)+2, rows = Math.ceil(G3.viewH/T)+2;
-  const startCol = Math.floor(camX/T)-1, startRow = Math.floor(camY/T)-1;
-  for (let ry=0; ry<rows; ry++){
-    for (let rx=0; rx<cols; rx++){
-      const tx = startCol+rx, ty = startRow+ry;
-      const ch = getTile(p.map,tx,ty);
-      const sx = Math.round(tx*T-camX), sy = Math.round(ty*T-camY);
-      drawTile(ctx,ch,sx,sy,T,m,tx,ty);
-    }
-  }
-  /* npc signs render as small post even without explicit sign tile handled by 'S' */
-  /* items on ground */
-  if (m.items){
-    for (const it of m.items){
-      if (G.state.flags.collected[it.id]) continue;
-      const sx = Math.round(it.x*T-camX), sy = Math.round(it.y*T-camY);
-      ctx.fillStyle='#ffe27a'; ctx.beginPath(); ctx.arc(sx+T/2,sy+T/2,T*0.22,0,7); ctx.fill();
-      ctx.strokeStyle='#8a6a1a'; ctx.lineWidth=2; ctx.stroke();
-    }
-  }
-  /* npcs */
-  if (m.npcs){
-    for (const n of m.npcs){
-      const sx = Math.round(n.x*T-camX), sy = Math.round(n.y*T-camY);
-      G3.drawPerson(ctx, n.sprite, npcPalette(n.sprite), sx, sy, T, n.dir, 0);
-    }
-  }
-  if (m.trainers){
-    for (const t of m.trainers){
-      if (G.state.defeatedTrainers.includes(t.id)) continue;
-      const sx = Math.round(t.x*T-camX), sy = Math.round(t.y*T-camY);
-      G3.drawPerson(ctx, 'trainer_'+t.id, trainerPalette(t.id), sx, sy, T, t.dir, 0);
-    }
-  }
-  if (m.legendary && !G.state.flags.legendaryCaught){
-    const sx = Math.round(m.legendary.x*T-camX), sy = Math.round(m.legendary.y*T-camY);
-    G3.drawCreature(ctx, m.legendary.species, sx, sy, T, false);
-  }
-  /* rival spot marker (invisible trigger, sometimes show Nayah sprite if not yet fought and story appropriate) */
-  if (m.rivalSpot){
-    const battle = G.RIVAL_BATTLES.find(b=>b.where===p.map);
-    if (battle && !G.state.defeatedRivals.includes(battle.id)){
-      const sx = Math.round(m.rivalSpot.x*T-camX), sy = Math.round(m.rivalSpot.y*T-camY);
-      G3.drawPerson(ctx, 'nayah', PAL_NAYAH, sx, sy, T, 'down', 0);
-    }
-  }
-  /* player */
-  {
-    const sx = Math.round(px*T-camX), sy = Math.round(py*T-camY);
-    G3.drawPerson(ctx, 'player', PAL_PLAYER, sx, sy, T, p.dir, p.moving?p.walkFrame:0);
-  }
-}
-G4.drawOverworld = drawOverworld;
-
+/* ================= 3D scene ================= */
 const PAL_PLAYER = ['#241a12','#3f6fd6','#ffd6a8','#e0483c'];
 const PAL_NAYAH = ['#241220','#d63f8f','#ffd6a8','#f4c430'];
 function npcPalette(sprite){
@@ -1517,33 +1527,7 @@ function trainerPalette(id){
   return hues[hash%hues.length];
 }
 
-function drawTile(ctx,ch,sx,sy,T,m,tx,ty){
-  let color = G3.TILE_COLORS[ch];
-  if (m.dark && ch==='d' && !hasTool('glow')) color = '#050308';
-  if (color) { ctx.fillStyle = color; ctx.fillRect(sx,sy,T,T); }
-  if (ch==='#'){
-    ctx.fillStyle='#3a2a18'; ctx.fillRect(sx+T*0.35,sy+T*0.5,T*0.3,T*0.5);
-    ctx.fillStyle='#255a1c'; ctx.beginPath(); ctx.arc(sx+T/2,sy+T*0.4,T*0.42,0,7); ctx.fill();
-  } else if (ch==='B'){
-    ctx.fillStyle='#c9b89a'; ctx.fillRect(sx+T*0.08,sy+T*0.15,T*0.84,T*0.75);
-    ctx.fillStyle='#8a5a3a'; ctx.fillRect(sx+T*0.05,sy,T*0.9,T*0.25);
-  } else if (ch==='~'){
-    ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.fillRect(sx,sy+T*0.4,T,2);
-  } else if (ch==='^'){
-    ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(sx,sy+T*0.5); ctx.lineTo(sx+T,sy+T*0.5); ctx.stroke();
-  } else if (ch==='b'){
-    ctx.fillStyle='#2a5a1c'; ctx.beginPath(); ctx.arc(sx+T*0.3,sy+T*0.6,T*0.28,0,7); ctx.fill();
-    ctx.beginPath(); ctx.arc(sx+T*0.7,sy+T*0.55,T*0.28,0,7); ctx.fill();
-  } else if (ch==='S'){
-    ctx.fillStyle='#7a5a3a'; ctx.fillRect(sx+T*0.42,sy+T*0.3,T*0.16,T*0.6);
-    ctx.fillStyle='#d9c19a'; ctx.fillRect(sx+T*0.2,sy+T*0.15,T*0.6,T*0.32);
-  } else if (ch==='GYM'){
-  }
-  /* GYM / SHOP / CTR word markers are embedded as multi-char in row strings; handled by scanning below */
-}
-
-/* map rows may contain multi-letter landmark words like GYM, SHOP, CTR - render as labeled plates on the '.' tiles they occupy */
+/* map rows may contain multi-letter landmark words like GYM, SHOP, CTR */
 function scanLandmarks(m){
   if (m._landmarks) return m._landmarks;
   const found = [];
@@ -1558,21 +1542,141 @@ function scanLandmarks(m){
   m._landmarks = found;
   return found;
 }
-const _origDrawOverworld = drawOverworld;
-G4.drawOverworld = function(){
-  _origDrawOverworld();
-  const ctx = G3.ctx, T = G3.TILE; const p = G4.player; const m = currentMap();
-  let px=p.x, py=p.y;
-  if (p.moving){ const f=p.t/p.dur; px=p.fromX+(p.x-p.fromX)*f; py=p.fromY+(p.y-p.fromY)*f; }
-  const camX = px*T - G3.viewW/2 + T/2, camY = py*T - G3.viewH/2 + T/2;
-  for (const lm of scanLandmarks(m)){
-    const sx = Math.round(lm.x*T-camX), sy = Math.round(lm.y*T-camY);
-    ctx.fillStyle = lm.w==='GYM'?'#d64a3c':(lm.w==='SHOP'?'#3c8ad6':'#3cd68a');
-    ctx.fillRect(sx-T*1.4, sy, T*3*(lm.w.length/3), T*0.9);
-    ctx.fillStyle='#fff'; ctx.font=Math.round(T*0.32)+'px monospace'; ctx.textAlign='center';
-    ctx.fillText(lm.w, sx+T*0.5, sy+T*0.6);
+
+G4.owScene = null; G4.owCamera = null;
+G4.playerMesh = null; G4.rivalMesh = null; G4.legendaryMesh = null;
+G4.dynamicGroup = null; G4.builtMapId = null;
+G4.npcMeshes = {}; G4.trainerMeshes = {}; G4.itemMeshes = {};
+
+function initOverworldScene(){
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(hexNum(currentMap().bg || '#78c25a'));
+  const cam = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
+  const amb = new THREE.AmbientLight(0xffffff, 0.75); scene.add(amb);
+  const sun = new THREE.DirectionalLight(0xffffff, 0.65); sun.position.set(4,8,3); scene.add(sun);
+  const group = new THREE.Group(); scene.add(group);
+  G4.owScene = scene; G4.owCamera = cam; G4.dynamicGroup = group;
+  G4.playerMesh = G3.buildHuman(PAL_PLAYER); scene.add(G4.playerMesh);
+  G4.rivalMesh = G3.buildHuman(PAL_NAYAH); G4.rivalMesh.visible = false; scene.add(G4.rivalMesh);
+  G4.legendaryMesh = null;
+}
+G4.initOverworldScene = initOverworldScene;
+
+function hexNum(cssHex){
+  if (!cssHex) return 0x336633;
+  return parseInt(cssHex.replace('#',''),16);
+}
+
+function buildMapScene(mapId){
+  const m = G.MAPS[mapId];
+  const scene = G4.owScene;
+  scene.background = new THREE.Color(hexNum(m.bg));
+  scene.fog = new THREE.Fog(hexNum(m.bg), 10, 34);
+  /* clear dynamic group */
+  while (G4.dynamicGroup.children.length) G4.dynamicGroup.remove(G4.dynamicGroup.children[0]);
+  G4.npcMeshes = {}; G4.trainerMeshes = {}; G4.itemMeshes = {};
+  const T = G3.TILE;
+  const cols = Math.max(...m.rows.map(r=>r.length));
+  const rows = m.rows.length;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(cols*T, rows*T), new THREE.MeshLambertMaterial({ color: hexNum(m.bg) }));
+  ground.rotation.x = -Math.PI/2;
+  ground.position.set((cols-1)*T/2, 0, (rows-1)*T/2);
+  G4.dynamicGroup.add(ground);
+
+  for (let y=0;y<rows;y++){
+    const row = m.rows[y];
+    for (let x=0;x<row.length;x++){
+      const ch = row[x];
+      const wx = x*T, wz = y*T;
+      let obj = null;
+      if (ch==='#') obj = G3.buildTree();
+      else if (ch==='B') obj = G3.buildBuilding();
+      else if (ch==='~') obj = G3.buildWater();
+      else if (ch==='^') obj = G3.buildLedge();
+      else if (ch==='b') obj = G3.buildBush();
+      else if (ch===',') obj = G3.buildGrassPatch(x,y);
+      else if (ch==='S') obj = G3.buildSign();
+      else if (ch==='d' && m.dark) {
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(T,T), new THREE.MeshBasicMaterial({ color: hasTool('glow')?0x2a2040:0x030204 }));
+        p.rotation.x=-Math.PI/2; p.position.set(wx,0.01,wz); obj = p;
+      }
+      if (obj){ obj.position.x += wx; obj.position.z += wz; G4.dynamicGroup.add(obj); }
+    }
   }
-};
+  for (const lm of scanLandmarks(m)){
+    const color = lm.w==='GYM'?'#d64a3c':(lm.w==='SHOP'?'#3c8ad6':'#2fae6a');
+    const label = G3.makeLabelSprite(lm.w, color);
+    label.position.set(lm.x*T, 1.9, lm.y*T);
+    G4.dynamicGroup.add(label);
+  }
+  if (m.items){
+    for (const it of m.items){
+      if (G.state.flags.collected[it.id]) continue;
+      const orb = G3.buildItemOrb(); orb.position.set(it.x*T, 0.5, it.y*T);
+      G4.dynamicGroup.add(orb); G4.itemMeshes[it.id] = orb;
+    }
+  }
+  if (m.npcs){
+    for (const n of m.npcs){
+      const hu = G3.buildHuman(npcPalette(n.sprite));
+      hu.position.set(n.x*T, 0, n.y*T);
+      G3.faceDir(hu, n.dir);
+      G4.dynamicGroup.add(hu); G4.npcMeshes[n.id] = hu;
+    }
+  }
+  if (m.trainers){
+    for (const t of m.trainers){
+      const hu = G3.buildHuman(trainerPalette(t.id));
+      hu.position.set(t.x*T, 0, t.y*T);
+      G3.faceDir(hu, t.dir);
+      hu.visible = !G.state.defeatedTrainers.includes(t.id);
+      G4.dynamicGroup.add(hu); G4.trainerMeshes[t.id] = hu;
+    }
+  }
+  if (m.legendary){
+    const sp = G3.makeCreatureSprite(m.legendary.species, 1.7);
+    sp.position.set(m.legendary.x*T, 1.0, m.legendary.y*T);
+    sp.visible = !G.state.flags.legendaryCaught;
+    G4.dynamicGroup.add(sp); G4.legendaryMesh = sp;
+  } else G4.legendaryMesh = null;
+
+  if (m.rivalSpot){
+    const battle = G.RIVAL_BATTLES.find(b=>b.where===mapId);
+    G4.rivalMesh.visible = !!(battle && !G.state.defeatedRivals.includes(battle.id));
+    G4.rivalMesh.position.set(m.rivalSpot.x*T, 0, m.rivalSpot.y*T);
+  } else {
+    G4.rivalMesh.visible = false;
+  }
+  G4.builtMapId = mapId;
+}
+G4.buildMapScene = buildMapScene;
+
+function drawOverworld(){
+  if (!G4.owScene) initOverworldScene();
+  if (G4.builtMapId !== G4.player.map) buildMapScene(G4.player.map);
+  /* keep trainer visibility in sync (in case a trainer was just defeated) */
+  for (const id in G4.trainerMeshes) G4.trainerMeshes[id].visible = !G.state.defeatedTrainers.includes(id);
+  if (G4.legendaryMesh) G4.legendaryMesh.visible = !G.state.flags.legendaryCaught;
+
+  const T = G3.TILE, p = G4.player;
+  let px = p.x, py = p.y;
+  if (p.moving){
+    const f = p.t/p.dur;
+    px = p.fromX + (p.x-p.fromX)*f;
+    py = p.fromY + (p.y-p.fromY)*f;
+  }
+  const wx = px*T, wz = py*T;
+  G4.playerMesh.position.set(wx, 0, wz);
+  G3.faceDir(G4.playerMesh, p.dir);
+  G3.animateWalk(G4.playerMesh, performance.now(), p.moving);
+
+  const cam = G4.owCamera;
+  cam.position.set(wx, 5.6, wz + 6.4);
+  cam.lookAt(wx, 0.7, wz);
+
+  G3.owRenderer.render(G4.owScene, cam);
+}
+G4.drawOverworld = drawOverworld;
 /* p5: battle system - damage, catching, xp, evolution, AI */
 'use strict';
 const G5 = window.G;
@@ -2421,8 +2525,8 @@ let battleTab = 'moves';
 G.uiBattleTab = function(t){ battleTab = t; renderBattle(); };
 function renderBattle(){
   const b = G.state.battle; if (!b) return;
-  const canvas = $('battleCanvas');
-  drawBattleScene(canvas);
+  drawBattleScene3D();
+  renderHpPlates(b);
   const box = $('battleMsgBox');
   const actionsWrap = $('battleActions');
   if (b.msgQueue.length>0){
@@ -2469,37 +2573,58 @@ function renderBattle(){
   wireDynamicButtons(actionsWrap);
   paintMonSprites(actionsWrap);
 }
-function drawBattleScene(canvas){
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width = canvas.clientWidth, h = canvas.height = canvas.clientHeight;
-  ctx.imageSmoothingEnabled = false;
-  const grad = ctx.createLinearGradient(0,0,0,h);
-  grad.addColorStop(0,'#bcdff0'); grad.addColorStop(0.6,'#bcdff0'); grad.addColorStop(0.6,'#8fcf6a'); grad.addColorStop(1,'#6bab4a');
-  ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
+/* ---------- 3D battle scene ---------- */
+G.battleScene = null; G.battleCamera = null;
+let battleEnemySprite = null, battlePlayerSprite = null, battleGround = null;
+function initBattleScene(){
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 60);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(3,6,4); scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(9,24), new THREE.MeshLambertMaterial({ color:0x8fcf6a }));
+  ground.rotation.x = -Math.PI/2; ground.position.y = -0.4; scene.add(ground);
+  battleGround = ground;
+  cam.position.set(0, 2.1, 5.4); cam.lookAt(0,1.2,0);
+  G.battleScene = scene; G.battleCamera = cam;
+  G3.resizeRenderers();
+}
+function drawBattleScene3D(){
+  if (!G.battleScene) initBattleScene();
   const b = G.state.battle; if (!b) return;
   const em = b.enemy[b.enemyIdx];
   const pm = G.state.party[b.playerIdx];
-  const esize = Math.min(w,h)*0.34, psize = Math.min(w,h)*0.4;
-  if (em && em.curHp>0) G3.drawCreature(ctx, em.species, w*0.62, h*0.12, esize, false);
-  if (pm && pm.curHp>0) G3.drawCreature(ctx, pm.species, w*0.06, h*0.42, psize, true);
-  drawHpPlate(ctx, w*0.05, h*0.06, w*0.42, em, b.enemyName + (b.enemy.length>1?` (${b.enemyIdx+1}/${b.enemy.length})`:''));
-  drawHpPlate(ctx, w*0.53, h*0.58, w*0.44, pm, (pm?pm.nickname:'')+' (You)');
+  const scene = G.battleScene;
+  if (battleEnemySprite){ scene.remove(battleEnemySprite); battleEnemySprite=null; }
+  if (battlePlayerSprite){ scene.remove(battlePlayerSprite); battlePlayerSprite=null; }
+  const bgHex = ({wild:0xbcdff0, legendary:0x2a1f3d}[b.kind]) || 0xbcdff0;
+  scene.background = new THREE.Color(bgHex);
+  if (em && em.curHp>0){
+    battleEnemySprite = G3.makeCreatureSprite(em.species, 2.1);
+    battleEnemySprite.position.set(1.3, 1.9, -1.6);
+    scene.add(battleEnemySprite);
+  }
+  if (pm && pm.curHp>0){
+    battlePlayerSprite = G3.makeCreatureSprite(pm.species, 2.5);
+    battlePlayerSprite.position.set(-1.5, 1.35, 1.6);
+    scene.add(battlePlayerSprite);
+  }
+  if (G3.battleRenderer) G3.battleRenderer.render(scene, G.battleCamera);
 }
-function drawHpPlate(ctx,x,y,w,mon,label){
-  if (!mon) return;
-  ctx.fillStyle='rgba(255,255,255,0.88)'; ctx.strokeStyle='#333'; ctx.lineWidth=2;
-  const h = 44;
-  roundRect(ctx,x,y,w,h,8); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#222'; ctx.font='bold 13px sans-serif'; ctx.textAlign='left';
-  ctx.fillText(`${label}  Lv.${mon.level}`, x+8, y+16);
-  const pct = Math.max(0,mon.curHp/mon.stats.hp);
-  ctx.fillStyle='#ccc'; ctx.fillRect(x+8,y+22,w-16,8);
-  ctx.fillStyle = pct>0.5?'#4caf50':pct>0.2?'#ffb300':'#e53935';
-  ctx.fillRect(x+8,y+22,(w-16)*pct,8);
-  ctx.strokeStyle='#333'; ctx.strokeRect(x+8,y+22,w-16,8);
-  if (mon.status){ ctx.fillStyle='#b23'; ctx.font='11px sans-serif'; ctx.fillText(mon.status.toUpperCase(), x+8, y+40); }
+function renderHpPlates(b){
+  const em = b.enemy[b.enemyIdx];
+  const pm = G.state.party[b.playerIdx];
+  fillHpPlate($('battleHpEnemy'), em, b.enemyName + (b.enemy.length>1?` (${b.enemyIdx+1}/${b.enemy.length})`:''));
+  fillHpPlate($('battleHpPlayer'), pm, (pm?pm.nickname:'')+' (You)');
 }
-function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function fillHpPlate(el, mon, label){
+  if (!mon){ el.style.display='none'; return; }
+  el.style.display='';
+  const pct = Math.max(0, Math.round(100*mon.curHp/mon.stats.hp));
+  const barColor = pct>50?'#4caf50':pct>20?'#ffb300':'#e53935';
+  el.innerHTML = `<b>${esc(label)}</b> Lv.${mon.level} ${mon.status?`<span class="status st-${mon.status}">${mon.status.toUpperCase()}</span>`:''}
+    <div class="hpBarBg"><div class="hpBarFg" style="width:${pct}%; background:${barColor}"></div></div>
+    <small>${mon.curHp}/${mon.stats.hp} HP</small>`;
+}
 
 /* ---------- touch controls ---------- */
 G.uiWireTouch = function(){
@@ -2591,8 +2716,10 @@ G.loadFromSlotRaw = function(key){
   G.state = G.newGameState();
 
   function boot(){
-    G3.initCanvas();
+    G3.initRenderers();
     G3.initInput();
+    G4.initOverworldScene();
+    G3.resizeRenderers();
     G.uiWireTouch();
 
     $('newGameBtn').onclick = ()=>{ $('continuePicker').style.display='none'; G.uiStartNewGame(); };
@@ -2611,7 +2738,6 @@ G.loadFromSlotRaw = function(key){
     function loop(now){
       const dt = now-last; last = now;
       if (G.state.screen==='overworld') { G4.updateOverworld(dt); }
-      G3.ctx.clearRect(0,0,G3.viewW,G3.viewH);
       if (['overworld','pause','dialogue','shop'].includes(G.state.screen)) G4.drawOverworld();
       G.justPressed = {};
       requestAnimationFrame(loop);
