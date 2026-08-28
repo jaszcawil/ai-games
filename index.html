@@ -368,6 +368,7 @@
     { "slug": "doodleverse", "title": "Doodleverse" },
     { "slug": "ember-fall", "title": "Ember Fall" },
     { "slug": "hollow-wick", "title": "Hollow Wick" },
+    { "slug": "islandmates", "title": "Islandmates" },
     { "slug": "junction-quest", "title": "Junction Quest" },
     { "slug": "petkeep", "title": "Petkeep" },
     { "slug": "sundered-banners", "title": "Sundered Banners" },
@@ -444,10 +445,28 @@
   loadGames();
 
   // ---------- PWA install (service worker) ----------
+  // Skip it entirely on localhost/serve.py: caching would only get in the way while
+  // you're actively adding/editing games, and it isn't needed to test that part
+  // locally anyway. It still registers normally once this is hosted for real, which
+  // is what you want for the actual installable/offline behavior.
+  var isLocalDev = ['localhost', '127.0.0.1', '::1'].indexOf(location.hostname) !== -1;
   if ('serviceWorker' in navigator){
-    window.addEventListener('load', function(){
-      navigator.serviceWorker.register('./sw.js').catch(function(){ /* offline caching just won't be available */ });
-    });
+    if (isLocalDev){
+      // Also clean up any service worker that got registered here from earlier testing,
+      // so a stale cache from before can't keep serving an old game list.
+      navigator.serviceWorker.getRegistrations().then(function(regs){
+        regs.forEach(function(r){ r.unregister(); });
+      }).catch(function(){});
+      if (window.caches && caches.keys){
+        caches.keys().then(function(keys){
+          keys.filter(function(k){ return k.indexOf('aigames-') === 0; }).forEach(function(k){ caches.delete(k); });
+        }).catch(function(){});
+      }
+    } else {
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('./sw.js').catch(function(){ /* offline caching just won't be available */ });
+      });
+    }
   }
 
   // ---------- "Add to Home Screen" prompt ----------

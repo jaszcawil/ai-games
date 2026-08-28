@@ -5,7 +5,7 @@
 //  - Everything else (e.g. Google Fonts used by some games): cached opportunistically as it's fetched.
 //
 // Bump CACHE_VERSION whenever you change any cached file so clients pick up the update.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = 'aigames-' + CACHE_VERSION;
 
 const SHELL_FILES = [
@@ -57,12 +57,15 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const isNavigation = req.mode === 'navigate';
+  // games.json drives the homepage's game list -- always try the network first so a
+  // newly added game folder shows up on the next load instead of an old cached list.
+  const isGameList = new URL(req.url).pathname.endsWith('/games.json');
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
 
-    if (isNavigation) {
-      // Network-first for page navigations, so updates are picked up when online,
+    if (isNavigation || isGameList) {
+      // Network-first, so updates are picked up when online,
       // falling back to cache (and finally the shell) when offline.
       try {
         const fresh = await fetch(req);
@@ -70,7 +73,7 @@ self.addEventListener('fetch', (event) => {
         return fresh;
       } catch (e) {
         const cached = await cache.match(req);
-        return cached || cache.match('./index.html');
+        return cached || (isNavigation ? cache.match('./index.html') : undefined);
       }
     }
 

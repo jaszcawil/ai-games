@@ -11,34 +11,66 @@ Mobile App/
 ├── index.html              <- homepage (game list, theme toggle, PWA bootstrap)
 ├── manifest.webmanifest    <- installable-app metadata (name, icons, colors)
 ├── sw.js                   <- service worker (offline caching)
-├── games.json              <- the list the homepage reads (slug + title per game)
-├── build-games.mjs         <- regenerates games.json by scanning games/
-├── inject_home_button.py   <- adds the floating Home button to a game's index.html
+├── serve.py                <- run this locally: auto-discovers games, no build step
+├── games.json              <- static fallback list, used when serve.py isn't running
+├── build-games.mjs         <- regenerates games.json by scanning games/ (for deploys)
+├── aigames_common.py       <- shared code for the Home-button snippet (used by both
+│                              serve.py and inject_home_button.py)
+├── inject_home_button.py   <- bakes the floating Home button into every game's
+│                              index.html on disk (for deploys)
 ├── generate_icons.py       <- (re)generates the placeholder app icons
 ├── icons/                  <- app icons (placeholders — see "Branding" below)
 └── games/
-    └── <slug>/index.html   <- one folder per game, unchanged except for the added Home button
+    └── <slug>/index.html   <- one folder per game, unchanged on disk
 ```
 
 ## How the homepage works
 
-- `index.html` reads `games.json` and renders one card per game. The title shown is the
-  folder name with dashes turned into spaces and each word capitalized (e.g.
+- `index.html` fetches `games.json` and renders one card per game. The title shown is
+  the folder name with dashes turned into spaces and each word capitalized (e.g.
   `wonderblocks-adventures` → "Wonderblocks Adventures"), exactly as requested.
 - Tapping a card opens `games/<slug>/index.html` directly (not in an iframe), so each
   game gets the full screen and full performance.
 - The grid is a responsive CSS grid — it reflows from 2 columns on a phone up to 5+ on a
   wide desktop window, so the same file works on any screen size.
 
-## Adding or removing a game
+## Adding a game — fully automatic
+
+Run the app with `python3 serve.py` (see "Testing it yourself locally" below) and
+adding a game is just:
 
 1. Drop a new folder into `games/` (folder name = title, dashes = spaces), containing
    its `index.html`.
-2. Run `node build-games.mjs` to regenerate `games.json` automatically. (You can also
-   hand-edit `games.json` if you'd rather not use Node.)
-3. Run `python3 inject_home_button.py .` from this folder to add the floating Home
-   button to any new game's `index.html`. It's safe to re-run any time — it skips files
-   that already have the button.
+2. Refresh the homepage in your browser.
+
+That's it — nothing to run, nothing to edit. While `serve.py` is running:
+
+- It rescans the `games/` folder and rewrites `games.json` on disk every time the
+  homepage asks for the list — so the file itself stays up to date, not just what's
+  shown in the browser.
+- The first time a game is opened and it doesn't have the floating Home button yet,
+  `serve.py` adds it and saves that change back into the game's own `index.html` — a
+  real, permanent edit, not something faked just for that one page load.
+- It also does one full pass over everything the moment it starts, so `games.json` and
+  every game's Home button are current immediately, even before you've opened them in
+  a browser.
+
+**If you're not using `serve.py`** — e.g. testing with `python3 -m http.server`, or
+this has been deployed somewhere static — there's no live server to do that discovery,
+so you need one manual step after adding a game:
+
+```
+node build-games.mjs           # regenerates games.json
+python3 inject_home_button.py .   # bakes the Home button into the new game's index.html
+```
+
+The same two commands are also what you'd run once, right before a static deploy or a
+future Capacitor build, so the bundled files are self-contained and don't depend on
+`serve.py` being there to help at runtime.
+
+Removing a game is the mirror image: delete its folder from `games/`, refresh (with
+`serve.py` running it just disappears from the list); otherwise re-run
+`node build-games.mjs`.
 
 ## Going home from inside a game
 
@@ -143,17 +175,50 @@ to regenerate a fresh placeholder set in the same style.
 From this folder:
 
 ```
-python3 -m http.server 8080
+python3 serve.py
 ```
 
-then open `http://localhost:8080/index.html` in a browser. (Opening `index.html` by
-double-clicking it won't fully work — browsers block local-file `fetch()` calls needed
-for `games.json` and service workers need a real http/https origin.)
+then open `http://localhost:8080/index.html` in a browser. This is the version that
+auto-discovers new games (see "Adding a game" above). If you'd rather use a plain
+static server (e.g. `python3 -m http.server 8080`), that also works, just without the
+live auto-discovery — regenerate `games.json` / re-inject the Home button by hand after
+adding a game, as described above.
+
+Either way, opening `index.html` by double-clicking it won't fully work — browsers
+block local-file `fetch()` calls needed for `games.json`, and service workers need a
+real http/https origin.
+
+## Troubleshooting: "I added a game but it's not showing up"
+
+- **Make sure the new folder is directly inside `games/`**, with its own `index.html`
+  right inside it — `games/my-new-game/index.html`, not nested another level deeper,
+  and not sitting next to `games/` instead of inside it.
+- **Make sure `serve.py` is actually running** in a terminal, and that you're opening
+  the exact `http://localhost:.../index.html` address it printed. If you opened the
+  page before starting `serve.py`, or you're using a different terminal/tab, refresh
+  the correct one.
+- **Do a hard refresh** (Ctrl+Shift+R on Windows/Linux, Cmd+Shift+R on Mac) rather than
+  a normal refresh, just in case your browser cached something from before.
+- **If you tested this app before this update**, your browser may have installed a
+  "service worker" from that earlier version, which is a background helper that can
+  keep showing you an old cached copy of the page. This version automatically detects
+  when it's running on `localhost` and removes that old helper and its cache the next
+  time you load the page — so one refresh should clear it for good. If it somehow
+  still looks stale after that: open Chrome/Edge DevTools (F12) → **Application** tab →
+  **Service Workers**, click **Unregister** on anything listed for `localhost`, then
+  refresh once more.
+- Still stuck? Open `http://localhost:.../games.json` directly in the browser — it
+  should list your new game. If it doesn't, the folder isn't where the server expects
+  it (see the first bullet above).
 
 ## What was verified before delivery
 
-An automated check (Playwright/Chromium) confirmed: all 9 games appear on the homepage
+An automated check (Playwright/Chromium) confirmed: all games appear on the homepage
 with the correct titles; every game's Home button is present, positioned correctly, and
 returns to the homepage; the dark/light toggle switches themes and the choice survives
-a page reload; `localStorage` persists across reloads; and the homepage has no
-horizontal overflow at phone, tablet, and desktop widths.
+a page reload; `localStorage` persists across reloads; the homepage has no horizontal
+overflow at phone, tablet, and desktop widths; the install banner/button behave
+correctly per platform and install state; and — for this update — dropping a brand new
+folder into `games/` and refreshing while `serve.py` is running makes it appear on the
+homepage and play correctly, with the Home button already working, with zero manual
+steps.
