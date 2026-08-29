@@ -362,19 +362,27 @@
   }
 
   // ---------- Game list ----------
-  // Fallback used if games.json can't be fetched (e.g. opened as a local file:// page).
-  var FALLBACK_GAMES = [
+  // This array is the ONLY source for the homepage's game list -- no fetch(), no
+  // server required. It's kept in sync automatically by watch_and_update.py (or
+  // serve.py), which rewrites the block between the two markers below every time a
+  // game folder is added or removed. You can also edit it by hand if you're not
+  // running either of those. Either way, this is what actually renders -- it works
+  // the same whether you open this file with a double-click or through a server.
+  // ===== AUTO-GENERATED GAME LIST START (do not edit by hand -- edit the games/ folders instead) =====
+  var GAMES = [
     { "slug": "claw-catch", "title": "Claw Catch" },
     { "slug": "doodleverse", "title": "Doodleverse" },
     { "slug": "ember-fall", "title": "Ember Fall" },
     { "slug": "hollow-wick", "title": "Hollow Wick" },
     { "slug": "islandmates", "title": "Islandmates" },
     { "slug": "junction-quest", "title": "Junction Quest" },
+    { "slug": "math-adventures", "title": "Math Adventures" },
     { "slug": "petkeep", "title": "Petkeep" },
     { "slug": "sundered-banners", "title": "Sundered Banners" },
     { "slug": "wonderblocks-adventures", "title": "Wonderblocks Adventures" },
     { "slug": "wyldkin", "title": "Wyldkin" }
   ];
+  // ===== AUTO-GENERATED GAME LIST END =====
 
   var GRADIENTS = [
     "linear-gradient(135deg,#6c4fe0,#ff5da2)",
@@ -436,13 +444,7 @@
     });
   }
 
-  function loadGames(){
-    fetch('games.json', { cache: 'no-cache' })
-      .then(function(res){ if(!res.ok) throw new Error('bad response'); return res.json(); })
-      .then(function(list){ renderGames(Array.isArray(list) && list.length ? list : FALLBACK_GAMES); })
-      .catch(function(){ renderGames(FALLBACK_GAMES); });
-  }
-  loadGames();
+  renderGames(GAMES);
 
   // ---------- PWA install (service worker) ----------
   // Skip it entirely on localhost/serve.py: caching would only get in the way while
