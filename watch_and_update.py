@@ -36,17 +36,33 @@ def main():
     print("Add or remove a game folder any time -- this will pick it up within a couple seconds.")
     print("Leave this window open. Press Ctrl+C to stop.\n")
 
-    result = sync_all(ROOT)
+    try:
+        result = sync_all(ROOT)
+    except Exception as exc:
+        print(f"[sync] First pass hit an error ({exc}) -- will keep retrying every {POLL_SECONDS}s.")
+        result = {"games": [], "games_json_changed": False, "buttons_added": [], "index_html_changed": False}
+
     print(f"[sync] {len(result['games'])} game(s): " + ", ".join(g["slug"] for g in result["games"]))
     if result["buttons_added"]:
-        print("[sync] Added the Home button to: " + ", ".join(result["buttons_added"]))
+        print("[sync] Added/fixed the Home button on: " + ", ".join(result["buttons_added"]))
 
     last_slugs = tuple(g["slug"] for g in result["games"])
 
     try:
         while True:
             time.sleep(POLL_SECONDS)
-            result = sync_all(ROOT)
+            try:
+                result = sync_all(ROOT)
+            except KeyboardInterrupt:
+                raise
+            except Exception as exc:
+                # A file can be mid-write/locked (e.g. you just dropped in a new
+                # build) or have odd encoding for a moment -- don't let that kill
+                # the whole watcher. Skip this pass, keep watching, try again in
+                # POLL_SECONDS.
+                print(f"[sync] Skipped one pass after an error ({exc}). Still watching...")
+                continue
+
             slugs = tuple(g["slug"] for g in result["games"])
             changed = (
                 slugs != last_slugs
@@ -62,7 +78,7 @@ def main():
                 if removed:
                     print("[sync] Game(s) removed: " + ", ".join(removed) + " -- index.html updated.")
                 if result["buttons_added"]:
-                    print("[sync] Added the Home button to: " + ", ".join(result["buttons_added"]))
+                    print("[sync] Added/fixed the Home button on: " + ", ".join(result["buttons_added"]))
                 if not added and not removed and not result["buttons_added"]:
                     print("[sync] index.html refreshed.")
                 last_slugs = slugs

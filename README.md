@@ -34,7 +34,12 @@ Mobile App/
 ├── generate_icons.py        <- (re)generates the placeholder app icons
 ├── icons/                   <- app icons (placeholders — see "Branding" below)
 └── games/
-    └── <slug>/index.html    <- one folder per game, unchanged except the added Home button
+    ├── <slug>/index.html            <- a normal game: one folder, one index.html
+    └── <slug>/<version name>/index.html   <- a VERSIONED game: two or more
+                                          subfolders, each with its own index.html
+                                          (e.g. games/math-adventures/version 1/,
+                                          .../version 2/) -- see "Games with more
+                                          than one version" below
 ```
 
 ## How the homepage works
@@ -100,12 +105,44 @@ touch `index.html`'s embedded list, so the homepage won't update from that alone
 This script is really aimed at the Capacitor path below. If Python isn't available at
 all, ask me to update `index.html` directly instead.
 
+## Games with more than one version
+
+Some games (like Math Adventures) have more than one version you want to keep around
+side by side. To set that up, don't put `index.html` directly in the game's folder —
+instead, put each version in its own subfolder:
+
+```
+games/
+└── math-adventures/
+    ├── version 1/index.html
+    └── version 2/index.html
+```
+
+The subfolder name becomes the version's label on the homepage (spaces, dashes, and
+underscores all work — `version 1`, `version-1`, and `final_build` all get capitalized
+into a readable label). You can name them anything: `version 1` / `version 2`, `classic`
+/ `remastered`, `2024` / `2025` — whatever makes sense.
+
+Once the auto-updater (or `serve.py`) picks this up, the homepage shows Math Adventures
+as one card, same as any other game — but tapping it opens a small "Choose a version"
+sheet listing every version subfolder, and tapping one of those plays that version.
+A game with only one subfolder (or no subfolders, just a plain `index.html`) skips the
+sheet entirely and plays immediately, like always.
+
+This works exactly the same way as adding a normal game — no server, drop the folders
+in, let the auto-updater notice, refresh the page.
+
 ## Going home from inside a game
 
 Every game has a small round Home button fixed to the top-left corner (it respects the
-iPhone notch/status bar via `safe-area-inset`). Tapping it sends the browser back to
-`../../index.html`. It sits above everything else in the game (very high z-index) so it
-stays clickable regardless of what the game is drawing underneath.
+iPhone notch/status bar via `safe-area-inset`). Tapping it sends the browser back to the
+real homepage — `../../index.html` for a normal game, or `../../../index.html` for a
+game inside a version subfolder (one extra folder deep). The auto-updater figures out
+which one a file needs automatically; you never have to think about it, even if a
+button was already added with the wrong one (e.g. because a game was moved into a
+version subfolder after the fact) — the next sync fixes it in place. The button sits
+above everything else in the game (very high z-index) so it stays clickable regardless
+of what the game is drawing underneath.
 
 ## Dark / light mode
 
@@ -201,6 +238,27 @@ python3 serve.py
 then open `http://localhost:8080/index.html`. This is entirely optional for everyday
 use — it's only relevant if you specifically want to test the install banner's native
 prompt or offline caching before hosting this somewhere real.
+
+## Heads up: Math Adventures needs its own local server to run
+
+Math Adventures is a 3D game (built with Three.js) that loads its models, textures,
+and save files as separate asset files at runtime. Browsers block that kind of asset
+loading for a page opened directly from disk (`file://`) — this is a browser security
+rule, unrelated to anything in this app — so unlike every other game here, Math
+Adventures **will not load** if you just double-click into it from the homepage
+without a server running.
+
+Each Math Adventures version folder ships its own `server.js` and `run.bat` for this
+reason (see that folder's own `README.txt`). To actually play either version:
+
+1. Make sure Node.js is installed (https://nodejs.org, LTS version).
+2. Double-click `run.bat` inside that version's folder (e.g.
+   `games/math-adventures/version 1/run.bat`) — it opens a small black window and
+   prints a `http://localhost:...` address.
+3. Open that address in your browser (it usually opens automatically).
+
+This is specific to Math Adventures' 3D assets — the homepage itself, and every other
+game, still work with a plain double-click, no server, exactly as before.
 
 ## Troubleshooting: "I added a game but it's not showing up"
 

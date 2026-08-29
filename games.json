@@ -1,46 +1,116 @@
 [
   {
     "slug": "claw-catch",
-    "title": "Claw Catch"
+    "title": "Claw Catch",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "doodleverse",
-    "title": "Doodleverse"
+    "title": "Doodleverse",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "ember-fall",
-    "title": "Ember Fall"
+    "title": "Ember Fall",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "hollow-wick",
-    "title": "Hollow Wick"
+    "title": "Hollow Wick",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "islandmates",
-    "title": "Islandmates"
+    "title": "Islandmates",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "junction-quest",
-    "title": "Junction Quest"
+    "title": "Junction Quest",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "math-adventures",
-    "title": "Math Adventures"
+    "title": "Math Adventures",
+    "versions": [
+      {
+        "path": "version 1",
+        "label": "Version 1"
+      },
+      {
+        "path": "version 2",
+        "label": "Version 2"
+      }
+    ]
   },
   {
     "slug": "petkeep",
-    "title": "Petkeep"
+    "title": "Petkeep",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "sundered-banners",
-    "title": "Sundered Banners"
+    "title": "Sundered Banners",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "wonderblocks-adventures",
-    "title": "Wonderblocks Adventures"
+    "title": "Wonderblocks Adventures",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   },
   {
     "slug": "wyldkin",
-    "title": "Wyldkin"
+    "title": "Wyldkin",
+    "versions": [
+      {
+        "path": "",
+        "label": null
+      }
+    ]
   }
 ]

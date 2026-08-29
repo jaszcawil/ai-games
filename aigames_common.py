@@ -1,7 +1,15 @@
 """Shared helpers used by inject_home_button.py, serve.py, and watch_and_update.py.
 Keeping this in one place means the button injected by the batch script, the dev
 server, and the background watcher are always exactly the same snippet, and the
-game list is always computed the same way everywhere."""
+game list is always computed the same way everywhere.
+
+Games come in two shapes:
+  - games/<slug>/index.html                      -- a normal, single-version game
+  - games/<slug>/<version name>/index.html        -- a game with two or more versions
+    (e.g. games/math-adventures/version 1/index.html, .../version 2/index.html)
+A folder counts as a "versioned" game the moment it has NO index.html directly
+inside it, but one or more subfolders that each have their own index.html.
+"""
 import json
 import os
 import re
@@ -11,8 +19,13 @@ MARKER = "aigames-home-btn"
 GAMES_LIST_START = "// ===== AUTO-GENERATED GAME LIST START (do not edit by hand -- edit the games/ folders instead) ====="
 GAMES_LIST_END = "// ===== AUTO-GENERATED GAME LIST END ====="
 
-SNIPPET = """
-<!-- === AI Games: floating home button (injected) === -->
+HOME_BLOCK_START = "<!-- === AI Games: floating home button (injected) === -->"
+HOME_BLOCK_END = "<!-- === /AI Games home button === -->"
+
+# __HOME_HREF__ is substituted per-file, since a game nested one folder deeper
+# (a version subfolder) needs one extra "../" to get back to the real index.html.
+SNIPPET_TEMPLATE = """
+""" + HOME_BLOCK_START + """
 <style>
   #aigames-home-wrap{
     position:fixed !important;
@@ -56,13 +69,15 @@ SNIPPET = """
     btn.addEventListener('click', function(e){
       e.preventDefault();
       e.stopPropagation();
-      window.location.href = '../../index.html';
+      window.location.href = '__HOME_HREF__';
     }, {passive:false});
   }catch(err){}
 })();
 </script>
-<!-- === /AI Games home button === -->
+""" + HOME_BLOCK_END + """
 """
+
+DEFAULT_HOME_HREF = "../../index.html"
 
 
 def slug_to_title(slug: str) -> str:
@@ -70,26 +85,92 @@ def slug_to_title(slug: str) -> str:
     return " ".join(w.capitalize() for w in slug.split("-") if w)
 
 
-def inject_home_button(html_text: str) -> str:
+def folder_label(name: str) -> str:
+    """version 1 -> Version 1, version-2 -> Version 2, final_build -> Final Build.
+    Used for version-subfolder names, which people may separate with spaces,
+    dashes, or underscores."""
+    parts = re.split(r"[-_\s]+", name.strip())
+    return " ".join(p.capitalize() for p in parts if p)
+
+
+def natural_key(name: str):
+    """Sorts 'version 2' before 'version 10' (plain alphabetical sort would not)."""
+    return [int(part) if part.isdigit() else part.lower()
+            for part in re.split(r"(\d+)", name)]
+
+
+def home_href_for_depth(depth: int) -> str:
+    """depth = number of folders between the project root and the file's own
+    folder. games/<slug>/index.html -> depth 2. games/<slug>/<version>/index.html
+    -> depth 3."""
+    return "../" * depth + "index.html"
+
+
+def home_button_snippet(home_href: str) -> str:
+    return SNIPPET_TEMPLATE.replace("__HOME_HREF__", home_href)
+
+
+def inject_home_button(html_text: str, home_href: str = DEFAULT_HOME_HREF) -> str:
     """Returns html_text with the home-button snippet inserted, unless it's already there."""
     if MARKER in html_text:
         return html_text
+    snippet = home_button_snippet(home_href)
     m = re.search(r"</body\s*>", html_text, flags=re.IGNORECASE)
     if m:
         idx = m.start()
-        return html_text[:idx] + SNIPPET + html_text[idx:]
-    return html_text.rstrip("\n") + "\n" + SNIPPET + "\n"
+        return html_text[:idx] + snippet + html_text[idx:]
+    return html_text.rstrip("\n") + "\n" + snippet + "\n"
+
+
+def _current_home_href(block_text: str):
+    m = re.search(r"window\.location\.href\s*=\s*'([^']*)'", block_text)
+    return m.group(1) if m else None
+
+
+_HOME_BLOCK_RE = re.compile(
+    re.escape(HOME_BLOCK_START) + r".*?" + re.escape(HOME_BLOCK_END),
+    flags=re.DOTALL,
+)
 
 
 def scan_games(games_dir: str):
-    """Returns [{"slug": ..., "title": ...}, ...] for every games_dir/<slug>/index.html,
-    sorted by slug. This is the one place "what counts as a game" is decided."""
+    """Returns a list of games found under games_dir, sorted by slug. Each game is
+    {"slug": ..., "title": ..., "versions": [...]}.
+
+    "versions" is always a list of {"path": ..., "label": ...}:
+      - a normal game (games/<slug>/index.html) gets exactly one entry with
+        path "" and label None -- nothing extra to pick, tap and play.
+      - a versioned game (games/<slug>/<version>/index.html for two or more
+        subfolders) gets one entry per version subfolder, sorted naturally
+        (so "version 2" comes before "version 10").
+
+    This is the one place "what counts as a game" is decided."""
     games = []
-    if os.path.isdir(games_dir):
-        for name in sorted(os.listdir(games_dir)):
-            folder = os.path.join(games_dir, name)
-            if os.path.isdir(folder) and os.path.isfile(os.path.join(folder, "index.html")):
-                games.append({"slug": name, "title": slug_to_title(name)})
+    if not os.path.isdir(games_dir):
+        return games
+    for name in sorted(os.listdir(games_dir), key=natural_key):
+        folder = os.path.join(games_dir, name)
+        if not os.path.isdir(folder):
+            continue
+
+        if os.path.isfile(os.path.join(folder, "index.html")):
+            games.append({
+                "slug": name,
+                "title": slug_to_title(name),
+                "versions": [{"path": "", "label": None}],
+            })
+            continue
+
+        versions = []
+        for sub in sorted(os.listdir(folder), key=natural_key):
+            subfolder = os.path.join(folder, sub)
+            if os.path.isdir(subfolder) and os.path.isfile(os.path.join(subfolder, "index.html")):
+                versions.append({"path": sub, "label": folder_label(sub)})
+        if versions:
+            games.append({"slug": name, "title": slug_to_title(name), "versions": versions})
+        # else: no index.html directly and no version subfolders either --
+        # not a game folder, skip it silently (could be a work-in-progress folder).
+
     return games
 
 
@@ -107,18 +188,36 @@ def write_games_json(games_json_path: str, games) -> bool:
     return True
 
 
-def ensure_home_button(game_index_html_path: str) -> bool:
-    """Injects the Home button into one game's index.html and saves it, if missing.
-    Returns True if the file was changed."""
+def ensure_home_button(game_index_html_path: str, depth: int = 2) -> bool:
+    """Makes sure one game's index.html has the floating Home button, pointing at
+    the right relative path for how deep this file sits (2 for a normal game, 3
+    for a version subfolder). If the button is already there but was injected
+    with the wrong depth (e.g. a game that got moved into a version subfolder
+    after the button was added), this fixes it in place. Returns True if the
+    file was changed."""
     try:
         with open(game_index_html_path, "r", encoding="utf-8") as f:
             text = f.read()
     except OSError:
         return False
-    if MARKER in text:
+
+    expected_href = home_href_for_depth(depth)
+
+    if MARKER not in text:
+        with open(game_index_html_path, "w", encoding="utf-8") as f:
+            f.write(inject_home_button(text, expected_href))
+        return True
+
+    m = _HOME_BLOCK_RE.search(text)
+    if not m:
+        return False  # marker string present in some unexpected form -- leave it alone
+    if _current_home_href(m.group(0)) == expected_href:
         return False
+
+    new_block = home_button_snippet(expected_href).strip("\n")
+    new_text = text[:m.start()] + new_block + text[m.end():]
     with open(game_index_html_path, "w", encoding="utf-8") as f:
-        f.write(inject_home_button(text))
+        f.write(new_text)
     return True
 
 
@@ -126,7 +225,10 @@ def games_js_array(games) -> str:
     """Renders the games list as the JS array literal embedded in index.html."""
     lines = ["  var GAMES = ["]
     for g in games:
-        lines.append('    { "slug": %s, "title": %s },' % (json.dumps(g["slug"]), json.dumps(g["title"])))
+        lines.append(
+            '    { "slug": %s, "title": %s, "versions": %s },'
+            % (json.dumps(g["slug"]), json.dumps(g["title"]), json.dumps(g["versions"]))
+        )
     if games:
         lines[-1] = lines[-1].rstrip(",")  # no trailing comma on the last entry
     lines.append("  ];")
@@ -160,17 +262,23 @@ def update_index_html_games_list(index_html_path: str, games) -> bool:
 
 
 def sync_all(root: str) -> dict:
-    """One full pass: refresh games.json, add the Home button to every game missing
-    it, and rewrite index.html's embedded game list. Safe to call any time; returns
-    what changed."""
+    """One full pass: refresh games.json, add/fix the Home button on every game
+    and every version of every game, and rewrite index.html's embedded game list.
+    Safe to call any time; returns what changed."""
     games_dir = os.path.join(root, "games")
     games = scan_games(games_dir)
 
     json_changed = write_games_json(os.path.join(root, "games.json"), games)
-    buttons_added = [
-        g["slug"] for g in games
-        if ensure_home_button(os.path.join(games_dir, g["slug"], "index.html"))
-    ]
+
+    buttons_added = []
+    for g in games:
+        for v in g["versions"]:
+            folder = os.path.join(games_dir, g["slug"], v["path"]) if v["path"] else os.path.join(games_dir, g["slug"])
+            depth = 3 if v["path"] else 2
+            index_path = os.path.join(folder, "index.html")
+            if ensure_home_button(index_path, depth):
+                buttons_added.append(g["slug"] + "/" + v["path"] if v["path"] else g["slug"])
+
     html_changed = update_index_html_games_list(os.path.join(root, "index.html"), games)
 
     return {

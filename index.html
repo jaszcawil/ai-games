@@ -236,6 +236,37 @@
     background:var(--card); color:var(--text); font-weight:600; font-size:0.9rem; cursor:pointer;
   }
 
+  /* A card is an <a> for a single-version game, or a <button> when the game
+     has multiple versions (so it can open the version picker instead of
+     navigating) -- reset button chrome so both look identical. */
+  button.card{
+    appearance:none; border:none; background:var(--card);
+    font:inherit; text-align:left; width:100%;
+  }
+
+  /* ---------- Version picker (games with more than one version) ---------- */
+  #version-modal{
+    position:fixed; inset:0; z-index:600;
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    background:rgba(10,8,20,0.45);
+    padding:0;
+  }
+  #version-modal.visible{ display:flex; }
+  @media (min-width:640px){
+    #version-modal{ align-items:center; }
+  }
+  .version-list{ display:flex; flex-direction:column; gap:10px; margin:4px 0 18px; }
+  .version-option{
+    display:block; text-decoration:none;
+    padding:13px 16px; border-radius:12px;
+    border:1px solid var(--card-border);
+    background:var(--card); color:var(--text);
+    font-weight:600; font-size:0.92rem;
+  }
+  .version-option:active{ transform:scale(0.98); }
+
   @media (prefers-reduced-motion: reduce){
     .card{ transition:none; }
     #install-banner{ transition:none; }
@@ -325,6 +356,16 @@
   </div>
 </div>
 
+<!-- Version picker: shown when a game has more than one version -->
+<div id="version-modal" aria-hidden="true">
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-label="Choose a version to play">
+    <h3 id="version-modal-title">Choose a version</h3>
+    <p>Which version would you like to play?</p>
+    <div class="version-list" id="version-modal-list"></div>
+    <button class="modal-close" id="version-modal-close" type="button">Cancel</button>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
@@ -370,17 +411,17 @@
   // the same whether you open this file with a double-click or through a server.
   // ===== AUTO-GENERATED GAME LIST START (do not edit by hand -- edit the games/ folders instead) =====
   var GAMES = [
-    { "slug": "claw-catch", "title": "Claw Catch" },
-    { "slug": "doodleverse", "title": "Doodleverse" },
-    { "slug": "ember-fall", "title": "Ember Fall" },
-    { "slug": "hollow-wick", "title": "Hollow Wick" },
-    { "slug": "islandmates", "title": "Islandmates" },
-    { "slug": "junction-quest", "title": "Junction Quest" },
-    { "slug": "math-adventures", "title": "Math Adventures" },
-    { "slug": "petkeep", "title": "Petkeep" },
-    { "slug": "sundered-banners", "title": "Sundered Banners" },
-    { "slug": "wonderblocks-adventures", "title": "Wonderblocks Adventures" },
-    { "slug": "wyldkin", "title": "Wyldkin" }
+    { "slug": "claw-catch", "title": "Claw Catch", "versions": [{"path": "", "label": null}] },
+    { "slug": "doodleverse", "title": "Doodleverse", "versions": [{"path": "", "label": null}] },
+    { "slug": "ember-fall", "title": "Ember Fall", "versions": [{"path": "", "label": null}] },
+    { "slug": "hollow-wick", "title": "Hollow Wick", "versions": [{"path": "", "label": null}] },
+    { "slug": "islandmates", "title": "Islandmates", "versions": [{"path": "", "label": null}] },
+    { "slug": "junction-quest", "title": "Junction Quest", "versions": [{"path": "", "label": null}] },
+    { "slug": "math-adventures", "title": "Math Adventures", "versions": [{"path": "version 1", "label": "Version 1"}, {"path": "version 2", "label": "Version 2"}] },
+    { "slug": "petkeep", "title": "Petkeep", "versions": [{"path": "", "label": null}] },
+    { "slug": "sundered-banners", "title": "Sundered Banners", "versions": [{"path": "", "label": null}] },
+    { "slug": "wonderblocks-adventures", "title": "Wonderblocks Adventures", "versions": [{"path": "", "label": null}] },
+    { "slug": "wyldkin", "title": "Wyldkin", "versions": [{"path": "", "label": null}] }
   ];
   // ===== AUTO-GENERATED GAME LIST END =====
 
@@ -403,6 +444,16 @@
     return (words[0][0] + words[1][0]).toUpperCase();
   }
 
+  function gameHref(game, version){
+    var parts = ['games', game.slug];
+    if (version && version.path) parts.push(version.path);
+    return parts.map(encodeURIComponent).join('/') + '/index.html';
+  }
+
+  function hasVersionChoice(game){
+    return !!(game.versions && game.versions.length > 1);
+  }
+
   function renderGames(games){
     var grid = document.getElementById('game-grid');
     var empty = document.getElementById('empty-state');
@@ -418,11 +469,17 @@
     countLine.textContent = games.length + (games.length === 1 ? ' game available' : ' games available');
 
     games.forEach(function(game, i){
-      var a = document.createElement('a');
+      var multi = hasVersionChoice(game);
+      var a = document.createElement(multi ? 'button' : 'a');
       a.className = 'card';
-      a.href = 'games/' + encodeURIComponent(game.slug) + '/index.html';
+      if (multi){
+        a.type = 'button';
+        a.addEventListener('click', function(){ openVersionModal(game); });
+      } else {
+        a.href = gameHref(game, game.versions && game.versions[0]);
+      }
       a.setAttribute('role', 'listitem');
-      a.setAttribute('aria-label', 'Play ' + game.title);
+      a.setAttribute('aria-label', multi ? ('Choose a version of ' + game.title) : ('Play ' + game.title));
 
       var art = document.createElement('div');
       art.className = 'card-art';
@@ -434,13 +491,45 @@
       var h3 = document.createElement('h3');
       h3.textContent = game.title;
       var p = document.createElement('p');
-      p.textContent = 'Tap to play';
+      p.textContent = multi ? (game.versions.length + ' versions available') : 'Tap to play';
       body.appendChild(h3);
       body.appendChild(p);
 
       a.appendChild(art);
       a.appendChild(body);
       grid.appendChild(a);
+    });
+  }
+
+  // ---------- Version picker (for games with more than one version) ----------
+  var versionModal = document.getElementById('version-modal');
+  var versionModalTitle = document.getElementById('version-modal-title');
+  var versionModalList = document.getElementById('version-modal-list');
+  var versionModalClose = document.getElementById('version-modal-close');
+
+  function openVersionModal(game){
+    versionModalTitle.textContent = game.title;
+    versionModalList.innerHTML = '';
+    game.versions.forEach(function(version){
+      var btn = document.createElement('a');
+      btn.className = 'version-option';
+      btn.href = gameHref(game, version);
+      btn.textContent = version.label || 'Play';
+      versionModalList.appendChild(btn);
+    });
+    versionModal.classList.add('visible');
+    versionModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeVersionModal(){
+    versionModal.classList.remove('visible');
+    versionModal.setAttribute('aria-hidden', 'true');
+  }
+
+  if (versionModalClose) versionModalClose.addEventListener('click', closeVersionModal);
+  if (versionModal){
+    versionModal.addEventListener('click', function(e){
+      if (e.target === versionModal) closeVersionModal();
     });
   }
 

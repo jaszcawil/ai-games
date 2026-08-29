@@ -41,10 +41,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         if path_only.startswith("/games/") and path_only.endswith("/index.html"):
-            slug = path_only[len("/games/"):-len("/index.html")]
-            file_path = os.path.join(GAMES_DIR, slug, "index.html")
-            if "/" not in slug and os.path.isfile(file_path):
-                ensure_home_button(file_path)
+            rel = path_only[len("/games/"):-len("/index.html")].strip("/")
+            parts = rel.split("/") if rel else []
+            file_path = os.path.join(GAMES_DIR, *parts, "index.html") if parts else None
+            # depth 2 for games/<slug>/index.html, depth 3 for a version subfolder
+            if file_path and len(parts) in (1, 2) and os.path.isfile(file_path):
+                ensure_home_button(file_path, depth=len(parts) + 1)
                 super().do_GET()
                 return
 
