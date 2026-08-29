@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7ec8e3">
+<title>Math Adventures with Wonderblocks and Noodle and Pals</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- ===================== LOADING SCREEN ===================== -->
+  <div id="loadingScreen" class="overlay-screen">
+    <div class="loading-box">
+      <div class="loading-title">Math Adventures</div>
+      <div class="loading-sub">with Wonderblocks and Noodle and Pals</div>
+      <div class="loading-bar-track"><div id="loadingBar" class="loading-bar-fill"></div></div>
+      <div id="loadingText" class="loading-text">Waking up the heroes&hellip;</div>
+    </div>
+  </div>
+
+  <!-- ===================== TITLE SCREEN ===================== -->
+  <div id="titleScreen" class="overlay-screen hidden">
+    <div class="title-card">
+      <div class="game-title">Math Adventures</div>
+      <div class="game-subtitle">with Wonderblocks &amp; Noodle and Pals</div>
+      <div class="hero-strip" id="titleHeroStrip"></div>
+      <div class="title-buttons">
+        <button class="big-btn primary" id="btnNewGame">New Adventure</button>
+        <button class="big-btn" id="btnContinue">Continue</button>
+        <button class="big-btn" id="btnLoadFile">Load From File</button>
+      </div>
+      <div class="title-footer">Grade 4 Math &bull; Place Value &bull; MDAS</div>
+    </div>
+  </div>
+
+  <!-- ===================== HERO SELECT ===================== -->
+  <div id="heroSelectScreen" class="overlay-screen hidden">
+    <div class="panel-card">
+      <div class="panel-title">Choose Your Hero!</div>
+      <div class="hero-select-grid" id="heroSelectGrid"></div>
+      <button class="big-btn primary" id="btnConfirmHero" disabled>Let's Go!</button>
+    </div>
+  </div>
+
+  <!-- ===================== IN-GAME HUD ===================== -->
+  <div id="hud" class="hidden">
+    <div id="hudTop">
+      <button id="btnPause" class="hud-round-btn" aria-label="Pause">&#9646;&#9646;</button>
+      <div id="hudBadgeRow"></div>
+      <div id="hudHeroChip">
+        <img id="hudHeroIcon" src="" alt="">
+        <span id="hudHeroName"></span>
+      </div>
+    </div>
+    <div id="toast" class="hidden"></div>
+  </div>
+
+  <!-- ===================== TOUCH CONTROLS ===================== -->
+  <div id="touchControls" class="hidden">
+    <div id="joystickZone">
+      <div id="joystickBase">
+        <div id="joystickNub"></div>
+      </div>
+    </div>
+    <div id="actionButtons">
+      <button id="btnAbility" class="action-btn ability-btn">
+        <span id="abilityIcon">&#10024;</span>
+      </button>
+      <button id="btnJump" class="action-btn jump-btn">JUMP</button>
+    </div>
+  </div>
+
+  <!-- ===================== PAUSE MENU ===================== -->
+  <div id="pauseMenu" class="overlay-screen hidden">
+    <div class="panel-card">
+      <div class="panel-title">Paused</div>
+      <button class="big-btn primary" id="btnResume">Resume</button>
+      <button class="big-btn" id="btnSaveSlot">Save Game</button>
+      <button class="big-btn" id="btnSaveFile">Save to Device File</button>
+      <button class="big-btn" id="btnLoadFileInGame">Load From File</button>
+      <button class="big-btn" id="btnHowTo">How To Play</button>
+      <button class="big-btn" id="btnTitle">Quit to Title</button>
+    </div>
+  </div>
+
+  <!-- ===================== HOW TO PLAY ===================== -->
+  <div id="howToScreen" class="overlay-screen hidden">
+    <div class="panel-card">
+      <div class="panel-title">How To Play</div>
+      <div class="howto-text">
+        <p><b>Move:</b> Use the joystick (or WASD / arrow keys / gamepad stick) to walk.</p>
+        <p><b>Jump:</b> Tap the JUMP button (or Space / gamepad A) to hop over gaps.</p>
+        <p><b>Special Move:</b> Tap the sparkle button to use your hero's special power!</p>
+        <p><b>Math Time:</b> Answer questions correctly to open the path forward. It's okay to get one wrong &mdash; just try again!</p>
+        <p><b>Save:</b> Your game saves automatically. You can also save to a file on your computer any time from the Pause menu.</p>
+      </div>
+      <button class="big-btn primary" id="btnHowToClose">Got It!</button>
+    </div>
+  </div>
+
+  <!-- ===================== QUIZ OVERLAY ===================== -->
+  <div id="quizOverlay" class="overlay-screen hidden">
+    <div class="panel-card quiz-card">
+      <div id="quizChiefRow">
+        <div id="quizChiefPortrait"></div>
+        <div id="quizChiefSpeech"></div>
+      </div>
+      <div class="quiz-progress" id="quizProgress"></div>
+      <div id="quizQuestion" class="quiz-question"></div>
+      <div id="quizAnswers" class="quiz-answers"></div>
+      <div id="quizFeedback" class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <!-- ===================== PUZZLE OVERLAY ===================== -->
+  <div id="puzzleOverlay" class="overlay-screen hidden">
+    <div class="panel-card puzzle-card">
+      <div class="panel-title" id="puzzleTitle">Math Puzzle</div>
+      <div id="puzzlePrompt" class="quiz-question"></div>
+      <div id="puzzleWorkArea"></div>
+      <div id="puzzleTray"></div>
+      <div id="puzzleFeedback" class="quiz-feedback"></div>
+      <button class="big-btn" id="btnPuzzleCheck">Check My Answer</button>
+    </div>
+  </div>
+
+  <!-- ===================== VILLAGE INTRO / DIALOGUE ===================== -->
+  <div id="dialogueBox" class="hidden">
+    <div id="dialoguePortrait"></div>
+    <div id="dialogueTextWrap">
+      <div id="dialogueName"></div>
+      <div id="dialogueText"></div>
+    </div>
+    <button id="btnDialogueNext" class="big-btn primary">Next</button>
+  </div>
+
+  <!-- ===================== ENDING SCREEN ===================== -->
+  <div id="endingScreen" class="overlay-screen hidden">
+    <div class="panel-card">
+      <div class="panel-title">&#127942; Math Heroes! &#127942;</div>
+      <div id="endingText" class="howto-text"></div>
+      <button class="big-btn primary" id="btnEndingClose">Play Again</button>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept="application/json" style="display:none">
+
+  <script src="js/lib/three.min.js"></script>
+  <script src="js/lib/GLTFLoader.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/math.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/npc.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
