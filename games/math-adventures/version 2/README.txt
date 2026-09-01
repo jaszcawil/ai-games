@@ -7,11 +7,12 @@ subtraction, multiplication, division, and order of operations).
 
 Play as Again, Stop, Blossom, or Red! Set out from your home base and
 travel, one continuous world, to each of the five villages to meet its
-Math Chief (Tiffany, Grey, Nayah, Naomi, Carmela). Each village has 5
-obby-and-puzzle challenges in a row -- clear all 5 (answering a math
-question at each one) to earn that chief's badge. Once you've earned
-all 5 badges, the path to the Math Master, Jasz, opens for the Final
-Gauntlet.
+Math Chief (Tiffany, Grey, Nayah, Naomi, Carmela) -- each one stands
+right on the path, so you have to stop and talk to them, not just walk
+past. Each village has 5 obby-and-puzzle challenges in a row -- clear
+all 5 (answering a math question at each one) to earn that chief's
+badge. Once you've earned all 5 badges, the path to the Math Master,
+Jasz, opens for the Final Gauntlet.
 
 Your home base has an Achievement Board that lights up with a star for
 every badge you've earned, so you can always see your progress at a
@@ -52,23 +53,23 @@ whichever option below is easiest for you:
  CONTROLS
 ------------------------------------------------------------------------
   Mobile / Tablet / Touch:
-    - Left joystick  = move
-    - JUMP button    = jump
-    - Sparkle button = hero's special power
+    - Left joystick = move
+    - JUMP button   = jump over gaps and platforms
+    - TALK button   = talk to a chief / answer a question
     - Drag anywhere else on screen = look around / orbit the camera
     - Pinch = zoom camera in/out
 
   PC / Keyboard:
     - WASD or Arrow Keys = move
-    - Space   = jump
-    - Shift or E = special power
+    - Space      = jump
+    - Shift or E = talk / answer
     - Mouse drag on the game = look around / orbit the camera
     - Mouse wheel = zoom
     - R = recenter camera, Q/E = nudge camera left/right
     - Esc or P = pause
 
   Game Controller (Xbox/PlayStation/etc, connected via USB or
-  Bluetooth): left stick = move, A = jump, X = special power,
+  Bluetooth): left stick = move, A = jump, X = talk / answer,
   Start = pause. Just connect it and press any button to activate it.
 
 ------------------------------------------------------------------------

@@ -6,14 +6,16 @@ const GAME_TITLE = "Math Adventures with Wonderblocks and Noodle and Pals";
 const SAVE_VERSION = 1;
 
 // ---------------- Heroes ----------------
+// (heroes used to each have a unique "power" tied to the ability button;
+// that button is now the TALK/ACTION button used to greet chiefs and answer
+// questions, so all four heroes play identically -- only their look and
+// tagline differ)
 const HEROES = [
   {
     id: 'again',
     name: 'Again',
     img: 'assets/heroes/Again.png',
     color: '#ffb703',
-    power: 'Bounce Jump',
-    powerDesc: 'Jump a second time in the air!',
     tagline: '"If I miss, I just try again!"'
   },
   {
@@ -21,8 +23,6 @@ const HEROES = [
     name: 'Stop',
     img: 'assets/heroes/Stop.png',
     color: '#e63946',
-    power: 'Freeze Power',
-    powerDesc: 'Freezes moving obstacles for a few seconds.',
     tagline: '"Whoa there -- let\'s slow down and think!"'
   },
   {
@@ -30,8 +30,6 @@ const HEROES = [
     name: 'Blossom',
     img: 'assets/heroes/Blossom.png',
     color: '#ff6fa5',
-    power: 'Petal Float',
-    powerDesc: 'Float gently across wide gaps.',
     tagline: '"Float like a flower petal!"'
   },
   {
@@ -39,8 +37,6 @@ const HEROES = [
     name: 'Red',
     img: 'assets/heroes/Red.png',
     color: '#d62828',
-    power: 'Power Dash',
-    powerDesc: 'A strong burst of speed to cross gaps fast.',
     tagline: '"Leave it to me -- I\'m strong!"'
   }
 ];

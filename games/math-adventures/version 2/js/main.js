@@ -141,7 +141,6 @@ function startAdventure() {
 
   spawnPlayerIfNeeded(scene);
   player.setSpawn(new THREE.Vector3(0, 2, 0)); // always resume at the hub
-  player.usedDoubleJump = false;
   player.finished = false;
   chiefPrompt = new Map();
 
@@ -152,15 +151,14 @@ function startAdventure() {
 function adventureUpdate(dt) {
   if (!world || !player) return;
 
-  // ---- 1. Decide what a jump-press would trigger, using state from
+  // ---- 1. Decide what an action-press would trigger, using state from
   // BEFORE this frame's movement/jump happens. (If we checked proximity+
-  // grounded AFTER player.update(), the very jump that's meant to trigger
-  // an interaction would also un-ground the player in that same frame,
-  // making the check see grounded=false and silently fail.)
-  const jumpWanted = InputSystem.jumpPressed && player.grounded;
+  // grounded AFTER player.update(), a jump taken the same frame would
+  // un-ground the player before the check ran, making it silently fail.)
+  const actionWanted = InputSystem.actionPressed && player.grounded;
   let pendingAction = null; // { type, chain, stageIndex }
 
-  if (jumpWanted) {
+  if (actionWanted) {
     for (const chain of world.chains) {
       const locked = isChainLocked(chain);
       if (locked) continue;
@@ -183,11 +181,14 @@ function adventureUpdate(dt) {
   }
 
   // ---- 2. Move the player, then update the camera.
-  player.update(dt, world.platforms, false);
+  player.update(dt, world.platforms);
   CameraRig.update(camera, player.pos, dt);
 
   // ---- 3. Physical gates: clamp progress at (a) a locked village's road
-  // entrance, and (b) the first not-yet-cleared stage of an unlocked chain.
+  // entrance, (b) the entry chief (until you've talked to them), (c) the
+  // first not-yet-cleared stage, and (d) the final chief (until the badge
+  // is collected) -- so every chief physically stands in the way instead of
+  // being an optional decoration you can just walk past.
   for (const chain of world.chains) {
     const locked = isChainLocked(chain);
     world.lockGates[chain.def.id].visible = locked;
@@ -204,9 +205,20 @@ function adventureUpdate(dt) {
       continue;
     }
 
-    const stageIdx = chain.stages.findIndex(s => !s.done);
-    if (stageIdx === -1) continue;
-    const gateAdvance = chain.stages[stageIdx].gateAdvance;
+    let gateAdvance;
+    if (!chain.introGiven) {
+      gateAdvance = chain.entryAdvance;
+    } else {
+      const stageIdx = chain.stages.findIndex(s => !s.done);
+      if (stageIdx !== -1) {
+        gateAdvance = chain.stages[stageIdx].gateAdvance;
+      } else if (!chain.badgeGiven) {
+        gateAdvance = chain.finalAdvance;
+      } else {
+        continue; // fully cleared -- no gate left in this chain
+      }
+    }
+
     const rel = { x: player.pos.x - chain.origin.x, z: player.pos.z - chain.origin.z };
     const advance = rel.x * chain.forward.x + rel.z * chain.forward.z;
     const lateral = rel.x * chain.right.x + rel.z * chain.right.z;
@@ -219,7 +231,7 @@ function adventureUpdate(dt) {
   // ---- 4. Proximity toasts (helpful hints, not gameplay-affecting)
   updateProximityToasts();
 
-  // ---- 5. Fire whatever the jump press queued up.
+  // ---- 5. Fire whatever the action press queued up.
   if (pendingAction) runPendingAction(pendingAction);
 }
 
@@ -253,12 +265,12 @@ function updateProximityToasts() {
 
     if (next !== prev) {
       chiefPrompt.set(key, next);
-      if (next === 'entry') showToast(`Tap JUMP to greet ${CHIEFS[chain.def.chief].name}!`, 2200);
+      if (next === 'entry') showToast(`Tap TALK to greet ${CHIEFS[chain.def.chief].name}!`, 2200);
       else if (next === 'stage') {
         const stageIdx = chain.stages.findIndex(s => !s.done);
         const kind = chain.stages[stageIdx].type === 'obby' ? 'the obby marker' : 'the puzzle stand';
-        showToast(`Reach ${kind}, then tap JUMP! (${stageIdx + 1}/5)`, 2400);
-      } else if (next === 'final') showToast(`All 5 done! Tap JUMP to see ${CHIEFS[chain.def.chief].name}!`, 2600);
+        showToast(`Reach ${kind}, then tap TALK! (${stageIdx + 1}/5)`, 2400);
+      } else if (next === 'final') showToast(`All 5 done! Tap TALK to see ${CHIEFS[chain.def.chief].name}!`, 2600);
     }
   }
 }

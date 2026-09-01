@@ -1,5 +1,5 @@
 // ===================================================================
-// player.js -- hero character controller (movement, jump, abilities)
+// player.js -- hero character controller (movement, jump)
 // ===================================================================
 
 const GRAVITY = -34;
@@ -14,10 +14,6 @@ class Player {
     this.pos = new THREE.Vector3(0, 2, 2);
     this.vel = new THREE.Vector3(0, 0, 0);
     this.grounded = false;
-    this.dashDir = new THREE.Vector3(0, 0, -1);
-    this.usedDoubleJump = false;
-    this.dashTimer = 0;
-    this.abilityCooldown = 0;
     this.bobT = Math.random() * 10;
     this.squash = 1;
     this.lastCheckpoint = new THREE.Vector3(0, 2, 2);
@@ -58,7 +54,7 @@ class Player {
     showToast("Try again! 💪");
   }
 
-  update(dt, platforms, freezeActive) {
+  update(dt, platforms) {
     if (this.finished) return;
 
     const input = InputSystem;
@@ -67,28 +63,17 @@ class Player {
 
     // camera-relative movement: the joystick always means the same thing on screen
     const { forward, right } = CameraRig.getBasis();
-    let speed = MOVE_SPEED;
+    const speed = MOVE_SPEED;
     const moveVec = new THREE.Vector3();
-    if (this.dashTimer > 0) {
-      this.dashTimer -= dt;
-      moveVec.copy(this.dashDir);
-      speed = MOVE_SPEED * 2.2;
-    } else if (moving) {
+    if (moving) {
       moveVec.addScaledVector(forward, -mz).addScaledVector(right, mx);
-      if (moveVec.lengthSq() > 0.0001) {
-        moveVec.normalize();
-        this.dashDir.copy(moveVec);
-      }
+      if (moveVec.lengthSq() > 0.0001) moveVec.normalize();
     }
     this.pos.x += moveVec.x * speed * dt;
     this.pos.z += moveVec.z * speed * dt;
 
-    // gravity (Blossom float ability slows descent while jump held)
-    let gscale = 1;
-    if (this.hero.id === 'blossom' && input.jumpHeld && this.vel.y < 0 && !this.grounded) {
-      gscale = 0.32;
-    }
-    this.vel.y += GRAVITY * gscale * dt;
+    // gravity
+    this.vel.y += GRAVITY * dt;
     this.pos.y += this.vel.y * dt;
 
     // ground collision: find highest platform top below/at player's feet
@@ -110,7 +95,6 @@ class Player {
       this.vel.y = 0;
       if (!this.grounded) { this.squash = 1.35; }
       this.grounded = true;
-      this.usedDoubleJump = false;
     } else {
       this.grounded = false;
     }
@@ -121,36 +105,12 @@ class Player {
       return;
     }
 
-    // jump
-    if (input.jumpPressed) {
-      if (this.grounded) {
-        this.vel.y = JUMP_VELOCITY;
-        this.grounded = false;
-        this.squash = 0.7;
-      } else if (this.hero.id === 'again' && !this.usedDoubleJump) {
-        this.vel.y = JUMP_VELOCITY * 0.92;
-        this.usedDoubleJump = true;
-        this.squash = 0.7;
-        showToast("✨ Bounce Jump!");
-      }
+    // jump (pure movement now -- talking/answering has its own TALK button)
+    if (input.jumpPressed && this.grounded) {
+      this.vel.y = JUMP_VELOCITY;
+      this.grounded = false;
+      this.squash = 0.7;
     }
-
-    // ability
-    if (input.abilityPressed && this.abilityCooldown <= 0) {
-      this.abilityCooldown = 2.2;
-      if (this.hero.id === 'red') {
-        this.dashTimer = 0.45;
-        showToast("💨 Power Dash!");
-      } else if (this.hero.id === 'stop') {
-        window.__freezeUntil = performance.now() + 3000;
-        showToast("❄️ Freeze!");
-      } else if (this.hero.id === 'blossom') {
-        showToast("🌸 Petal Float!");
-      } else if (this.hero.id === 'again') {
-        showToast("✨ Ready to bounce!");
-      }
-    }
-    if (this.abilityCooldown > 0) this.abilityCooldown -= dt;
 
     // squash/stretch recovery + idle bob
     this.squash += (1 - this.squash) * Math.min(1, dt * 8);

@@ -4,9 +4,9 @@
 
 const InputSystem = {
   moveX: 0, moveZ: 0,           // -1..1 each, world-space (Z forward is negative)
-  jumpPressed: false,           // edge-triggered (consumed each frame)
+  jumpPressed: false,           // edge-triggered (consumed each frame) -- pure movement, no longer doubles as "talk"
   jumpHeld: false,
-  abilityPressed: false,        // edge-triggered
+  actionPressed: false,         // edge-triggered -- the TALK/ACTION button: greet chiefs, answer questions
   pausePressed: false,
 
   _keys: {},
@@ -24,7 +24,7 @@ const InputSystem = {
     window.addEventListener('keydown', (e) => {
       this._keys[e.code] = true;
       if (e.code === 'Space') { this._consumeJumpNext = true; }
-      if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') { this._consumeAbilityNext = true; }
+      if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') { this._consumeActionNext = true; }
       if (e.code === 'Escape' || e.code === 'KeyP') { this._consumePauseNext = true; }
     });
     window.addEventListener('keyup', (e) => { this._keys[e.code] = false; });
@@ -76,13 +76,13 @@ const InputSystem = {
     zone.addEventListener('pointercancel', releaseHandler);
     zone.addEventListener('pointerleave', (e) => { /* keep active until pointerup for drag-off support */ });
 
-    // Jump / ability buttons
+    // Jump / action (talk-and-answer) buttons
     const btnJump = document.getElementById('btnJump');
-    const btnAbility = document.getElementById('btnAbility');
+    const btnAction = document.getElementById('btnAction');
     btnJump.addEventListener('pointerdown', (e) => { this._consumeJumpNext = true; this._touchJumpHeld = true; e.preventDefault(); });
     btnJump.addEventListener('pointerup', (e) => { this._touchJumpHeld = false; });
     btnJump.addEventListener('pointercancel', (e) => { this._touchJumpHeld = false; });
-    btnAbility.addEventListener('pointerdown', (e) => { this._consumeAbilityNext = true; e.preventDefault(); });
+    btnAction.addEventListener('pointerdown', (e) => { this._consumeActionNext = true; e.preventDefault(); });
 
     // Gamepad connect
     window.addEventListener('gamepadconnected', (e) => {
@@ -118,11 +118,11 @@ const InputSystem = {
         const ax0 = gp.axes[0] || 0, ax1 = gp.axes[1] || 0;
         if (Math.abs(ax0) > 0.15) mx += ax0;
         if (Math.abs(ax1) > 0.15) mz += ax1;
-        const aPressed = gp.buttons[0] && gp.buttons[0].pressed; // A / Cross
-        const xPressed = gp.buttons[2] && gp.buttons[2].pressed; // X / Square
+        const aPressed = gp.buttons[0] && gp.buttons[0].pressed; // A / Cross = jump
+        const xPressed = gp.buttons[2] && gp.buttons[2].pressed; // X / Square = talk / answer
         const startPressed = gp.buttons[9] && gp.buttons[9].pressed;
         if (aPressed && !this._lastAPressed) this._consumeJumpNext = true;
-        if (xPressed && !this._lastXPressed) this._consumeAbilityNext = true;
+        if (xPressed && !this._lastXPressed) this._consumeActionNext = true;
         if (startPressed && !this._lastStartPressed) this._consumePauseNext = true;
         this._lastAPressed = aPressed;
         this._lastXPressed = xPressed;
@@ -139,8 +139,8 @@ const InputSystem = {
 
     this.jumpPressed = !!this._consumeJumpNext;
     this._consumeJumpNext = false;
-    this.abilityPressed = !!this._consumeAbilityNext;
-    this._consumeAbilityNext = false;
+    this.actionPressed = !!this._consumeActionNext;
+    this._consumeActionNext = false;
     this.pausePressed = !!this._consumePauseNext;
     this._consumePauseNext = false;
   },

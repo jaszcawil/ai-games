@@ -344,26 +344,33 @@ function buildAchievementBoard(scene, boardCenter) {
   const ids = [...VILLAGES.map(v => v.id), 'mathlord'];
   const n = ids.length;
   const spread = 11;
+  const pedestalHeight = 1.4;
+  const figureHeight = 1.5;
   ids.forEach((id, i) => {
     const chiefKey = id === 'mathlord' ? 'jasz' : VILLAGES.find(v => v.id === id).chief;
+    const chiefInfo = CHIEFS[chiefKey];
     const x = boardCenter.x + (i - (n - 1) / 2) * (spread / (n - 1));
     const z = boardCenter.z;
 
     const pedestal = AssetLibrary.get('dungeon', 'column');
-    AssetLibrary.fitUniform(pedestal, 1.4);
+    AssetLibrary.fitToBox(pedestal, 1.1, pedestalHeight, 1.1);
     pedestal.position.set(x, 0, z);
     scene.add(pedestal);
 
-    const faceTex = new THREE.CanvasTexture(getChiefCanvas(chiefKey));
-    const faceSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: faceTex, transparent: true }));
-    faceSprite.scale.set(1.5, 1.5, 1);
-    faceSprite.position.set(x, 2.1, z);
-    scene.add(faceSprite);
+    // a small standing figure of the chief's real 3D character on the
+    // pedestal, like a trophy -- ties the board to the actual chief model
+    // instead of a disembodied floating face
+    const figure = AssetLibrary.getCharacter(chiefInfo.characterModel, figureHeight, chiefInfo.color);
+    figure.position.set(x, pedestalHeight, z);
+    // default model orientation faces +Z (same convention used for the
+    // in-village chiefs); the board sits at negative Z from the hub center,
+    // so leaving rotation at 0 faces the figures back toward the spawn point
+    scene.add(figure);
 
     const starMat = new THREE.SpriteMaterial({ map: makeEmojiTextureShared('⭐'), transparent: true });
     const starSprite = new THREE.Sprite(starMat);
     starSprite.scale.set(1.0, 1.0, 1);
-    starSprite.position.set(x, 3.0, z);
+    starSprite.position.set(x, pedestalHeight + figureHeight + 0.5, z);
     starSprite.visible = false;
     scene.add(starSprite);
 
@@ -575,17 +582,24 @@ function buildVillageChain(scene, def, isFinale, ang, alreadyDone) {
     }
   }
 
-  // chief: a real 3D character standing at the entry (intro) and again at
-  // the final pad (badge award)
+  // chief: a real 3D character standing DEAD CENTER on the path at the
+  // entry (intro) and again at the final pad (badge award) -- lat=0, not
+  // offset to the side, so the character's body physically stands in the
+  // way and the player has to stop and interact rather than being able to
+  // just walk past. (Actual blocking is enforced by main.js's advance-clamp
+  // gate at entryAdvance/finalAdvance, the same technique already used to
+  // gate the 5 stages -- an AABB physics engine can't collide against an
+  // animated character mesh, so the gate does the blocking and the model
+  // just has to visually stand where the gate is.)
   const chiefInfo = CHIEFS[def.chief];
   const chiefHeight = chiefInfo.characterHeight || 2.2;
-  const entrySpritePos = worldAt(entryAdvance, 2.6, 0);
+  const entrySpritePos = worldAt(entryAdvance, 0, 0);
   const entrySprite = AssetLibrary.getCharacter(chiefInfo.characterModel, chiefHeight, chiefInfo.color);
   entrySprite.position.copy(entrySpritePos);
   entrySprite.rotation.y = ang + Math.PI;
   scene.add(entrySprite);
 
-  const finalSpritePos = worldAt(finalAdvance, 2.6, 0);
+  const finalSpritePos = worldAt(finalAdvance, 0, 0);
   const finalSprite = AssetLibrary.getCharacter(chiefInfo.characterModel, chiefHeight, chiefInfo.color);
   finalSprite.position.copy(finalSpritePos);
   finalSprite.rotation.y = ang + Math.PI;
@@ -595,6 +609,7 @@ function buildVillageChain(scene, def, isFinale, ang, alreadyDone) {
     def, isFinale, ang, forward, right, origin,
     platforms, stages,
     entrySpritePos, finalSpritePos,
+    entryAdvance, finalAdvance,
     introGiven: !!alreadyDone,
     badgeGiven: !!alreadyDone
   };

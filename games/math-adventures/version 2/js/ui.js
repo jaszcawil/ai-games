@@ -38,7 +38,7 @@ function populateHeroSelect(onConfirm) {
     card.innerHTML = `
       <img src="${h.img}" alt="${h.name}">
       <div class="hero-name">${h.name}</div>
-      <div class="hero-power">${h.power}</div>
+      <div class="hero-power">${h.tagline}</div>
     `;
     card.addEventListener('click', () => {
       [...grid.children].forEach(c => c.classList.remove('selected'));

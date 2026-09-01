@@ -162,9 +162,9 @@ html, body {
   width: min(24vw, 96px); height: min(24vw, 96px);
   background: #ff6b35; color: #fff; font-size: clamp(13px,3vw,16px);
 }
-.ability-btn {
-  width: min(18vw, 74px); height: min(18vw, 74px);
-  background: #ffd166; color: #7a4a00; font-size: clamp(22px,5vw,30px);
+.talk-btn {
+  width: min(20vw, 80px); height: min(20vw, 80px);
+  background: #4fc7e6; color: #073a4a; font-size: clamp(12px,2.8vw,15px);
   align-self: flex-end; margin-bottom: min(4vw,14px);
 }
 .action-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
@@ -238,7 +238,7 @@ html, body {
   .big-btn { padding: 10px 16px; margin: 5px 0; }
   #joystickZone { width: min(26vh, 140px); height: min(26vh, 140px); }
   .jump-btn { width: min(16vh, 78px); height: min(16vh, 78px); }
-  .ability-btn { width: min(12vh, 60px); height: min(12vh, 60px); }
+  .talk-btn { width: min(13vh, 64px); height: min(13vh, 64px); }
 }
 
 /* Larger tap targets guaranteed on touch devices */
