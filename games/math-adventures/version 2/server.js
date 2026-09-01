@@ -64,7 +64,24 @@ const server = http.createServer((req, res) => {
       return;
     }
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    // Tell the browser to never cache ANY response from this local dev
+    // server -- always fetch a full, fresh copy of every file, every time.
+    // An earlier version of this server used ETag + "no-cache" (ask the
+    // browser to revalidate before reusing a cached copy), but that still
+    // lets a BAD cached copy get reused forever once its ETag matches --
+    // e.g. a 3D model file that was only partially downloaded because a
+    // previous page load got interrupted (tab closed mid-load) stays
+    // cached-but-broken, and every later "revalidated" reload keeps
+    // reusing that broken copy, hanging forever on the loading screen.
+    // "no-store" is stronger: the browser is never allowed to keep a copy
+    // at all, so there is nothing stale or corrupt to fall back to. On
+    // localhost the cost of always re-sending the full file is negligible.
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
     res.end(data);
   });
 });
