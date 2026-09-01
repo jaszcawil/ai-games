@@ -128,6 +128,7 @@ function runQuiz(topic, targetCorrect, chiefKey, onComplete) {
   function handleAnswer(btn, val) {
     const isCorrect = String(val) === String(current.answer);
     if (isCorrect) {
+      AudioSystem.playCorrect();
       btn.classList.add('correct');
       el('quizFeedback').textContent = '🎉 Correct!';
       el('quizFeedback').style.color = '#4caf50';
@@ -143,6 +144,7 @@ function runQuiz(topic, targetCorrect, chiefKey, onComplete) {
         }
       }, 700);
     } else {
+      AudioSystem.playWrong();
       btn.classList.add('wrong');
       btn.disabled = true;
       el('quizFeedback').textContent = 'Not quite — try again!';
@@ -185,10 +187,12 @@ function runPuzzle(topic, chiefKey, onComplete) {
     el('btnPuzzleCheck').onclick = () => {
       const val = h*100+t*10+o;
       if (val === puzzle.target) {
+        AudioSystem.playCorrect();
         el('puzzleFeedback').style.color = '#4caf50';
         el('puzzleFeedback').textContent = '🎉 Perfect! That matches!';
         setTimeout(() => { hide('puzzleOverlay'); onComplete(true); }, 900);
       } else {
+        AudioSystem.playWrong();
         el('puzzleFeedback').style.color = '#ef5350';
         el('puzzleFeedback').textContent = val < puzzle.target ? 'Too small — add more blocks!' : 'Too many blocks — try removing some! (Reset to start over)';
       }
@@ -223,10 +227,12 @@ function runPuzzle(topic, chiefKey, onComplete) {
       const orderOk = placed.length === puzzle.steps.length &&
         placed.every((si, idx) => puzzle.steps[si].order === idx + 1);
       if (orderOk) {
+        AudioSystem.playCorrect();
         el('puzzleFeedback').style.color = '#4caf50';
         el('puzzleFeedback').textContent = `🎉 Correct order! The answer is ${puzzle.resultValue}.`;
         setTimeout(() => { hide('puzzleOverlay'); onComplete(true); }, 1000);
       } else {
+        AudioSystem.playWrong();
         el('puzzleFeedback').style.color = '#ef5350';
         el('puzzleFeedback').textContent = 'Hmm, try a different order! (Reset to start over)';
       }

@@ -38,6 +38,7 @@ function onResize() {
 async function boot() {
   initRenderer();
   AssetLibrary.init();
+  AudioSystem.init();
   InputSystem.init();
   CameraRig.init();
   populateTitleHeroStrip();
@@ -100,6 +101,7 @@ function wirePauseMenu() {
   el('btnLoadFileInGame').onclick = () => el('fileInput').click();
   el('btnHowTo').onclick = () => { show('howToScreen'); };
   el('btnHowToClose').onclick = () => { hide('howToScreen'); };
+  el('btnAudioSettings').onclick = () => { show('audioSettingsScreen'); refreshAudioSettingsUI(); };
   el('btnTitle').onclick = () => {
     SaveSystem.autosave();
     closePause();
@@ -109,6 +111,28 @@ function wirePauseMenu() {
     el('btnContinue').disabled = !SaveSystem.hasAnySave();
   };
 }
+
+// -------------------- Audio settings screen wiring --------------------
+function refreshAudioSettingsUI() {
+  const s = AudioSystem.settings;
+  const musicBtn = el('btnToggleMusic');
+  musicBtn.textContent = s.musicOn ? 'On' : 'Off';
+  musicBtn.className = 'toggle-btn ' + (s.musicOn ? 'on' : 'off');
+  const sfxBtn = el('btnToggleSfx');
+  sfxBtn.textContent = s.sfxOn ? 'On' : 'Off';
+  sfxBtn.className = 'toggle-btn ' + (s.sfxOn ? 'on' : 'off');
+  el('volumeValue').textContent = s.volume + '%';
+  el('btnVolDown').disabled = s.volume <= 0;
+  el('btnVolUp').disabled = s.volume >= 100;
+}
+function wireAudioSettingsScreen() {
+  el('btnToggleMusic').onclick = () => { AudioSystem.setMusicOn(!AudioSystem.settings.musicOn); refreshAudioSettingsUI(); };
+  el('btnToggleSfx').onclick = () => { AudioSystem.setSfxOn(!AudioSystem.settings.sfxOn); refreshAudioSettingsUI(); };
+  el('btnVolDown').onclick = () => { AudioSystem.volumeDown(); refreshAudioSettingsUI(); };
+  el('btnVolUp').onclick = () => { AudioSystem.volumeUp(); refreshAudioSettingsUI(); };
+  el('btnAudioSettingsClose').onclick = () => { hide('audioSettingsScreen'); };
+}
+
 function openPause() { isPaused = true; show('pauseMenu'); }
 function closePause() { isPaused = false; hide('pauseMenu'); }
 
@@ -235,6 +259,15 @@ function adventureUpdate(dt) {
   if (pendingAction) runPendingAction(pendingAction);
 }
 
+// moves the player's respawn point (see Player.respawn in player.js) up to
+// a just-cleared milestone -- a small upward margin keeps the checkpoint
+// comfortably above the platform surface so gravity settles the player onto
+// it cleanly on respawn, rather than starting them right at/below the top.
+function setCheckpointAt(pos) {
+  if (!player) return;
+  player.setCheckpoint(new THREE.Vector3(pos.x, pos.y + 0.6, pos.z));
+}
+
 function isChainLocked(chain) {
   if (chain.isFinale) return !SaveSystem.allBadgesEarned();
   return SaveSystem.current.unlocked.indexOf(chain.def.id) === -1;
@@ -283,6 +316,7 @@ function runPendingAction(action) {
 
   if (action.type === 'intro') {
     chain.introGiven = true;
+    setCheckpointAt(chain.entrySpritePos);
     runDialogue(portraitCanvas, chief.name, [def.introText, "Explore and find my 5 challenges scattered ahead!"], () => {});
     return;
   }
@@ -293,6 +327,10 @@ function runPendingAction(action) {
     const stageLabel = `${action.stageIndex + 1}/5`;
     const afterQuiz = () => {
       stage.done = true;
+      // checkpoint moves up to the stage the player just cleared, so a fall
+      // on a LATER obby sends them back here instead of all the way to the
+      // village entrance (or the hub)
+      setCheckpointAt(stage.markerPos);
       showToast(`✅ Stage ${stageLabel} complete!`, 2200);
     };
     if (stage.type === 'puzzle') {
@@ -308,6 +346,11 @@ function runPendingAction(action) {
 
   if (action.type === 'final') {
     chain.badgeGiven = true;
+    // once a badge (or the Crown, for the finale) is earned, the resurrection
+    // point moves to the hub rather than staying at the final chief -- the
+    // player's "safe" checkpoint after finishing a village is home base, not
+    // out in the field
+    player.setCheckpoint(new THREE.Vector3(0, 2, 0));
     if (chain.isFinale) {
       SaveSystem.current.completed = true;
       SaveSystem.autosave();
@@ -368,5 +411,6 @@ function animate() {
 window.addEventListener('DOMContentLoaded', () => {
   wireTitleScreen();
   wirePauseMenu();
+  wireAudioSettingsScreen();
   boot();
 });

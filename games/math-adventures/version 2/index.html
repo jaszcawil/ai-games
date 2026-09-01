@@ -80,7 +80,32 @@
       <button class="big-btn" id="btnSaveFile">Save to Device File</button>
       <button class="big-btn" id="btnLoadFileInGame">Load From File</button>
       <button class="big-btn" id="btnHowTo">How To Play</button>
+      <button class="big-btn" id="btnAudioSettings">Audio Settings</button>
       <button class="big-btn" id="btnTitle">Quit to Title</button>
+    </div>
+  </div>
+
+  <!-- ===================== AUDIO SETTINGS ===================== -->
+  <div id="audioSettingsScreen" class="overlay-screen hidden">
+    <div class="panel-card">
+      <div class="panel-title">Audio Settings</div>
+      <div class="audio-settings-row">
+        <span class="audio-settings-label">🎵 Music</span>
+        <button class="toggle-btn" id="btnToggleMusic">On</button>
+      </div>
+      <div class="audio-settings-row">
+        <span class="audio-settings-label">🔊 Sound Effects</span>
+        <button class="toggle-btn" id="btnToggleSfx">On</button>
+      </div>
+      <div class="audio-settings-row">
+        <span class="audio-settings-label">Volume</span>
+        <div class="volume-control">
+          <button class="vol-btn" id="btnVolDown" aria-label="Decrease volume">&minus;</button>
+          <span id="volumeValue">50%</span>
+          <button class="vol-btn" id="btnVolUp" aria-label="Increase volume">&plus;</button>
+        </div>
+      </div>
+      <button class="big-btn primary" id="btnAudioSettingsClose">Back</button>
     </div>
   </div>
 
@@ -148,9 +173,11 @@
 
   <script src="js/lib/three.min.js"></script>
   <script src="js/lib/GLTFLoader.js"></script>
+  <script src="js/lib/SkeletonUtils.js"></script>
   <script src="js/data.js"></script>
   <script src="js/math.js"></script>
   <script src="js/save.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/input.js"></script>
   <script src="js/camera.js"></script>
   <script src="js/npc.js"></script>

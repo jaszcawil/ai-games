@@ -226,6 +226,34 @@ html, body {
 .puzzle-chip.used { opacity: 0.35; pointer-events: none; }
 .puzzle-chip.placed { background: #fff3cd; border-color: #ffb703; }
 
+/* ============ AUDIO SETTINGS ============ */
+.audio-settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 12px 4px; border-bottom: 2px dashed #e8e0d0;
+}
+.audio-settings-row:last-of-type { border-bottom: none; }
+.audio-settings-label { font-weight: 800; color: #3a6ea5; font-size: clamp(15px, 4vw, 18px); }
+.toggle-btn {
+  padding: 10px 22px; font-size: clamp(14px, 3.6vw, 17px); font-weight: 900;
+  border-radius: 20px; border: 3px solid #cfd8e6; cursor: pointer;
+  background: #f4f8ff; color: #3a6ea5; box-shadow: 0 4px 0 #cfd8e6;
+  font-family: inherit; transition: transform 0.08s;
+  min-width: 84px;
+}
+.toggle-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #cfd8e6; }
+.toggle-btn.on { background: #4caf50; color: #fff; border-color: #388e3c; box-shadow: 0 4px 0 #2e7d32; }
+.toggle-btn.off { background: #eceff4; color: #9a9ab0; border-color: #cfd8e6; }
+.volume-control { display: flex; align-items: center; gap: 12px; }
+.vol-btn {
+  width: 42px; height: 42px; border-radius: 50%; border: 3px solid #cfd8e6;
+  background: #f4f8ff; color: #3a6ea5; font-size: 22px; font-weight: 900;
+  cursor: pointer; box-shadow: 0 4px 0 #cfd8e6; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.vol-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #cfd8e6; }
+.vol-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#volumeValue { font-weight: 900; color: #2f3a4a; font-size: clamp(16px, 4vw, 19px); min-width: 48px; text-align: center; }
+
 /* ============ RESPONSIVE TWEAKS ============ */
 @media (max-width: 480px) {
   .quiz-answers { grid-template-columns: 1fr; }

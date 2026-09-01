@@ -98,7 +98,11 @@ const AssetLibrary = {
   getCharacter(modelName, targetHeight, tintHex) {
     const src = this.characterCache[modelName];
     if (!src) return new THREE.Group();
-    const clone = src.clone(true);
+    // these are RIGGED (skinned) characters -- a plain clone(true) shares one
+    // skeleton across every clone, pointed at bones that never enter the
+    // visible scene, so the model renders in the wrong place or not at all.
+    // SkeletonUtils.clone() rebuilds an independent skeleton per clone.
+    const clone = SkeletonUtils.clone(src);
     const tint = tintHex ? new THREE.Color(tintHex) : null;
     clone.traverse(o => {
       if (o.isMesh) {
@@ -112,7 +116,22 @@ const AssetLibrary = {
       }
     });
     this.fitUniform(clone, targetHeight || 2.3);
-    return clone;
+    // fitUniform bakes a feet/center-alignment offset into clone.position --
+    // a raw glTF character rig's own local origin usually sits somewhere in
+    // the middle of the body (a hip/root bone), not at its feet, so that
+    // offset is what makes the model stand on the ground instead of being
+    // buried waist-deep or floating. Callers place a character by setting
+    // .position on the returned object directly (position.set/copy), which
+    // would silently OVERWRITE that offset and re-introduce the sunk/
+    // floating look (a full-height in-world chief hides it a little since
+    // only the lower body vanishes into the ground; at achievement-board
+    // scale it reads as a disembodied floating head). Wrapping the clone in
+    // an outer holder keeps the alignment offset as the clone's LOCAL
+    // transform inside the holder, so the holder's own position/rotation
+    // can be set freely by the caller without disturbing it.
+    const holder = new THREE.Group();
+    holder.add(clone);
+    return holder;
   },
 
   // scales+repositions a cloned model so its bounding box exactly fills
@@ -335,47 +354,89 @@ function chainAxes(ang) {
 }
 
 // ---------------- Achievement board (lives in the hub) ----------------
-// A small row of pedestals showing every chief + the Math Master; each
-// lights up with a star once its badge is earned. refresh() can be called
-// any time (e.g. right after a badge is won) to update the stars live,
-// since this is the SAME persistent scene for the whole session.
+// The Math Master (Jasz) stands as a full-body 3D figure on a tall central
+// pedestal, set back behind the row; the 5 village chiefs are arranged in
+// a fan in front of him as smaller plaques -- a round portrait "head" (the
+// same stylized face used for their dialogue portraits) plus a name tag,
+// each on its own pedestal. Every plaque/figure lights up with a reward
+// icon once its badge is earned. refresh() can be called any time (e.g.
+// right after a badge is won) to update those icons live, since this is
+// the SAME persistent scene for the whole session.
 function buildAchievementBoard(scene, boardCenter) {
   const entries = [];
-  const ids = [...VILLAGES.map(v => v.id), 'mathlord'];
-  const n = ids.length;
-  const spread = 11;
-  const pedestalHeight = 1.4;
-  const figureHeight = 1.5;
-  ids.forEach((id, i) => {
-    const chiefKey = id === 'mathlord' ? 'jasz' : VILLAGES.find(v => v.id === id).chief;
+
+  // ---- the 5 village chiefs: head portrait + name tag, fanned out in front
+  const chiefSpread = 11;
+  const chiefPedestalHeight = 1.1;
+  const headSize = 1.3;
+  VILLAGES.forEach((v, i) => {
+    const chiefKey = v.chief;
     const chiefInfo = CHIEFS[chiefKey];
-    const x = boardCenter.x + (i - (n - 1) / 2) * (spread / (n - 1));
+    const x = boardCenter.x + (i - (VILLAGES.length - 1) / 2) * (chiefSpread / (VILLAGES.length - 1));
     const z = boardCenter.z;
 
     const pedestal = AssetLibrary.get('dungeon', 'column');
-    AssetLibrary.fitToBox(pedestal, 1.1, pedestalHeight, 1.1);
+    AssetLibrary.fitToBox(pedestal, 1.0, chiefPedestalHeight, 1.0);
     pedestal.position.set(x, 0, z);
     scene.add(pedestal);
 
-    // a small standing figure of the chief's real 3D character on the
-    // pedestal, like a trophy -- ties the board to the actual chief model
-    // instead of a disembodied floating face
-    const figure = AssetLibrary.getCharacter(chiefInfo.characterModel, figureHeight, chiefInfo.color);
-    figure.position.set(x, pedestalHeight, z);
-    // default model orientation faces +Z (same convention used for the
-    // in-village chiefs); the board sits at negative Z from the hub center,
-    // so leaving rotation at 0 faces the figures back toward the spawn point
-    scene.add(figure);
+    // round portrait "head" -- the same stylized face used in dialogue,
+    // now on a plaque so the board reads as a row of chiefs at a glance
+    const headTex = new THREE.CanvasTexture(getChiefCanvas(chiefKey));
+    headTex.needsUpdate = true;
+    const headSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: headTex, transparent: true }));
+    headSprite.scale.set(headSize, headSize, 1);
+    headSprite.position.set(x, chiefPedestalHeight + headSize * 0.55, z);
+    scene.add(headSprite);
+
+    const nameTex = new THREE.CanvasTexture(makeNameTagTexture(chiefInfo.name, { color: chiefInfo.color }));
+    nameTex.needsUpdate = true;
+    const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex, transparent: true }));
+    nameSprite.scale.set(1.9, 0.48, 1);
+    nameSprite.position.set(x, chiefPedestalHeight + headSize * 1.15, z);
+    scene.add(nameSprite);
 
     const starMat = new THREE.SpriteMaterial({ map: makeEmojiTextureShared('⭐'), transparent: true });
     const starSprite = new THREE.Sprite(starMat);
-    starSprite.scale.set(1.0, 1.0, 1);
-    starSprite.position.set(x, pedestalHeight + figureHeight + 0.5, z);
+    starSprite.scale.set(0.85, 0.85, 1);
+    starSprite.position.set(x, chiefPedestalHeight + headSize * 1.55, z);
     starSprite.visible = false;
     scene.add(starSprite);
 
-    entries.push({ id, starSprite });
+    entries.push({ id: v.id, starSprite });
   });
+
+  // ---- the Math Master: a full-body 3D figure, enthroned center-back
+  const jaszInfo = CHIEFS.jasz;
+  const jaszPedestalHeight = 2.0;
+  const jaszFigureHeight = 2.8;
+  const jx = boardCenter.x;
+  const jz = boardCenter.z - 3.2; // set back behind the chiefs' row
+
+  const jaszPedestal = AssetLibrary.get('dungeon', 'column');
+  AssetLibrary.fitToBox(jaszPedestal, 1.8, jaszPedestalHeight, 1.8);
+  jaszPedestal.position.set(jx, 0, jz);
+  scene.add(jaszPedestal);
+
+  const jaszFigure = AssetLibrary.getCharacter(jaszInfo.characterModel, jaszFigureHeight, jaszInfo.color);
+  jaszFigure.position.set(jx, jaszPedestalHeight, jz);
+  scene.add(jaszFigure);
+
+  const jaszNameTex = new THREE.CanvasTexture(makeNameTagTexture(`${jaszInfo.name} — The Math Master`, { color: jaszInfo.color, fontSize: 46 }));
+  jaszNameTex.needsUpdate = true;
+  const jaszNameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: jaszNameTex, transparent: true }));
+  jaszNameSprite.scale.set(3.2, 0.72, 1);
+  jaszNameSprite.position.set(jx, jaszPedestalHeight + jaszFigureHeight + 0.55, jz);
+  scene.add(jaszNameSprite);
+
+  const crownMat = new THREE.SpriteMaterial({ map: makeEmojiTextureShared('👑'), transparent: true });
+  const crownSprite = new THREE.Sprite(crownMat);
+  crownSprite.scale.set(1.2, 1.2, 1);
+  crownSprite.position.set(jx, jaszPedestalHeight + jaszFigureHeight + 1.15, jz);
+  crownSprite.visible = false;
+  scene.add(crownSprite);
+
+  entries.push({ id: 'mathlord', starSprite: crownSprite });
 
   return {
     entries,
@@ -388,6 +449,37 @@ function buildAchievementBoard(scene, boardCenter) {
       });
     }
   };
+}
+
+// a small rounded name-tag texture (dark pill background + colored bold
+// text) used for the achievement board's chief/Math Master labels
+function makeNameTagTexture(text, opts) {
+  opts = opts || {};
+  const w = 512, h = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const fontSize = opts.fontSize || 54;
+  ctx.font = `bold ${fontSize}px "Comic Sans MS", "Trebuchet MS", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const cx = w / 2, cy = h / 2;
+  const textWidth = ctx.measureText(text).width;
+  const pillW = Math.min(w - 8, textWidth + 56);
+  const pillH = h * 0.62;
+  const r = pillH / 2;
+  ctx.fillStyle = 'rgba(20,20,30,0.72)';
+  ctx.beginPath();
+  ctx.moveTo(cx - pillW / 2 + r, cy - pillH / 2);
+  ctx.arcTo(cx + pillW / 2, cy - pillH / 2, cx + pillW / 2, cy + pillH / 2, r);
+  ctx.arcTo(cx + pillW / 2, cy + pillH / 2, cx - pillW / 2, cy + pillH / 2, r);
+  ctx.arcTo(cx - pillW / 2, cy + pillH / 2, cx - pillW / 2, cy - pillH / 2, r);
+  ctx.arcTo(cx - pillW / 2, cy - pillH / 2, cx + pillW / 2, cy - pillH / 2, r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = opts.color || '#ffffff';
+  ctx.fillText(text, cx, cy + 2);
+  return canvas;
 }
 
 let _emojiTexCache = {};

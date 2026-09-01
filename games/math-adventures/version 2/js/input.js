@@ -20,6 +20,11 @@ const InputSystem = {
   _lastStartPressed: false,
 
   init() {
+    // Disable the browser's right-click context menu across the whole page --
+    // mouse drag (any button) orbits the camera (see camera.js), so the
+    // native menu popping up on a right-click is disruptive during play.
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
+
     // Keyboard
     window.addEventListener('keydown', (e) => {
       this._keys[e.code] = true;

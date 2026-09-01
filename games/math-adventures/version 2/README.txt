@@ -86,6 +86,16 @@ also, from the Pause menu:
                                continue your adventure anywhere.
 
 ------------------------------------------------------------------------
+ AUDIO SETTINGS
+------------------------------------------------------------------------
+From the Pause menu, "Audio Settings" lets you:
+  - Turn background music on/off
+  - Turn sound effects on/off (the correct/wrong answer chimes)
+  - Adjust the volume up/down in steps of 10%
+By default, music and sound effects are both ON at 50% volume. Your
+choices are remembered the next time you play, on this device/browser.
+
+------------------------------------------------------------------------
  CREDITS / NOTES
 ------------------------------------------------------------------------
   - Built with Three.js (3D engine) and low-poly KayKit-style asset
