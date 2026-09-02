@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#241246">
+<title>Choose Your Party — Curious Kid</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/character-select.css">
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+  <div id="vignette" aria-hidden="true"></div>
+  <div id="stage-scrim" aria-hidden="true"></div>
+
+  <main id="cs-screen" class="screen cs-screen">
+
+    <!-- Party progress -->
+    <div class="cs-progress" id="cs-progress" aria-label="Party selection progress"><!-- filled by JS --></div>
+
+    <!-- Role heading -->
+    <header class="cs-heading">
+      <h1 id="cs-role-title">Choose your Curious Hero</h1>
+      <p id="cs-role-subtitle">The heart of the story — curiosity, courage, and a love of learning.</p>
+    </header>
+
+    <!-- 3D stage -->
+    <div class="cs-stage-wrap">
+      <button id="cs-prev" class="cs-nav-arrow left" aria-label="Previous character">‹</button>
+      <div class="cs-stage">
+        <canvas id="cs-canvas"></canvas>
+        <img id="cs-stage-thumb" class="cs-stage-thumb" alt="" src="">
+      </div>
+      <button id="cs-next" class="cs-nav-arrow right" aria-label="Next character">›</button>
+    </div>
+
+    <div class="cs-char-label" id="cs-char-label">Kid</div>
+
+    <!-- Thumbnail slider strip -->
+    <div class="cs-strip-wrap">
+      <div class="cs-strip" id="cs-strip" aria-label="Character list"><!-- filled by JS --></div>
+    </div>
+
+    <!-- Name input -->
+    <div class="cs-name-row">
+      <label for="cs-name-input" id="cs-name-label">Name your Hero</label>
+      <input type="text" id="cs-name-input" class="text-input" maxlength="16" placeholder="Type a name..." autocomplete="off">
+    </div>
+
+    <!-- Footer controls -->
+    <div class="cs-footer">
+      <button id="cs-back" class="menu-btn small ghost">◀ Back</button>
+      <button id="cs-confirm" class="menu-btn primary">Confirm ▶</button>
+    </div>
+  </main>
+
+  <div id="fade-curtain" class="hidden" aria-hidden="true"></div>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/GLTFLoader.js"></script>
+  <script src="lib/fflate.min.js"></script>
+  <script src="lib/FBXLoader.js"></script>
+  <script src="js/background.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/characters-data.js"></script>
+  <script src="js/character-select.js"></script>
+</body>
+</html>

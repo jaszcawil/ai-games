@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a2440">
+<title>Chokmah — Curious Kid</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/world.css">
+<link rel="stylesheet" href="css/challenge.css">
+</head>
+<body>
+
+  <canvas id="world-canvas"></canvas>
+  <div id="world-vignette" aria-hidden="true"></div>
+
+  <div class="world-topbar">
+    <button id="btn-menu" class="world-round-btn" aria-label="Back to start screen" title="Menu">☰</button>
+    <div id="zone-label">The Great Library</div>
+    <div class="world-topbar-right">
+      <button id="btn-mute" class="world-round-btn" aria-label="Mute all sound" title="Mute">🔊</button>
+    </div>
+  </div>
+
+  <div id="world-progress">Building the world of Chokmah…</div>
+  <div id="world-toast"></div>
+
+  <div id="joy-base">
+    <div id="joy-knob"></div>
+  </div>
+
+  <div class="world-action-btns">
+    <button id="btn-run" class="world-btn-round">Run</button>
+    <button id="btn-interact" class="world-btn-round">✋<br>Interact</button>
+  </div>
+
+  <div id="fade-curtain" class="hidden" aria-hidden="true"></div>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/GLTFLoader.js"></script>
+  <script src="lib/fflate.min.js"></script>
+  <script src="lib/FBXLoader.js"></script>
+  <script>
+    window.CKQKC_BGM_PLAYLIST = [
+      'assets/audio/open-world/event-horizon.mp3',
+      'assets/audio/open-world/pulsar.mp3',
+      'assets/audio/open-world/singularity.mp3'
+    ];
+  </script>
+  <script src="js/audio.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/characters-data.js"></script>
+  <script src="js/abilities-data.js"></script>
+  <script src="js/npc-data.js"></script>
+  <script src="js/challenge-system.js"></script>
+  <script src="js/world-assets-manifest.js"></script>
+  <script src="js/world-terrain.js"></script>
+  <script src="js/world.js"></script>
+</body>
+</html>

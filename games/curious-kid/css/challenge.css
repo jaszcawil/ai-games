@@ -1,0 +1,157 @@
+/* ==========================================================================
+   Challenge modal (NPC quizzes / recruits / obstacles / boss) + the
+   party portrait switcher HUD. Shared by world.html and dungeon-lab.html.
+   ========================================================================== */
+
+.chal-overlay {
+  position: fixed; inset: 0;
+  z-index: 60;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(8, 5, 20, 0);
+  transition: background 0.25s ease;
+  pointer-events: none;
+}
+.chal-overlay.hidden { display: none; }
+.chal-overlay.visible { background: rgba(8, 5, 20, 0.45); pointer-events: auto; }
+
+.chal-card {
+  width: min(92vw, 480px);
+  margin-bottom: calc(18px + var(--safe-bottom));
+  background: linear-gradient(180deg, #241238 0%, #180a28 100%);
+  border: 2px solid var(--panel-border);
+  border-radius: 22px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.4);
+  transform: translateY(24px);
+  opacity: 0;
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+.chal-overlay.visible .chal-card { transform: translateY(0); opacity: 1; }
+
+.chal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.chal-thumb {
+  width: 48px; height: 48px; border-radius: 50%;
+  object-fit: cover; background: rgba(255,255,255,0.08);
+  border: 2px solid var(--clr-gold);
+}
+.chal-name { font-weight: 800; color: var(--clr-gold); font-size: 1.05rem; }
+
+.chal-body { color: var(--clr-cream); font-size: 0.95rem; line-height: 1.4; margin-bottom: 10px; }
+
+.chal-hint {
+  color: var(--clr-science);
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(79, 195, 255, 0.12);
+}
+.chal-hint.hidden { display: none; }
+
+.chal-choices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.chal-choice {
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2px solid var(--panel-border);
+  background: rgba(255,255,255,0.06);
+  color: var(--clr-cream);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chal-choice:active { transform: scale(0.98); }
+.chal-choice.correct { background: rgba(95, 184, 90, 0.35); border-color: #5fb85a; }
+.chal-choice.wrong { background: rgba(220, 90, 90, 0.35); border-color: #dc5a5a; }
+.chal-choice.revealed { border-color: var(--clr-gold); box-shadow: 0 0 0 2px rgba(255, 207, 92, 0.4) inset; }
+
+.chal-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.chal-btn {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: none;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.chal-btn-primary { background: linear-gradient(180deg, #ffe27a, var(--clr-gold-deep)); color: #3a2100; }
+.chal-ability-btn { background: rgba(255,255,255,0.1); color: var(--clr-cream); border: 2px solid var(--panel-border); }
+.chal-ability-btn:disabled { opacity: 0.45; cursor: default; }
+.chal-cd { opacity: 0.75; font-weight: 600; }
+
+/* ---- top banner (level up / obstacle cleared / recruit) ---- */
+
+.chal-banner {
+  position: fixed;
+  top: calc(70px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  z-index: 61;
+  max-width: 88vw;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe27a, var(--clr-gold-deep));
+  color: #3a2100;
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.chal-banner.hidden { display: none; }
+.chal-banner.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ==========================================================================
+   Party portrait switcher -- click a portrait or press 1-4.
+   ========================================================================== */
+
+#party-bar {
+  position: fixed;
+  top: calc(70px + var(--safe-top));
+  left: calc(14px + var(--safe-left));
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+}
+
+.party-slot {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  border: 3px solid var(--panel-border);
+  background: var(--panel-bg);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+.party-slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.party-slot .party-slot-icon { font-size: 1.4rem; }
+.party-slot.active { border-color: var(--clr-gold); box-shadow: 0 0 0 2px rgba(255,207,92,0.35); }
+.party-slot.locked { opacity: 0.35; filter: grayscale(1); cursor: default; }
+.party-slot .party-slot-key {
+  position: absolute; bottom: -3px; right: -3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(10,8,24,0.85);
+  color: var(--clr-cream);
+  font-size: 0.62rem;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.party-slot .party-slot-lvl {
+  position: absolute; top: -4px; left: -4px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--clr-gold);
+  color: #3a2100;
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+@media (max-width: 480px) {
+  .party-slot { width: 44px; height: 44px; }
+  .chal-card { padding: 14px 14px 12px; }
+}

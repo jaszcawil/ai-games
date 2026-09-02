@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Curious Kid — Chokmah (Preview)</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .wip-card {
+    position: relative; z-index: 2;
+    max-width: 520px; margin: 8vh auto; padding: 28px 26px;
+    background: rgba(31,16,56,0.8); border: 2px solid rgba(255,255,255,0.16);
+    border-radius: 22px; text-align: center;
+  }
+  .wip-card h1 { font-size: 1.6rem; margin: 0 0 6px; }
+  .wip-card p { font-weight: 600; color: rgba(255,246,230,0.8); line-height: 1.5; }
+  .wip-list { text-align: left; font-size: 0.85rem; background: rgba(255,255,255,0.05); border-radius: 14px; padding: 14px 16px; margin: 16px 0; }
+  .wip-list div { margin: 4px 0; }
+</style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="vignette"></div>
+  <div class="wip-card">
+    <h1>🚧 The World of Chokmah</h1>
+    <p>The open 3D world, companions, and challenges arrive in the next update. Your save loaded correctly!</p>
+    <div class="wip-list" id="save-summary">Loading save…</div>
+    <button class="menu-btn primary wide" onclick="window.location.href='index.html'">◀ Back to Start Screen</button>
+  </div>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/OBJLoader.js"></script>
+  <script src="js/background.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var slot = params.get('slot') || window.localStorage.getItem('ckqkc.lastSlot');
+      var box = document.getElementById('save-summary');
+      var raw = window.localStorage.getItem('ckqkc.save.' + (slot === 'auto' ? 'auto' : 'slot' + slot));
+      try {
+        var save = JSON.parse(raw);
+        var html =
+          '<div><strong>Slot:</strong> ' + slot + '</div>' +
+          '<div><strong>Chapter:</strong> ' + save.progress.chapter + '</div>' +
+          '<div><strong>Controller:</strong> ' + save.settings.controller + '</div>' +
+          '<div><strong>Music:</strong> ' + (save.settings.audio.bgmOn ? save.settings.audio.bgmVolume + '%' : 'off') + '</div>';
+        if (save.progress.party && save.progress.party.length) {
+          html += '<div style="margin-top:8px;"><strong>Your Party:</strong></div>';
+          save.progress.party.forEach(function (member) {
+            var roleLabel = member.role.charAt(0).toUpperCase() + member.role.slice(1);
+            html += '<div>&nbsp;&nbsp;' + roleLabel + ': <strong>' + member.name + '</strong> (' + member.characterLabel + ')</div>';
+          });
+        } else {
+          html = '<div><strong>Hero:</strong> ' + save.playerName + '</div>' + html;
+        }
+        box.innerHTML = html;
+      } catch (e) {
+        box.textContent = 'No save data found for this slot.';
+      }
+    })();
+  </script>
+</body>
+</html>

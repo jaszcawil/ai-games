@@ -1,0 +1,230 @@
+/* ==========================================================================
+   Character / Party Selection screen
+   ========================================================================== */
+
+:root {
+  --role-color: #ffcf5c;
+}
+
+#stage-scrim {
+  position: fixed; inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 55% at 50% 46%, rgba(10,5,20,0.35) 0%, rgba(10,5,20,0.72) 100%);
+}
+
+.cs-screen {
+  justify-content: flex-start;
+  padding-top: calc(14px + var(--safe-top));
+  gap: 6px;
+  overflow-y: auto;
+}
+
+/* ---- progress row ---- */
+
+.cs-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.cs-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cs-progress-dot {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.18);
+  color: rgba(255,246,230,0.55);
+  overflow: hidden;
+  transition: border-color 0.25s ease, transform 0.25s ease, background 0.25s ease;
+}
+.cs-progress-dot img { width: 100%; height: 100%; object-fit: cover; }
+.cs-progress-step.current .cs-progress-dot {
+  border-color: var(--role-color);
+  transform: scale(1.14);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--role-color) 65%, transparent);
+}
+.cs-progress-step.done .cs-progress-dot {
+  border-color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.12);
+}
+.cs-progress-connector {
+  width: 16px; height: 2px;
+  background: rgba(255,255,255,0.18);
+}
+.cs-progress-step.done + .cs-progress-connector { background: rgba(255,255,255,0.4); }
+
+/* ---- heading ---- */
+
+.cs-heading { text-align: center; margin-bottom: 2px; max-width: 480px; }
+.cs-heading h1 {
+  margin: 0;
+  font-size: clamp(1.3rem, 4vw, 1.8rem);
+  font-weight: 800;
+  color: var(--role-color);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  transition: color 0.3s ease;
+}
+.cs-heading p {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255,246,230,0.7);
+}
+
+/* ---- 3D stage ---- */
+
+.cs-stage-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.cs-stage {
+  position: relative;
+  width: min(280px, 56vw);
+  height: min(340px, 42vh);
+  border-radius: 24px;
+  background: radial-gradient(ellipse at 50% 75%, color-mix(in srgb, var(--role-color) 18%, transparent) 0%, rgba(20,10,38,0) 70%);
+  border: 2px solid color-mix(in srgb, var(--role-color) 45%, rgba(255,255,255,0.14));
+  box-shadow: 0 0 30px color-mix(in srgb, var(--role-color) 25%, transparent), inset 0 0 40px rgba(0,0,0,0.25);
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#cs-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+#cs-canvas.ready { opacity: 1; }
+
+.cs-stage-thumb {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  object-position: center 85%;
+  padding: 14px;
+  transition: opacity 0.35s ease;
+}
+
+.cs-nav-arrow {
+  flex-shrink: 0;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 2px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--clr-cream);
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+.cs-nav-arrow:hover { border-color: var(--role-color); transform: scale(1.08); }
+.cs-nav-arrow:active { transform: scale(0.95); }
+
+.cs-char-label {
+  margin-top: 8px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  min-height: 1.3em;
+}
+
+/* ---- thumbnail strip ---- */
+
+.cs-strip-wrap {
+  width: min(560px, 92vw);
+  margin-top: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.cs-strip-wrap::-webkit-scrollbar { display: none; }
+
+.cs-strip {
+  display: flex;
+  gap: 8px;
+  padding: 4px 6px;
+  scroll-behavior: smooth;
+}
+
+.cs-thumb-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  scroll-snap-align: center;
+}
+.cs-thumb-btn img { width: 100%; height: 100%; object-fit: contain; object-position: center 88%; pointer-events: none; }
+.cs-thumb-btn.active { border-color: var(--role-color); transform: scale(1.15); box-shadow: 0 0 12px color-mix(in srgb, var(--role-color) 60%, transparent); }
+.cs-thumb-btn.used { opacity: 0.32; cursor: not-allowed; }
+.cs-thumb-btn.used::after {
+  content: '✓';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  background: rgba(10,5,20,0.55);
+  color: rgba(255,255,255,0.85);
+}
+
+/* ---- name input ---- */
+
+.cs-name-row {
+  width: min(340px, 84vw);
+  margin-top: 10px;
+  text-align: center;
+}
+.cs-name-row label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: rgba(255,246,230,0.75);
+  margin-bottom: 6px;
+}
+.cs-name-row .text-input { text-align: center; }
+
+/* ---- footer ---- */
+
+.cs-footer {
+  width: min(420px, 90vw);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+.cs-footer .menu-btn.primary { flex: 1; max-width: 220px; }
+
+@keyframes cs-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@media (max-height: 720px) {
+  .cs-stage { height: min(280px, 38vh); }
+  .cs-heading p { display: none; }
+}

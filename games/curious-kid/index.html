@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#241246">
+<title>Curious Kid and the Quest for the Knowledge Crystals</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Procedural 3D background -- renders instantly, no assets to load -->
+  <canvas id="bg-canvas"></canvas>
+  <div id="vignette" aria-hidden="true"></div>
+
+  <!-- ============ START SCREEN ============ -->
+  <main id="start-screen" class="screen">
+    <div class="sparkle-layer" aria-hidden="true"></div>
+
+    <header class="title-wrap">
+      <h1 class="game-title">
+        <span class="title-big">Curious Kid</span>
+        <span class="title-rest">and the Quest for the Knowledge&nbsp;Crystals</span>
+      </h1>
+      <p class="tagline">An open-world adventure of science, numbers, music &amp; good&nbsp;choices</p>
+    </header>
+
+    <nav class="menu-buttons" aria-label="Main menu">
+      <button id="btn-start" class="menu-btn primary">
+        <span class="menu-btn-icon">▶</span> Start Game
+      </button>
+      <button id="btn-load" class="menu-btn">
+        <span class="menu-btn-icon">💾</span> Load Game
+      </button>
+      <button id="btn-settings" class="menu-btn">
+        <span class="menu-btn-icon">⚙️</span> Settings
+      </button>
+      <button id="btn-credits" class="menu-btn">
+        <span class="menu-btn-icon">✨</span> Credits
+      </button>
+    </nav>
+
+    <footer class="footer-row">
+      <span class="version-tag">Chokmah World &middot; Start Screen Preview</span>
+    </footer>
+  </main>
+
+  <!-- Quick mute toggle, always reachable -->
+  <button id="btn-quick-mute" class="icon-btn" aria-label="Mute all sound" title="Mute">🔊</button>
+
+  <!-- ============ MODAL OVERLAY ============ -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+
+    <!-- ---------- LOAD GAME ---------- -->
+    <section id="modal-load" class="modal hidden" role="dialog" aria-labelledby="load-title">
+      <div class="modal-header">
+        <h2 id="load-title">💾 Load Game</h2>
+        <button class="modal-close" data-close="modal-load" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="slot-list" class="slot-list"><!-- filled by save.js --></div>
+        <div class="device-save-row">
+          <button id="btn-import-device" class="menu-btn small">📂 Import Save From Device</button>
+          <input type="file" id="file-import" accept="application/json,.json" hidden>
+          <p class="hint-text">Save files can be exported to your computer or phone from any slot, and brought back here anytime.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- NEW GAME (slot picker only -- naming happens in character select) ---------- -->
+    <section id="modal-newgame" class="modal hidden" role="dialog" aria-labelledby="newgame-title">
+      <div class="modal-header">
+        <h2 id="newgame-title">🌟 Begin Your Adventure</h2>
+        <button class="modal-close" data-close="modal-newgame" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint-text">All 3 save slots are full. Choose one to start fresh on (it will be overwritten):</p>
+        <div id="newgame-slot-picker" class="slot-picker"><!-- filled by main.js --></div>
+        <button id="btn-begin-adventure" class="menu-btn primary wide">Continue ▶</button>
+      </div>
+    </section>
+
+    <!-- ---------- SETTINGS ---------- -->
+    <section id="modal-settings" class="modal hidden" role="dialog" aria-labelledby="settings-title">
+      <div class="modal-header">
+        <h2 id="settings-title">⚙️ Settings</h2>
+        <button class="modal-close" data-close="modal-settings" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-tabs" role="tablist">
+          <button class="tab-btn active" data-tab="audio" role="tab">🔊 Audio</button>
+          <button class="tab-btn" data-tab="controller" role="tab">🕹️ Controller</button>
+        </div>
+
+        <div class="tab-panel" data-panel="audio">
+          <div class="setting-row">
+            <label for="toggle-bgm">Background Music</label>
+            <button id="toggle-bgm" class="toggle-switch" role="switch" aria-checked="true"><span class="toggle-knob"></span></button>
+          </div>
+          <div class="setting-row">
+            <label for="slider-bgm">Music Volume</label>
+            <div class="slider-row">
+              <input type="range" id="slider-bgm" min="0" max="100" step="10" value="100">
+              <span id="label-bgm" class="slider-value">100%</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label for="toggle-sfx">Sound Effects</label>
+            <button id="toggle-sfx" class="toggle-switch" role="switch" aria-checked="true"><span class="toggle-knob"></span></button>
+          </div>
+          <div class="setting-row">
+            <label for="slider-sfx">Effects Volume</label>
+            <div class="slider-row">
+              <input type="range" id="slider-sfx" min="0" max="100" step="10" value="100">
+              <span id="label-sfx" class="slider-value">100%</span>
+            </div>
+          </div>
+          <button id="btn-reset-audio" class="menu-btn small ghost">Reset to Default</button>
+        </div>
+
+        <div class="tab-panel" data-panel="controller" hidden>
+          <p class="hint-text">Choose how you'll move the Curious Kid around Chokmah.</p>
+          <div class="controller-options">
+            <button class="controller-card active" data-controller="arrows">
+              <span class="controller-icon">⌨️</span>
+              <span class="controller-name">Arrow Keys</span>
+              <span class="controller-desc">Best on a computer keyboard</span>
+            </button>
+            <button class="controller-card" data-controller="joypad">
+              <span class="controller-icon">🕹️</span>
+              <span class="controller-name">On-Screen Joypad</span>
+              <span class="controller-desc">Best on phones &amp; tablets</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- CREDITS ---------- -->
+    <section id="modal-credits" class="modal hidden" role="dialog" aria-labelledby="credits-title">
+      <div class="modal-header">
+        <h2 id="credits-title">✨ Credits</h2>
+        <button class="modal-close" data-close="modal-credits" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body credits-body">
+        <section class="credit-group">
+          <h3>🌍 The World of Chokmah</h3>
+          <p>A story of the Crystals of Science, Mathematics, Music, and Goodness, and the curious kid who brings them home.</p>
+        </section>
+        <section class="credit-group">
+          <h3>🎵 Music</h3>
+          <p>"Nebula" — The Grey Room, by Density &amp; Time</p>
+        </section>
+        <section class="credit-group">
+          <h3>🧑‍🤝‍🧑 Character Avatars</h3>
+          <p>100Avatars by Polygonal Mind (Daniel "ToxSam" Garcia) — shared freely for creative projects.</p>
+        </section>
+        <section class="credit-group">
+          <h3>🌳 World Assets</h3>
+          <p>Open-source 3D assets curated by ToxSam's open-source-3D-assets collection.</p>
+        </section>
+        <section class="credit-group">
+          <h3>💖 Made With Curiosity</h3>
+          <p>Built for young explorers everywhere. Thank you for playing!</p>
+        </section>
+        <section class="credit-group">
+          <h3>🎮 Made By</h3>
+          <p>Jasz</p>
+        </section>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ============ GAME WORLD MOUNT (placeholder for next chunks) ============ -->
+  <div id="fade-curtain" class="hidden" aria-hidden="true"></div>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/OBJLoader.js"></script>
+  <script src="js/background.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

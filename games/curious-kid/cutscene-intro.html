@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a2440">
+<title>The Story Begins — Curious Kid</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/cutscene.css">
+</head>
+<body>
+
+  <div id="cut-sky-a" class="cut-sky" aria-hidden="true"></div>
+  <div id="cut-sky-b" class="cut-sky" aria-hidden="true"></div>
+  <canvas id="cut-canvas"></canvas>
+  <div id="cut-vignette" aria-hidden="true"></div>
+
+  <button id="cut-skip" class="menu-btn small ghost cut-skip-btn">Skip ▶▶</button>
+
+  <div id="cut-caption-wrap" class="cut-caption-wrap">
+    <p id="cut-caption" class="cut-caption"></p>
+  </div>
+
+  <div id="cut-party-reveal" class="cut-party-reveal hidden">
+    <h2 id="cut-party-heading">That someone is you!</h2>
+    <div id="cut-party-cards" class="cut-party-cards"><!-- filled by JS --></div>
+  </div>
+
+  <div id="cut-title-card" class="cut-title-card hidden">
+    <p class="cut-title-eyebrow">Chapter 1</p>
+    <h1 id="cut-title-main">The Valley of Discovery</h1>
+    <button id="cut-continue" class="menu-btn primary wide">Continue ▶</button>
+  </div>
+
+  <div id="fade-curtain" class="hidden" aria-hidden="true"></div>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/OBJLoader.js"></script>
+  <script>window.CKQKC_BGM_TRACK = 'assets/audio/cutscene-intro-theme.mp3';</script>
+  <script src="js/audio.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/characters-data.js"></script>
+  <script src="js/cutscene-intro.js"></script>
+</body>
+</html>

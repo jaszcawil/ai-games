@@ -1,0 +1,169 @@
+/* ==========================================================================
+   Intro cutscene -- "How the Crystals Went Missing"
+   ========================================================================== */
+
+html, body { background: #7ec8ec; }
+
+.cut-sky {
+  position: fixed; inset: 0;
+  z-index: 0;
+  transition: opacity 2.5s ease;
+}
+#cut-sky-a {
+  opacity: 1;
+  background:
+    radial-gradient(ellipse 30% 18% at 80% 14%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, #4fa8e8 0%, #8fd0f0 45%, #cdeaf5 78%, #eaf6e8 100%);
+}
+#cut-sky-b {
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 40% 24% at 50% 90%, rgba(255,180,120,0.35) 0%, rgba(255,180,120,0) 70%),
+    linear-gradient(180deg, #1a1240 0%, #33205c 40%, #5a2f66 72%, #8a3f5c 100%);
+}
+.cut-sky.dim { opacity: 0.55 !important; }
+
+#cut-canvas {
+  position: fixed; inset: 0;
+  z-index: 1;
+  width: 100%; height: 100%;
+  display: block;
+}
+
+#cut-vignette {
+  position: fixed; inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, rgba(0,0,0,0) 45%, rgba(8,5,20,0.55) 100%);
+}
+
+.cut-skip-btn {
+  position: fixed;
+  top: calc(16px + var(--safe-top));
+  right: calc(16px + var(--safe-right));
+  z-index: 20;
+}
+
+/* ---- caption ---- */
+
+.cut-caption-wrap {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(48px + var(--safe-bottom));
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 0 20px;
+  pointer-events: none;
+}
+
+.cut-caption {
+  max-width: 640px;
+  margin: 0;
+  padding: 16px 26px;
+  border-radius: 20px;
+  background: rgba(10, 8, 24, 0.6);
+  border: 2px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(4px);
+  color: var(--clr-cream);
+  font-weight: 700;
+  font-size: clamp(1rem, 2.6vw, 1.25rem);
+  text-align: center;
+  line-height: 1.4;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.cut-caption.visible { opacity: 1; transform: translateY(0); }
+
+/* ---- party reveal ---- */
+
+.cut-party-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.cut-party-reveal.visible { opacity: 1; }
+
+.cut-party-reveal h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 4.5vw, 2.2rem);
+  font-weight: 800;
+  color: var(--clr-gold);
+  text-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  text-align: center;
+}
+
+.cut-party-cards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 900px;
+}
+
+.cut-party-card {
+  width: 130px;
+  padding: 14px 10px 12px;
+  border-radius: 18px;
+  background: rgba(20, 10, 38, 0.7);
+  border: 2px solid var(--panel-border);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(24px) scale(0.9);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.cut-party-card.visible { opacity: 1; transform: translateY(0) scale(1); }
+.cut-party-card img { width: 76px; height: 76px; object-fit: contain; object-position: center 88%; }
+.cut-party-card .role { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,246,230,0.6); margin-top: 4px; }
+.cut-party-card .pname { font-size: 1rem; font-weight: 800; color: var(--clr-cream); }
+
+/* ---- title card ---- */
+
+.cut-title-card {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(8, 5, 18, 0.72);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.cut-title-card.visible { opacity: 1; }
+
+.cut-title-eyebrow {
+  margin: 0;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: rgba(255,246,230,0.7);
+}
+.cut-title-card h1 {
+  margin: 0;
+  font-size: clamp(2rem, 7vw, 3.2rem);
+  font-weight: 800;
+  color: var(--clr-gold);
+  text-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  text-align: center;
+  padding: 0 24px;
+}
+
+.cut-title-card .menu-btn.wide {
+  width: min(320px, 70vw);
+  margin-top: 8px;
+}
+
+.hidden { display: none !important; }

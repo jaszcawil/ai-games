@@ -1,0 +1,171 @@
+/* ==========================================================================
+   The open world -- HUD, joystick, buttons.
+   ========================================================================== */
+
+html, body { background: #8fd0f0; }
+
+#world-canvas {
+  position: fixed; inset: 0;
+  z-index: 0;
+  width: 100%; height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+#world-vignette {
+  position: fixed; inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 90% 80% at 50% 50%, rgba(0,0,0,0) 55%, rgba(8,5,20,0.28) 100%);
+}
+
+/* ---- top bar ---- */
+
+.world-topbar {
+  position: fixed;
+  top: calc(14px + var(--safe-top));
+  left: calc(14px + var(--safe-left));
+  right: calc(14px + var(--safe-right));
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.world-topbar > * { pointer-events: auto; }
+
+.world-round-btn {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 2px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--clr-cream);
+  font-size: 1.2rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.world-round-btn:active { transform: scale(0.94); }
+
+#zone-label {
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  color: var(--clr-gold);
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.world-topbar-right { display: flex; gap: 8px; }
+
+/* ---- streaming progress pill ---- */
+
+#world-progress {
+  position: fixed;
+  top: calc(70px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 19;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(10, 8, 24, 0.55);
+  color: var(--clr-cream);
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.85;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#world-progress.done { opacity: 0; }
+
+/* ---- toast ---- */
+
+#world-toast {
+  position: fixed;
+  bottom: calc(150px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  z-index: 21;
+  max-width: 78vw;
+  padding: 12px 20px;
+  border-radius: 16px;
+  background: rgba(10, 8, 24, 0.72);
+  border: 2px solid var(--panel-border);
+  color: var(--clr-cream);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+#world-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---- joystick ---- */
+
+#joy-base {
+  position: fixed;
+  left: calc(28px + var(--safe-left));
+  bottom: calc(28px + var(--safe-bottom));
+  z-index: 20;
+  width: 118px; height: 118px;
+  border-radius: 50%;
+  background: rgba(20, 10, 38, 0.42);
+  border: 2px solid rgba(255,255,255,0.28);
+  touch-action: none;
+}
+#joy-knob {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 52px; height: 52px;
+  margin-left: -26px; margin-top: -26px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffe27a, var(--clr-gold-deep));
+  border: 2px solid rgba(255,255,255,0.5);
+  transition: transform 0.05s linear;
+  pointer-events: none;
+}
+
+/* ---- action buttons ---- */
+
+.world-action-btns {
+  position: fixed;
+  right: calc(24px + var(--safe-right));
+  bottom: calc(24px + var(--safe-bottom));
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.world-btn-round {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35);
+  font-weight: 800;
+  font-size: 0.82rem;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  color: #3a2100;
+  user-select: none;
+}
+#btn-interact {
+  background: linear-gradient(180deg, #ffe27a, var(--clr-gold-deep));
+  width: 74px; height: 74px;
+}
+#btn-run {
+  background: linear-gradient(180deg, #bdf0c8, #59c47a);
+  color: #123018;
+  margin-bottom: 10px;
+}
+.world-btn-round:active { transform: scale(0.92); }
+
+@media (max-width: 480px) {
+  #joy-base { width: 100px; height: 100px; }
+  .world-btn-round { width: 56px; height: 56px; font-size: 0.72rem; }
+  #btn-interact { width: 66px; height: 66px; }
+}
