@@ -24,9 +24,12 @@
     joyBase: document.getElementById('joy-base'),
     joyKnob: document.getElementById('joy-knob'),
     btnRun: document.getElementById('btn-run'),
+    btnJump: document.getElementById('btn-jump'),
     btnInteract: document.getElementById('btn-interact'),
     btnMenu: document.getElementById('btn-menu'),
     btnMute: document.getElementById('btn-mute'),
+    btnQuicksave: document.getElementById('btn-quicksave'),
+    btnQuickload: document.getElementById('btn-quickload'),
     zoneLabel: document.getElementById('zone-label'),
     toast: document.getElementById('world-toast'),
     fadeCurtain: document.getElementById('fade-curtain')
@@ -66,15 +69,27 @@
   var HALL_LEN_TILES = 4;
   var HALF_W = TILE / 2;
 
+  function stationQ(prompt, choices, correctIndex, hint, fact) {
+    return { category: 'science', prompt: prompt, choices: choices, correctIndex: correctIndex, hint: hint, fact: fact };
+  }
+
   var LAB_STATIONS = [
     { id: 'lab-station-1', x: 0, z: 14, radius: 3.4,
       greet: 'A dusty lab-bot whirs to life. "Oh! A visitor. Answer this before the door will let you through:"',
-      question: { category: 'science', prompt: 'What do we call a careful test scientists use to check if an idea is true?', choices: ['A guess', 'An experiment', 'A daydream', 'A rhyme'], correctIndex: 1,
-        hint: 'It\'s the main tool of science.', fact: 'An experiment is a careful, repeatable test of an idea!' } },
+      questions: [
+        stationQ('What do we call a careful test scientists use to check if an idea is true?', ['A guess', 'An experiment', 'A daydream', 'A rhyme'], 1,
+          'It\'s the main tool of science.', 'An experiment is a careful, repeatable test of an idea!'),
+        stationQ('What do scientists call an idea that hasn\'t been tested yet?', ['A fact', 'A hypothesis', 'A law', 'A song'], 1,
+          'It\'s a guess you can test.', 'A hypothesis is an idea a scientist tests with an experiment!')
+      ] },
     { id: 'lab-station-2', x: 0, z: 25, radius: 3.4,
       greet: 'Another lab-bot beeps and blocks a shelf of beakers. "One more question, if you please:"',
-      question: { category: 'science', prompt: 'Which of these is something you should always do during a science experiment?', choices: ['Guess and never check', 'Write down what you observe', 'Ignore anything surprising', 'Skip safety rules'], correctIndex: 1,
-        hint: 'Think about how scientists remember what happened.', fact: 'Careful observation and note-taking are at the heart of every experiment!' } }
+      questions: [
+        stationQ('Which of these is something you should always do during a science experiment?', ['Guess and never check', 'Write down what you observe', 'Ignore anything surprising', 'Skip safety rules'], 1,
+          'Think about how scientists remember what happened.', 'Careful observation and note-taking are at the heart of every experiment!'),
+        stationQ('Why do scientists often repeat their experiments?', ['To waste time', 'To check the results are true', 'Because they forgot', 'To make it longer'], 1,
+          'Think about trusting a result.', 'Repeating an experiment helps confirm the result wasn\'t just an accident!')
+      ] }
   ];
 
   var BOSS_TRIGGER = { x: 0, z: 38, radius: 5 };
@@ -231,7 +246,8 @@
       var actions = {
         idle: findClip(clips, 'idle') ? mixer.clipAction(findClip(clips, 'idle')) : null,
         walk: findClip(clips, 'walk') ? mixer.clipAction(findClip(clips, 'walk')) : null,
-        run: findClip(clips, 'run') ? mixer.clipAction(findClip(clips, 'run')) : null
+        run: findClip(clips, 'run') ? mixer.clipAction(findClip(clips, 'run')) : null,
+        jump: findClip(clips, 'jump') ? mixer.clipAction(findClip(clips, 'jump')) : null
       };
       var current = null;
       function play(name) {
@@ -293,7 +309,13 @@
   // ================= INPUT (single-character version of the world controller) =================
 
   function bindControls() {
-    window.addEventListener('keydown', function (e) { keys[e.key.toLowerCase()] = true; if (e.key === 'Shift') running = true; });
+    window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    window.addEventListener('keydown', function (e) {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === 'Shift') running = true;
+      if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); doJump(); }
+    });
     window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; if (e.key === 'Shift') running = false; });
 
     var dragging = false, baseRect = null, knobMax = 42;
@@ -314,26 +336,126 @@
     window.addEventListener('mousemove', function (e) { pointerMove(e.clientX, e.clientY); });
     window.addEventListener('mouseup', pointerUp);
 
-    els.btnRun.addEventListener('touchstart', function (e) { e.preventDefault(); running = true; }, { passive: false });
-    els.btnRun.addEventListener('touchend', function (e) { e.preventDefault(); running = false; }, { passive: false });
-    els.btnRun.addEventListener('mousedown', function () { running = true; });
-    window.addEventListener('mouseup', function () { running = false; });
+    // ---- camera look: click/touch-drag on the canvas rotates the view, wheel/pinch zooms ----
+    var camDragging = false, camLastX = 0, camMoved = false;
+    var pinchActive = false, pinchStartDist = 0, pinchStartZoom = cameraDist;
+    var CAM_DRAG_SENSITIVITY = 0.0055;
+    function hideCamHint() {
+      var hint = document.getElementById('cam-hint');
+      if (hint) hint.classList.add('hidden');
+    }
+    function touchDist(touches) {
+      var dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    els.canvas.addEventListener('mousedown', function (e) {
+      if (anyModalOpen()) return;
+      camDragging = true; camMoved = false; camLastX = e.clientX;
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!camDragging) return;
+      var dx = e.clientX - camLastX;
+      if (Math.abs(dx) > 1) camMoved = true;
+      camLastX = e.clientX;
+      cameraYaw -= dx * CAM_DRAG_SENSITIVITY * 8;
+      if (camMoved) hideCamHint();
+    });
+    window.addEventListener('mouseup', function () { camDragging = false; });
+    els.canvas.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      cameraDist = Math.max(CAMERA_DIST_MIN, Math.min(CAMERA_DIST_MAX, cameraDist + e.deltaY * 0.01));
+      hideCamHint();
+    }, { passive: false });
+
+    els.canvas.addEventListener('touchstart', function (e) {
+      if (anyModalOpen()) return;
+      if (e.touches.length === 2) {
+        pinchActive = true; camDragging = false;
+        pinchStartDist = touchDist(e.touches);
+        pinchStartZoom = cameraDist;
+      } else if (e.touches.length === 1) {
+        camDragging = true; camMoved = false; camLastX = e.touches[0].clientX;
+      }
+    }, { passive: true });
+    els.canvas.addEventListener('touchmove', function (e) {
+      if (pinchActive && e.touches.length === 2) {
+        e.preventDefault();
+        var d = touchDist(e.touches);
+        cameraDist = Math.max(CAMERA_DIST_MIN, Math.min(CAMERA_DIST_MAX, pinchStartZoom - (d - pinchStartDist) * 0.03));
+        hideCamHint();
+      } else if (camDragging && e.touches.length === 1) {
+        var dx = e.touches[0].clientX - camLastX;
+        if (Math.abs(dx) > 1) camMoved = true;
+        camLastX = e.touches[0].clientX;
+        cameraYaw -= dx * CAM_DRAG_SENSITIVITY * 8;
+        if (camMoved) hideCamHint();
+      }
+    }, { passive: false });
+    els.canvas.addEventListener('touchend', function (e) {
+      if (e.touches.length < 2) pinchActive = false;
+      if (e.touches.length === 0) camDragging = false;
+    });
+
+    els.btnRun.addEventListener('click', function () {
+      runToggled = !runToggled;
+      els.btnRun.classList.toggle('active', runToggled);
+      if (window.SoundManager) window.SoundManager.playSfx('click');
+    });
+
+    els.btnJump.addEventListener('click', function () { doJump(); });
 
     els.btnInteract.addEventListener('click', function () {
-      if (window.ChallengeUI && window.ChallengeUI.isOpen()) return;
+      if (anyModalOpen()) return;
       showToast('Explore the lab -- walk up to anything glowing!');
     });
 
-    els.btnMenu.addEventListener('click', leaveToWorld);
-
-    var muted = false;
-    els.btnMute.addEventListener('click', function () {
-      muted = !muted;
-      if (window.SoundManager) window.SoundManager.setMuted(muted);
-      els.btnMute.textContent = muted ? '🔇' : '🔊';
+    els.btnMenu.addEventListener('click', function () {
+      if (window.ChallengeUI && window.ChallengeUI.isOpen()) return;
+      if (window.PauseMenu) window.PauseMenu.toggle();
     });
 
+    els.btnQuicksave.addEventListener('click', function () {
+      saveDungeonProgress();
+      if (window.SoundManager) window.SoundManager.playSfx('click');
+      showToast('💾 Game saved!');
+    });
+    els.btnQuickload.addEventListener('click', quickLoad);
+
+    function syncMuteIcon() {
+      var s = window.Settings ? window.Settings.get() : null;
+      var anyOn = !s || s.audio.bgmOn || s.audio.sfxOn;
+      els.btnMute.textContent = anyOn ? '🔊' : '🔇';
+    }
+    els.btnMute.addEventListener('click', function () {
+      var s = window.Settings.get();
+      var nowOn = !(s.audio.bgmOn || s.audio.sfxOn);
+      window.Settings.setBgmOn(nowOn);
+      window.Settings.setSfxOn(nowOn);
+      syncMuteIcon();
+    });
+    syncMuteIcon();
+
+    if (window.PauseMenu) {
+      window.PauseMenu.init({
+        exitLabel: '🚪 Leave the Laboratory',
+        onQuickSave: function () { saveDungeonProgress(); },
+        onQuickLoad: quickLoad,
+        onAudioChange: syncMuteIcon,
+        onExit: function () {
+          window.PauseMenu.close();
+          leaveToWorld();
+        }
+      });
+    }
+
     window.addEventListener('beforeunload', saveDungeonProgress);
+  }
+
+  function quickLoad() {
+    if (window.SoundManager) window.SoundManager.playSfx('click');
+    els.fadeCurtain.classList.remove('hidden');
+    els.fadeCurtain.classList.add('active');
+    setTimeout(function () { window.location.reload(); }, 400);
   }
 
   var toastTimer = null;
@@ -357,6 +479,10 @@
 
   var WALK_SPEED = 4.0, RUN_SPEED = 7.2;
   var cameraYaw = 0, cameraDist = 6.6, cameraHeight = 3.4, cameraLookHeight = 1.4;
+  var CAMERA_DIST_MIN = 3.5, CAMERA_DIST_MAX = 11;
+  var runToggled = false;
+  var verticalVelocity = 0, jumping = false;
+  var GRAVITY = -20, JUMP_SPEED = 7.2;
 
   function lerpAngle(a, b, t) {
     var diff = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
@@ -370,9 +496,13 @@
     if (pos.z > HALL_LEN_TILES * TILE - 1) pos.z = HALL_LEN_TILES * TILE - 1;
   }
 
+  function anyModalOpen() {
+    return (window.ChallengeUI && window.ChallengeUI.isOpen()) || (window.PauseMenu && window.PauseMenu.isOpen());
+  }
+
   function updateHero(dt) {
     if (!heroRig) return;
-    if (window.ChallengeUI && window.ChallengeUI.isOpen()) {
+    if (anyModalOpen()) {
       if (heroRig.userData.play) heroRig.userData.play('idle');
       return;
     }
@@ -387,21 +517,39 @@
       var move = new THREE.Vector3().addScaledVector(camF, iy).addScaledVector(camR, ix);
       if (move.lengthSq() > 0.0001) {
         move.normalize();
-        var isRunning = running && Math.min(len, 1) > 0.4;
+        var isRunning = (running || runToggled) && Math.min(len, 1) > 0.4;
         var speed = isRunning ? RUN_SPEED : WALK_SPEED;
         var next = heroRig.position.clone().addScaledVector(move, speed * dt);
         resolveCollisions(next);
+        next.y = heroRig.position.y;
         heroRig.position.copy(next);
+        // Character faces the movement direction; the camera itself is no longer
+        // driven by movement (see world.js for why that used to cause spinning) --
+        // it only turns from explicit drag input now.
         var targetAngle = Math.atan2(move.x, move.z);
         heroRig.rotation.y = lerpAngle(heroRig.rotation.y, targetAngle, 1 - Math.pow(0.0001, dt));
-        var yawDiff = ((targetAngle - cameraYaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-        if (Math.abs(yawDiff) < 2.2) cameraYaw = lerpAngle(cameraYaw, targetAngle, 1 - Math.pow(0.02, dt));
-        if (heroRig.userData.play) heroRig.userData.play(isRunning ? 'run' : 'walk');
+        if (!jumping && heroRig.userData.play) heroRig.userData.play(isRunning ? 'run' : 'walk');
       }
-    } else if (heroRig.userData.play) {
+    } else if (!jumping && heroRig.userData.play) {
       heroRig.userData.play('idle');
     }
+
+    if (jumping || heroRig.position.y > 0) {
+      verticalVelocity += GRAVITY * dt;
+      heroRig.position.y += verticalVelocity * dt;
+      if (heroRig.position.y <= 0) { heroRig.position.y = 0; verticalVelocity = 0; jumping = false; }
+      else if (heroRig.userData.play) heroRig.userData.play('jump');
+    }
+
     checkProximity(heroRig.position);
+  }
+
+  function doJump() {
+    if (!heroRig || anyModalOpen()) return;
+    if (jumping || heroRig.position.y > 0.01) return;
+    jumping = true;
+    verticalVelocity = JUMP_SPEED;
+    if (window.SoundManager) window.SoundManager.playSfx('click');
   }
 
   function updateCamera(dt) {
@@ -432,7 +580,7 @@
   }
 
   function checkProximity(pos) {
-    if (window.ChallengeUI && window.ChallengeUI.isOpen()) return;
+    if (anyModalOpen()) return;
 
     if (pos.z <= EXIT_TRIGGER.z + EXIT_TRIGGER.radius) { leaveToWorld(); return; }
 
@@ -454,8 +602,10 @@
   }
 
   function triggerStation(s) {
+    var pool = s.data.questions || (s.data.question ? [s.data.question] : []);
+    var question = window.pickRandomQuestion ? window.pickRandomQuestion(pool) : pool[0];
     window.ChallengeUI.askQuestion({
-      name: 'Lab Assistant', thumb: '', greet: s.data.greet, question: s.data.question,
+      name: 'Lab Assistant', thumb: '', greet: s.data.greet, question: question,
       abilities: heroAbilityButtons(),
       onResult: function (correct) {
         if (!correct) return;
@@ -468,7 +618,21 @@
     });
   }
 
+  // Shuffle a copy of an array (Fisher-Yates) without touching the original.
+  function shuffled(arr) {
+    var out = arr.slice();
+    for (var i = out.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = out[i]; out[i] = out[j]; out[j] = tmp;
+    }
+    return out;
+  }
+
   function startBossFight() {
+    // draw a fresh, shuffled set of 4 questions from the pool every fight so the
+    // gauntlet isn't identical on a replay
+    var pool = window.BOSS_DATA.questionPool || window.BOSS_DATA.questions || [];
+    bossState.questions = shuffled(pool).slice(0, Math.min(4, pool.length));
     window.ChallengeUI.showLine({
       name: window.BOSS_DATA.name, thumb: window.BOSS_DATA.thumb, text: window.BOSS_DATA.intro, buttonLabel: 'Face the challenge!',
       onClose: function () { askNextBossQuestion(); }
@@ -476,7 +640,7 @@
   }
 
   function askNextBossQuestion() {
-    var questions = window.BOSS_DATA.questions;
+    var questions = bossState.questions || [];
     if (bossState.questionIndex >= questions.length) { finishBossFight(); return; }
     var q = questions[bossState.questionIndex];
     window.ChallengeUI.askQuestion({

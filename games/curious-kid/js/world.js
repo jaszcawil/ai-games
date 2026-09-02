@@ -45,9 +45,12 @@
     joyBase: document.getElementById('joy-base'),
     joyKnob: document.getElementById('joy-knob'),
     btnRun: document.getElementById('btn-run'),
+    btnJump: document.getElementById('btn-jump'),
     btnInteract: document.getElementById('btn-interact'),
     btnMenu: document.getElementById('btn-menu'),
     btnMute: document.getElementById('btn-mute'),
+    btnQuicksave: document.getElementById('btn-quicksave'),
+    btnQuickload: document.getElementById('btn-quickload'),
     zoneLabel: document.getElementById('zone-label'),
     toast: document.getElementById('world-toast'),
     fadeCurtain: document.getElementById('fade-curtain')
@@ -66,8 +69,12 @@
   var TRAIL_MAX = 240;
   var cameraYaw = Math.PI;
   var cameraDist = 8.2, cameraHeight = 4.2, cameraLookHeight = 1.5;
+  var CAMERA_DIST_MIN = 4, CAMERA_DIST_MAX = 15;
   var moveInput = { x: 0, y: 0 };
   var running = false;
+  var runToggled = false;
+  var verticalVelocity = 0, jumping = false;
+  var GRAVITY = -20, JUMP_SPEED = 7.2;
   var lastAutosave = 0;
   var colliders = [];
   var obstacleColliders = []; // dynamic, one entry per unresolved obstacle
@@ -192,7 +199,8 @@
       var actions = {
         idle: findClip(clips, 'idle') ? mixer.clipAction(findClip(clips, 'idle')) : null,
         walk: findClip(clips, 'walk') ? mixer.clipAction(findClip(clips, 'walk')) : null,
-        run: findClip(clips, 'run') ? mixer.clipAction(findClip(clips, 'run')) : null
+        run: findClip(clips, 'run') ? mixer.clipAction(findClip(clips, 'run')) : null,
+        jump: findClip(clips, 'jump') ? mixer.clipAction(findClip(clips, 'jump')) : null
       };
       var current = null;
       function play(name) {
@@ -502,11 +510,20 @@
   // ================= INPUT =================
 
   var keys = {};
+  function anyModalOpen() {
+    return (window.ChallengeUI && window.ChallengeUI.isOpen()) || (window.PauseMenu && window.PauseMenu.isOpen());
+  }
+
   function bindControls() {
+    // right-click / long-press context menu isn't used for anything here, and would
+    // otherwise interrupt camera-drag with a browser popup
+    window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
     window.addEventListener('keydown', function (e) {
       keys[e.key.toLowerCase()] = true;
       if (e.key === 'Shift') running = true;
-      if (['1', '2', '3', '4'].indexOf(e.key) !== -1) {
+      if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); doJump(); }
+      if (!anyModalOpen() && ['1', '2', '3', '4'].indexOf(e.key) !== -1) {
         var role = PARTY_ORDER[parseInt(e.key, 10) - 1];
         if (role) setActiveRole(role);
       }
@@ -516,7 +533,7 @@
       if (e.key === 'Shift') running = false;
     });
 
-    // ---- virtual joystick ----
+    // ---- virtual joystick (movement only -- camera look is a separate drag, below) ----
     var dragging = false, baseRect = null, knobMax = 42;
     function setKnob(dx, dy) {
       var len = Math.sqrt(dx * dx + dy * dy);
@@ -549,37 +566,138 @@
     window.addEventListener('mousemove', function (e) { pointerMove(e.clientX, e.clientY); });
     window.addEventListener('mouseup', pointerUp);
 
+    // ---- camera look: click/touch-drag on the canvas rotates the view, wheel/pinch zooms ----
+    var camDragging = false, camLastX = 0, camMoved = false;
+    var pinchActive = false, pinchStartDist = 0, pinchStartZoom = cameraDist;
+    var CAM_DRAG_SENSITIVITY = 0.0055;
+    function hideCamHint() {
+      var hint = document.getElementById('cam-hint');
+      if (hint) hint.classList.add('hidden');
+    }
+    function touchDist(touches) {
+      var dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    function zoomBy(delta) {
+      cameraDist = Math.max(CAMERA_DIST_MIN, Math.min(CAMERA_DIST_MAX, cameraDist + delta));
+    }
+    els.canvas.addEventListener('mousedown', function (e) {
+      if (anyModalOpen()) return;
+      camDragging = true; camMoved = false; camLastX = e.clientX;
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!camDragging) return;
+      var dx = e.clientX - camLastX;
+      if (Math.abs(dx) > 1) camMoved = true;
+      camLastX = e.clientX;
+      cameraYaw -= dx * CAM_DRAG_SENSITIVITY * 8;
+      if (camMoved) hideCamHint();
+    });
+    window.addEventListener('mouseup', function () { camDragging = false; });
+    els.canvas.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      zoomBy(e.deltaY * 0.01);
+      hideCamHint();
+    }, { passive: false });
+
+    els.canvas.addEventListener('touchstart', function (e) {
+      if (anyModalOpen()) return;
+      if (e.touches.length === 2) {
+        pinchActive = true; camDragging = false;
+        pinchStartDist = touchDist(e.touches);
+        pinchStartZoom = cameraDist;
+      } else if (e.touches.length === 1) {
+        camDragging = true; camMoved = false; camLastX = e.touches[0].clientX;
+      }
+    }, { passive: true });
+    els.canvas.addEventListener('touchmove', function (e) {
+      if (pinchActive && e.touches.length === 2) {
+        e.preventDefault();
+        var d = touchDist(e.touches);
+        cameraDist = Math.max(CAMERA_DIST_MIN, Math.min(CAMERA_DIST_MAX, pinchStartZoom - (d - pinchStartDist) * 0.03));
+        hideCamHint();
+      } else if (camDragging && e.touches.length === 1) {
+        var dx = e.touches[0].clientX - camLastX;
+        if (Math.abs(dx) > 1) camMoved = true;
+        camLastX = e.touches[0].clientX;
+        cameraYaw -= dx * CAM_DRAG_SENSITIVITY * 8;
+        if (camMoved) hideCamHint();
+      }
+    }, { passive: false });
+    els.canvas.addEventListener('touchend', function (e) {
+      if (e.touches.length < 2) pinchActive = false;
+      if (e.touches.length === 0) camDragging = false;
+    });
+
     // ---- buttons ----
-    var runHeld = false;
-    function setRun(v) { runHeld = v; running = v || keys['shift']; }
-    els.btnRun.addEventListener('touchstart', function (e) { e.preventDefault(); setRun(true); }, { passive: false });
-    els.btnRun.addEventListener('touchend', function (e) { e.preventDefault(); setRun(false); }, { passive: false });
-    els.btnRun.addEventListener('mousedown', function () { setRun(true); });
-    window.addEventListener('mouseup', function () { setRun(false); });
+    els.btnRun.addEventListener('click', function () {
+      runToggled = !runToggled;
+      els.btnRun.classList.toggle('active', runToggled);
+      if (window.SoundManager) window.SoundManager.playSfx('click');
+    });
+
+    els.btnJump.addEventListener('click', function () { doJump(); });
 
     els.btnInteract.addEventListener('click', function () {
-      if (window.ChallengeUI && window.ChallengeUI.isOpen()) return;
+      if (anyModalOpen()) return;
       showToast('Walk up to someone new to say hello!');
     });
 
     els.btnMenu.addEventListener('click', function () {
-      saveProgress();
-      els.fadeCurtain.classList.remove('hidden');
-      els.fadeCurtain.classList.add('active');
-      setTimeout(function () { window.location.href = 'index.html'; }, 500);
+      if (window.ChallengeUI && window.ChallengeUI.isOpen()) return;
+      if (window.PauseMenu) window.PauseMenu.toggle();
     });
 
-    var muted = false;
-    els.btnMute.addEventListener('click', function () {
-      muted = !muted;
-      if (window.SoundManager) window.SoundManager.setMuted(muted);
-      els.btnMute.textContent = muted ? '🔇' : '🔊';
+    els.btnQuicksave.addEventListener('click', function () {
+      saveProgress();
+      if (window.SoundManager) window.SoundManager.playSfx('click');
+      showToast('💾 Game saved!');
     });
+    els.btnQuickload.addEventListener('click', quickLoad);
+
+    function syncMuteIcon() {
+      var s = window.Settings ? window.Settings.get() : null;
+      var anyOn = !s || s.audio.bgmOn || s.audio.sfxOn;
+      els.btnMute.textContent = anyOn ? '🔊' : '🔇';
+    }
+    els.btnMute.addEventListener('click', function () {
+      var s = window.Settings.get();
+      var nowOn = !(s.audio.bgmOn || s.audio.sfxOn);
+      window.Settings.setBgmOn(nowOn);
+      window.Settings.setSfxOn(nowOn);
+      syncMuteIcon();
+    });
+    syncMuteIcon();
+
+    if (window.PauseMenu) {
+      window.PauseMenu.init({
+        onQuickSave: function () { saveProgress(); },
+        onQuickLoad: quickLoad,
+        onAudioChange: syncMuteIcon,
+        onExit: function () {
+          saveProgress();
+          window.PauseMenu.close();
+          els.fadeCurtain.classList.remove('hidden');
+          els.fadeCurtain.classList.add('active');
+          setTimeout(function () { window.location.href = 'index.html'; }, 500);
+        }
+      });
+    }
 
     window.addEventListener('beforeunload', saveProgress);
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'hidden') saveProgress();
     });
+  }
+
+  // Reloads the page fresh from whatever is currently in storage (the last
+  // autosave / quick save / checkpoint) -- deliberately does NOT save first,
+  // since the whole point is to discard unsaved changes since that point.
+  function quickLoad() {
+    if (window.SoundManager) window.SoundManager.playSfx('click');
+    els.fadeCurtain.classList.remove('hidden');
+    els.fadeCurtain.classList.add('active');
+    setTimeout(function () { window.location.reload(); }, 400);
   }
 
   var toastTimer = null;
@@ -609,7 +727,7 @@
     var playerRig = active && active.rig;
     if (!playerRig) return;
 
-    if (window.ChallengeUI && window.ChallengeUI.isOpen()) {
+    if ((window.ChallengeUI && window.ChallengeUI.isOpen()) || (window.PauseMenu && window.PauseMenu.isOpen())) {
       if (playerRig.userData.play) playerRig.userData.play('idle');
       return;
     }
@@ -631,31 +749,34 @@
       move.addScaledVector(camR, ix);
       if (move.lengthSq() > 0.0001) {
         move.normalize();
-        var isRunning = running && (Math.min(len, 1) > 0.4);
+        var isRunning = (running || runToggled) && (Math.min(len, 1) > 0.4);
         var speed = isRunning ? RUN_SPEED : WALK_SPEED;
         var next = playerRig.position.clone().addScaledVector(move, speed * dt);
         var dist = Math.sqrt(next.x * next.x + next.z * next.z);
         if (dist > GROUND_RADIUS) { next.x *= GROUND_RADIUS / dist; next.z *= GROUND_RADIUS / dist; }
         resolveCollisions(next);
+        next.y = playerRig.position.y;
         playerRig.position.copy(next);
+        // Character always turns to face the direction it's moving -- this is a
+        // one-way lerp toward a world-space target and converges cleanly.
         var targetAngle = Math.atan2(move.x, move.z);
         playerRig.rotation.y = lerpAngle(playerRig.rotation.y, targetAngle, 1 - Math.pow(0.0001, dt));
-        // The camera only re-centers behind the player while the movement direction is
-        // reasonably close to where the camera already faces (roughly forward/diagonal
-        // turning). Moving straight backward or strafing sideways defines a movement
-        // target that sits at a near-constant angular offset from cameraYaw itself --
-        // continuously chasing that would make the camera (and the player, since input
-        // is camera-relative) spin in place forever instead of translating. Freezing the
-        // camera yaw for those sharp angles keeps backpedal/strafe stable; it resumes
-        // following as soon as the player turns back toward roughly the camera's facing.
-        var yawDiff = ((targetAngle - cameraYaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-        if (Math.abs(yawDiff) < 2.2) {
-          cameraYaw = lerpAngle(cameraYaw, targetAngle, 1 - Math.pow(0.02, dt));
-        }
-        if (playerRig.userData.play) playerRig.userData.play(isRunning ? 'run' : 'walk');
+        // Camera yaw is NOT driven by movement anymore (that used to make the camera
+        // spin whenever you strafed or backed up, since the "behind the player" target
+        // sits at a constant offset from the camera's own yaw). The camera only turns
+        // from explicit player input now: click/touch-drag or the character-switch snap.
+        if (!jumping && playerRig.userData.play) playerRig.userData.play(isRunning ? 'run' : 'walk');
       }
-    } else {
-      if (playerRig.userData.play) playerRig.userData.play('idle');
+    } else if (!jumping && playerRig.userData.play) {
+      playerRig.userData.play('idle');
+    }
+
+    // ---- jump / gravity (vertical motion is independent of ground collision) ----
+    if (jumping || playerRig.position.y > 0) {
+      verticalVelocity += GRAVITY * dt;
+      playerRig.position.y += verticalVelocity * dt;
+      if (playerRig.position.y <= 0) { playerRig.position.y = 0; verticalVelocity = 0; jumping = false; }
+      else if (playerRig.userData.play) playerRig.userData.play('jump');
     }
 
     resolveCollisions(playerRig.position);
@@ -664,6 +785,17 @@
     if (trail.length > TRAIL_MAX) trail.shift();
 
     checkProximity(playerRig.position);
+  }
+
+  function doJump() {
+    var active = party[activeRole];
+    var playerRig = active && active.rig;
+    if (!playerRig) return;
+    if ((window.ChallengeUI && window.ChallengeUI.isOpen()) || (window.PauseMenu && window.PauseMenu.isOpen())) return;
+    if (jumping || playerRig.position.y > 0.01) return;
+    jumping = true;
+    verticalVelocity = JUMP_SPEED;
+    if (window.SoundManager) window.SoundManager.playSfx('click');
   }
 
   function resolveCollisions(pos) {
@@ -862,8 +994,10 @@
       return;
     }
     if (window.ChallengeUI) {
+      var pool = data.questions || (data.question ? [data.question] : []);
+      var question = window.pickRandomQuestion ? window.pickRandomQuestion(pool) : pool[0];
       window.ChallengeUI.askQuestion({
-        name: data.name, thumb: data.thumb, greet: data.greet, question: data.question,
+        name: data.name, thumb: data.thumb, greet: data.greet, question: question,
         abilities: heroAbilityButtons(),
         onResult: function (correct) {
           if (!correct) return;

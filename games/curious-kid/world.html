@@ -15,15 +15,18 @@
   <div id="world-vignette" aria-hidden="true"></div>
 
   <div class="world-topbar">
-    <button id="btn-menu" class="world-round-btn" aria-label="Back to start screen" title="Menu">☰</button>
+    <button id="btn-menu" class="world-round-btn" aria-label="Pause menu" title="Menu">☰</button>
     <div id="zone-label">The Great Library</div>
     <div class="world-topbar-right">
+      <button id="btn-quicksave" class="world-round-btn" aria-label="Quick save" title="Quick Save">💾</button>
+      <button id="btn-quickload" class="world-round-btn" aria-label="Quick load" title="Quick Load">📂</button>
       <button id="btn-mute" class="world-round-btn" aria-label="Mute all sound" title="Mute">🔊</button>
     </div>
   </div>
 
   <div id="world-progress">Building the world of Chokmah…</div>
   <div id="world-toast"></div>
+  <div id="cam-hint">🖱️ Drag to look around · Scroll to zoom</div>
 
   <div id="joy-base">
     <div id="joy-knob"></div>
@@ -31,6 +34,7 @@
 
   <div class="world-action-btns">
     <button id="btn-run" class="world-btn-round">Run</button>
+    <button id="btn-jump" class="world-btn-round">Jump</button>
     <button id="btn-interact" class="world-btn-round">✋<br>Interact</button>
   </div>
 
@@ -54,6 +58,7 @@
   <script src="js/abilities-data.js"></script>
   <script src="js/npc-data.js"></script>
   <script src="js/challenge-system.js"></script>
+  <script src="js/pause-menu.js"></script>
   <script src="js/world-assets-manifest.js"></script>
   <script src="js/world-terrain.js"></script>
   <script src="js/world.js"></script>

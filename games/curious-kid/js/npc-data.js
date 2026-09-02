@@ -4,6 +4,10 @@
          'flavor'  -> just a friendly one-liner, always passable
          'recruit' -> a future party member waiting to be met (joins on approach)
    Positions are world-space (x,z), matching WorldTerrain's zone layout.
+
+   Each quiz NPC carries a `questions` array of 2 (or more) variants; one is
+   picked at random every time they're triggered, so replaying the same NPC
+   doesn't always show the same question.
    ========================================================================== */
 
 (function () {
@@ -14,6 +18,12 @@
   function q(category, prompt, choices, correctIndex, hint, fact) {
     return { category: category, prompt: prompt, choices: choices, correctIndex: correctIndex, hint: hint, fact: fact };
   }
+
+  // pick one random entry from an array (used at trigger time, not here)
+  function pickRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+  window.pickRandomQuestion = pickRandom;
 
   // ---------------- The three future party members ----------------
   // Fixed look (per design decision), reuse the existing playable roster models
@@ -48,72 +58,116 @@
     {
       id: 'npc-ro', name: 'Ro', model: NPC_MODEL_DIR + '100Avatars_017_Ro.fbx', x: 14, z: 15, radius: 3.2, type: 'quiz',
       greet: "Hold it! I collect number patterns. Can you finish this one?",
-      question: q('logic', 'What comes next in the pattern: 2, 4, 6, 8, __?', ['9', '10', '12', '16'], 1,
-        'Try adding the same amount each time.', 'Patterns like this are called "sequences" -- each number goes up by 2!')
+      questions: [
+        q('logic', 'What comes next in the pattern: 2, 4, 6, 8, __?', ['9', '10', '12', '16'], 1,
+          'Try adding the same amount each time.', 'Patterns like this are called "sequences" -- each number goes up by 2!'),
+        q('logic', 'What comes next in the pattern: 3, 6, 9, 12, __?', ['13', '14', '15', '18'], 2,
+          'Each number is 3 more than the last.', 'Adding 3 each time makes this the "3-times" pattern!')
+      ]
     },
     {
       id: 'npc-circleboi', name: 'Circle Boi', model: NPC_MODEL_DIR + '100Avatars_173_CircleBoi.fbx', x: -14, z: 15, radius: 3.2, type: 'quiz',
       greet: "Roll on in! Quick shape question for ya:",
-      question: q('logic', 'How many sides does a hexagon have?', ['5', '6', '7', '8'], 1,
-        '"Hex" is a hint -- think of a bee\'s honeycomb.', 'A hexagon has 6 sides -- honeycomb cells are hexagons!')
+      questions: [
+        q('logic', 'How many sides does a hexagon have?', ['5', '6', '7', '8'], 1,
+          '"Hex" is a hint -- think of a bee\'s honeycomb.', 'A hexagon has 6 sides -- honeycomb cells are hexagons!'),
+        q('logic', 'How many sides does a triangle have?', ['2', '3', '4', '5'], 1,
+          '"Tri" is a hint -- think of a tricycle\'s wheels.', 'A triangle has 3 sides -- "tri" means three!')
+      ]
     },
 
     // ---- Forest zone -- science, near the Inventor and the lab ----
     {
       id: 'npc-crimsom', name: 'Crimsom', model: NPC_MODEL_DIR + '100Avatars_001_Crimsom.fbx', x: -30, z: -72, radius: 3.2, type: 'quiz',
       greet: "Shh, don't step on the moss! Science question first:",
-      question: q('science', 'What do plants need, along with water and air, to make their own food?', ['Moonlight', 'Sunlight', 'Music', 'Snow'], 1,
-        'Think about where plants like to grow best.', 'Plants use sunlight to make food in a process called photosynthesis!')
+      questions: [
+        q('science', 'What do plants need, along with water and air, to make their own food?', ['Moonlight', 'Sunlight', 'Music', 'Snow'], 1,
+          'Think about where plants like to grow best.', 'Plants use sunlight to make food in a process called photosynthesis!'),
+        q('science', 'Which part of a plant soaks up water from the soil?', ['The roots', 'The petals', 'The bark', 'The thorns'], 0,
+          'It\'s the part hidden underground.', 'Roots drink up water and nutrients from the soil!')
+      ]
     },
     {
       id: 'npc-mushy', name: 'Mushy', model: NPC_MODEL_DIR + '100Avatars_025_Mushy.fbx', x: 4, z: -88, radius: 3.2, type: 'quiz',
       greet: "Fungi fact time before you pass through my patch:",
-      question: q('science', 'Are mushrooms plants?', ['Yes, they are plants', 'No, they are fungi', 'No, they are rocks', 'Yes, they are trees'], 1,
-        'They don\'t make their own food from sunlight like plants do.', 'Mushrooms are fungi -- a whole different kingdom of living things!')
+      questions: [
+        q('science', 'Are mushrooms plants?', ['Yes, they are plants', 'No, they are fungi', 'No, they are rocks', 'Yes, they are trees'], 1,
+          'They don\'t make their own food from sunlight like plants do.', 'Mushrooms are fungi -- a whole different kingdom of living things!'),
+        q('science', 'Mushrooms often grow best in places that are...', ['Hot and dry', 'Damp and shady', 'Frozen solid', 'Underwater only'], 1,
+          'Think about the forest floor after it rains.', 'Fungi love cool, damp, shady spots like a forest floor!')
+      ]
     },
     {
       id: 'npc-snowy', name: 'Snowy', model: NPC_MODEL_DIR + '100Avatars_097_Snowy.fbx', x: -22, z: -98, radius: 3.2, type: 'quiz',
       greet: "Brrr! Answer this before you melt my fun:",
-      question: q('science', 'Why does ice float on water?', ['Ice is warmer than water', 'Ice is less dense than water', 'Ice is magnetic', 'Water is not wet'], 1,
-        'Think about which one takes up more space for the same amount.', 'Ice is less dense than liquid water, so it floats!')
+      questions: [
+        q('science', 'Why does ice float on water?', ['Ice is warmer than water', 'Ice is less dense than water', 'Ice is magnetic', 'Water is not wet'], 1,
+          'Think about which one takes up more space for the same amount.', 'Ice is less dense than liquid water, so it floats!'),
+        q('science', 'What do we call water when it freezes into a solid?', ['Steam', 'Ice', 'Fog', 'Juice'], 1,
+          'It\'s cold, hard, and slippery.', 'Frozen water becomes solid ice!')
+      ]
     },
     {
       id: 'npc-coolbattery', name: 'Battery', model: NPC_MODEL_DIR + '100Avatars_126_CoolBattery.fbx', x: 10, z: -66, radius: 3.2, type: 'quiz',
       greet: "Zzzt! Charged up with a question for you:",
-      question: q('science', 'What kind of energy is stored inside a battery?', ['Chemical energy', 'Sound energy', 'Wind energy', 'Light energy'], 0,
-        'It\'s a reaction happening inside, not light or sound.', 'Batteries store chemical energy and turn it into electricity!')
+      questions: [
+        q('science', 'What kind of energy is stored inside a battery?', ['Chemical energy', 'Sound energy', 'Wind energy', 'Light energy'], 0,
+          'It\'s a reaction happening inside, not light or sound.', 'Batteries store chemical energy and turn it into electricity!'),
+        q('science', 'Which of these needs a battery (or plug) to work?', ['A flashlight', 'A rock', 'A cloud', 'A leaf'], 0,
+          'Think of something you\'d switch on.', 'A flashlight needs electrical energy from a battery to light up!')
+      ]
     },
     {
       id: 'npc-coolcandle', name: 'Candle', model: NPC_MODEL_DIR + '100Avatars_165_CoolCandle.fbx', x: -42, z: -88, radius: 3.2, type: 'quiz',
       greet: "Careful, don't blow me out yet! One question:",
-      question: q('science', 'What does a flame need to keep burning?', ['Water', 'Oxygen', 'Darkness', 'Ice'], 1,
-        'It\'s something in the air all around you.', 'Fire needs oxygen -- that\'s why blowing it out (or covering it) works!')
+      questions: [
+        q('science', 'What does a flame need to keep burning?', ['Water', 'Oxygen', 'Darkness', 'Ice'], 1,
+          'It\'s something in the air all around you.', 'Fire needs oxygen -- that\'s why blowing it out (or covering it) works!'),
+        q('science', 'What part of a candle do you actually light on fire?', ['The wax', 'The wick', 'The jar', 'The label'], 1,
+          'It\'s the little string sticking out of the top.', 'The wick is the string that catches the flame first!')
+      ]
     },
 
     // ---- Fairgrounds zone -- music, morals, flavor ----
     {
       id: 'npc-pepo', name: 'Pepo', model: NPC_MODEL_DIR + '100Avatars_073_Pepo.fbx', x: -20, z: 78, radius: 3.2, type: 'quiz',
       greet: "The band's warming up! Musical question for ya:",
-      question: q('music', 'Which of these is a musical instrument?', ['Xylophone', 'Telescope', 'Umbrella', 'Compass'], 0,
-        'Think of something you\'d hit with mallets to make notes.', 'A xylophone makes music when you tap its bars!')
+      questions: [
+        q('music', 'Which of these is a musical instrument?', ['Xylophone', 'Telescope', 'Umbrella', 'Compass'], 0,
+          'Think of something you\'d hit with mallets to make notes.', 'A xylophone makes music when you tap its bars!'),
+        q('music', 'Which of these instruments has strings you strum or pluck?', ['Guitar', 'Drum', 'Triangle', 'Whistle'], 0,
+          'Think of something a rockstar might play.', 'A guitar makes music through its plucked or strummed strings!')
+      ]
     },
     {
       id: 'npc-coolfries', name: 'Fries', model: NPC_MODEL_DIR + '100Avatars_118_COOLFRIES.fbx', x: 18, z: 58, radius: 3.2, type: 'quiz',
       greet: "Hey, got a snack-sized question for you:",
-      question: q('morals', 'Two friends both want the last snack. What\'s the fairest thing to do?', ['Grab it first', 'Split it evenly', 'Hide it', 'Argue about it'], 1,
-        'Fair means everyone gets a bit.', 'Sharing evenly is a great way to be fair to a friend!')
+      questions: [
+        q('morals', 'Two friends both want the last snack. What\'s the fairest thing to do?', ['Grab it first', 'Split it evenly', 'Hide it', 'Argue about it'], 1,
+          'Fair means everyone gets a bit.', 'Sharing evenly is a great way to be fair to a friend!'),
+        q('morals', 'You and a friend both want to go first in a game. What\'s fair?', ['Push past them', 'Take turns', 'Refuse to play', 'Hide the game'], 1,
+          'Think about sharing the first turn.', 'Taking turns is a simple, fair way to share!')
+      ]
     },
     {
       id: 'npc-saintclaus', name: 'Saint Claus', model: NPC_MODEL_DIR + '100Avatars_100_SaintClaus.fbx', x: -10, z: 92, radius: 3.2, type: 'quiz',
       greet: "Ho ho -- before your gift, answer this kindly:",
-      question: q('morals', 'You accidentally bump into someone. What should you say?', ['Nothing', '"Watch where you\'re going!"', '"I\'m sorry, are you okay?"', 'Walk away fast'], 2,
-        'A good apology checks if the other person is alright.', 'Saying sorry and checking on others shows real kindness!')
+      questions: [
+        q('morals', 'You accidentally bump into someone. What should you say?', ['Nothing', '"Watch where you\'re going!"', '"I\'m sorry, are you okay?"', 'Walk away fast'], 2,
+          'A good apology checks if the other person is alright.', 'Saying sorry and checking on others shows real kindness!'),
+        q('morals', 'Someone helps you pick up something you dropped. What should you say?', ['Nothing', '"Thank you!"', '"Go away"', 'Ignore them'], 1,
+          'A little gratitude goes a long way.', 'Saying "thank you" shows you noticed and appreciate their kindness!')
+      ]
     },
     {
       id: 'npc-coolpan', name: 'Pan', model: NPC_MODEL_DIR + '100Avatars_142_CoolPan.fbx', x: -5, z: 55, radius: 3.2, type: 'quiz',
       greet: "Sizzle sizzle! Kitchen science for you:",
-      question: q('science', 'What happens to water when you heat it enough?', ['It freezes', 'It turns to gas (steam)', 'It turns purple', 'It disappears forever'], 1,
-        'You\'ve seen this happen when water boils.', 'Water boils into steam -- a gas -- when it gets hot enough!')
+      questions: [
+        q('science', 'What happens to water when you heat it enough?', ['It freezes', 'It turns to gas (steam)', 'It turns purple', 'It disappears forever'], 1,
+          'You\'ve seen this happen when water boils.', 'Water boils into steam -- a gas -- when it gets hot enough!'),
+        q('science', 'What happens to water when you put it in the freezer?', ['It turns to steam', 'It turns to ice', 'It disappears', 'It turns purple'], 1,
+          'Think about what comes out of an ice tray.', 'Cold enough water freezes solid into ice!')
+      ]
     },
     { id: 'npc-samuela', name: 'Samuela', model: NPC_MODEL_DIR + '100Avatars_050_Samuela.fbx', x: 22, z: 84, radius: 3.2, type: 'flavor',
       greet: "Welcome to the fair! Isn't it a lovely, if quiet, day?" },
@@ -136,16 +190,24 @@
     {
       id: 'npc-rose', name: 'Rose', model: NPC_MODEL_DIR + '100Avatars_057_Rose.fbx', x: -96, z: 32, radius: 3.2, type: 'quiz',
       greet: "A garden riddle of the heart for you:",
-      question: q('morals', 'Your friend drops their lunch by accident. What\'s the kind thing to do?', ['Laugh at them', 'Ignore it', 'Help them clean up and offer to share', 'Tell everyone'], 2,
-        'Think of what a good friend would do.', 'Helping and sharing turns a bad moment into a kind one!')
+      questions: [
+        q('morals', 'Your friend drops their lunch by accident. What\'s the kind thing to do?', ['Laugh at them', 'Ignore it', 'Help them clean up and offer to share', 'Tell everyone'], 2,
+          'Think of what a good friend would do.', 'Helping and sharing turns a bad moment into a kind one!'),
+        q('morals', 'A new kid at school doesn\'t know anyone yet. What\'s kind to do?', ['Ignore them', 'Whisper about them', 'Introduce yourself and say hi', 'Walk away'], 2,
+          'Think about how it feels to be new somewhere.', 'A friendly hello can make someone\'s whole day!')
+      ]
     },
     { id: 'npc-unicornperson', name: 'Unicorn', model: NPC_MODEL_DIR + '100Avatars_110_UniconPerson.fbx', x: -70, z: 42, radius: 3.2, type: 'flavor',
       greet: "Sparkles and good wishes to you, traveler!" },
     {
       id: 'npc-coolcola', name: 'Cola', model: NPC_MODEL_DIR + '100Avatars_193_CoolCola.fbx', x: -86, z: 16, radius: 3.2, type: 'quiz',
       greet: "Fizzy question incoming! Don't shake me up:",
-      question: q('morals', 'You see someone sitting alone, left out of a game. What should you do?', ['Ignore them', 'Point and laugh', 'Invite them to join', 'Walk away'], 2,
-        'Think about how you\'d want to be treated.', 'Inviting someone in is a simple way to be a good friend!')
+      questions: [
+        q('morals', 'You see someone sitting alone, left out of a game. What should you do?', ['Ignore them', 'Point and laugh', 'Invite them to join', 'Walk away'], 2,
+          'Think about how you\'d want to be treated.', 'Inviting someone in is a simple way to be a good friend!'),
+        q('morals', 'Your friend seems sad today. What\'s a good thing to do?', ['Ignore them', 'Ask if they\'re okay and listen', 'Laugh at them', 'Walk away'], 1,
+          'Think about how you\'d want a friend to check on you.', 'Asking and listening shows you really care about your friend!')
+      ]
     }
   ];
 
@@ -181,6 +243,8 @@
   });
 
   // ---------------- Boss (Abandoned Laboratory finale) ----------------
+  // A pool of 6 candidate questions; each boss fight randomly draws and
+  // shuffles 4 of them, so the gauntlet isn't identical every playthrough.
   window.BOSS_DATA = {
     id: 'professor-glitch', name: 'Professor Glitch',
     model: NPC_MODEL_DIR + '100Avatars_105_GoldfishBagPerson.fbx',
@@ -188,7 +252,7 @@
     tint: 0x8fd6ff,
     intro: "BZZT-ZZT! UNAUTHORIZED VISITORS! I am Professor Glitch, keeper of this laboratory. Everything here is an EXPERIMENT, and experiments must not be disturbed! Prove your curiosity is worth something, or turn back!",
     outro: "BZZT... recalibrating... You've shown real curiosity, patience, and careful observation. Those... those are the true tools of science. You may proceed. The Crystal of Science is yours!",
-    questions: [
+    questionPool: [
       q('science', 'What is it called when you test an idea to see if it\'s true?', ['A guess', 'An experiment', 'A nap', 'A song'], 1,
         'Scientists do this to check their ideas.', 'An experiment is a careful test of an idea!'),
       q('science', 'Before you experiment, what do you make called a "hypothesis"?', ['A prediction you want to test', 'A type of rock', 'A musical note', 'A kind of cloud'], 0,
@@ -196,7 +260,11 @@
       q('science', 'What should a good scientist do when their experiment doesn\'t work as expected?', ['Give up', 'Cheat on the results', 'Observe carefully and try again', 'Get angry'], 2,
         'Mistakes teach us something -- look closely!', 'Careful observation, even after a mistake, is real science!'),
       q('science', 'Why do scientists write down their observations?', ['To remember and share what they found', 'To make the lab messy', 'It\'s a rule with no reason', 'To confuse people'], 0,
-        'Think about sharing discoveries with others.', 'Writing observations down helps scientists remember and share their findings!')
+        'Think about sharing discoveries with others.', 'Writing observations down helps scientists remember and share their findings!'),
+      q('science', 'What tool might a scientist use to look closely at very small things?', ['A microscope', 'A telescope', 'An umbrella', 'A compass'], 0,
+        'It makes tiny things look much bigger.', 'A microscope helps scientists study things too small to see clearly!'),
+      q('science', 'If an experiment gives a surprising result, what should a curious scientist do?', ['Ignore it', 'Investigate why it happened', 'Hide it', 'Get upset and quit'], 1,
+        'Surprises are often the most interesting part!', 'Investigating surprises is how many great discoveries happen!')
     ]
   };
 })();

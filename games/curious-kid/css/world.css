@@ -58,7 +58,7 @@ html, body { background: #8fd0f0; }
   white-space: nowrap;
 }
 
-.world-topbar-right { display: flex; gap: 8px; }
+.world-topbar-right { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ---- streaming progress pill ---- */
 
@@ -162,10 +162,40 @@ html, body { background: #8fd0f0; }
   color: #123018;
   margin-bottom: 10px;
 }
+#btn-run.active {
+  background: linear-gradient(180deg, #ffe27a, var(--clr-gold-deep));
+  color: #3a2100;
+  box-shadow: 0 0 0 3px rgba(255, 207, 92, 0.4);
+}
+#btn-jump {
+  background: linear-gradient(180deg, #a8d8ff, #4fa8e8);
+  color: #0b2a45;
+  margin-bottom: 10px;
+}
 .world-btn-round:active { transform: scale(0.92); }
+
+/* ---- camera-rotate hint (fades out after first drag) ---- */
+#cam-hint {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(10, 8, 24, 0.55);
+  color: var(--clr-cream);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0.9;
+  transition: opacity 0.6s ease;
+}
+#cam-hint.hidden { opacity: 0; }
 
 @media (max-width: 480px) {
   #joy-base { width: 100px; height: 100px; }
   .world-btn-round { width: 56px; height: 56px; font-size: 0.72rem; }
   #btn-interact { width: 66px; height: 66px; }
+  .world-round-btn { width: 40px; height: 40px; font-size: 1.05rem; }
 }

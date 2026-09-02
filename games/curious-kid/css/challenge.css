@@ -155,3 +155,21 @@
   .party-slot { width: 44px; height: 44px; }
   .chal-card { padding: 14px 14px 12px; }
 }
+
+/* ==========================================================================
+   Pause / Settings menu (js/pause-menu.js) -- reuses the .modal-overlay /
+   .modal / .setting-row / .toggle-switch / .slider-row chrome from
+   style.css, but needs a higher z-index than the world HUD to sit above it.
+   ========================================================================== */
+
+#pause-overlay { z-index: 55; }
+
+.pause-quick-row { display: flex; gap: 10px; margin-bottom: 16px; }
+.pause-quick-row .menu-btn { flex: 1; }
+
+.pause-section-heading {
+  margin: 4px 0 2px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--clr-gold);
+}

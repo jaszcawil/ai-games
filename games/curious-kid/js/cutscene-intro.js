@@ -13,19 +13,14 @@
   var params = new URLSearchParams(window.location.search);
   var slot = params.get('slot') || window.localStorage.getItem('ckqkc.lastSlot');
 
-  var party = [
-    { role: 'hero', name: 'Curious Kid', characterLabel: '' },
-    { role: 'musician', name: 'the Musician', characterLabel: '' },
-    { role: 'inventor', name: 'the Inventor', characterLabel: '' },
-    { role: 'guide', name: 'the Guide', characterLabel: '' }
-  ];
+  var hero = { role: 'hero', name: 'Curious Kid', character: 'kid', characterLabel: '' };
   if (slot) {
     var save = window.SaveManager && window.SaveManager.readSlot(slot);
-    if (save && save.progress && save.progress.party && save.progress.party.length === 4) {
-      party = save.progress.party;
+    if (save && save.progress && save.progress.party && save.progress.party.length) {
+      hero = save.progress.party[0];
     }
   }
-  var heroName = party[0].name;
+  var heroName = hero.name;
 
   // ---------------- Timeline (seconds) ----------------
   var T = {
@@ -95,24 +90,18 @@
   function buildPartyCards() {
     els.partyHeading.textContent = 'That someone is ' + heroName + '!';
     els.partyCards.innerHTML = '';
-    party.forEach(function (member) {
-      var char = (window.CHARACTER_ROSTER || []).filter(function (c) { return c.id === member.character; })[0];
-      var card = document.createElement('div');
-      card.className = 'cut-party-card';
-      var img = document.createElement('img');
-      img.src = char ? char.thumb : '';
-      img.alt = member.name;
-      var pname = document.createElement('div');
-      pname.className = 'pname';
-      pname.textContent = member.name;
-      var role = document.createElement('div');
-      role.className = 'role';
-      role.textContent = member.role;
-      card.appendChild(img);
-      card.appendChild(pname);
-      card.appendChild(role);
-      els.partyCards.appendChild(card);
-    });
+    var char = (window.CHARACTER_ROSTER || []).filter(function (c) { return c.id === hero.character; })[0];
+    var card = document.createElement('div');
+    card.className = 'cut-party-card';
+    var img = document.createElement('img');
+    img.src = char ? char.thumb : '';
+    img.alt = hero.name;
+    var pname = document.createElement('div');
+    pname.className = 'pname';
+    pname.textContent = hero.name;
+    card.appendChild(img);
+    card.appendChild(pname);
+    els.partyCards.appendChild(card);
   }
 
   // ================= 3D SCENE =================
